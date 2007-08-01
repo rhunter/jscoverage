@@ -107,6 +107,39 @@ a {
   cursor: pointer;
 }
 
+td.totals span {
+    float: right;
+}
+td.totals span.title {
+    float: left;
+    font-weight: bold;
+}
+tr#summaryTotals td {
+    background-color: #ffd;
+}
+td.coverage {
+    width: 150px;
+}
+td.coverage span {
+    float: right;
+    margin-right: 5px;
+}
+.pctGraph {
+    width: 100px;
+    height: 10px;
+    float: right;
+    border: 1px solid #000;
+    background-color: #e00000;
+    overflow: hidden;
+    margin-top: 4px;
+}
+.pctGraph .covered {
+    background-color: #00f000;
+    width: 0;
+    height: 10px;
+}
+
+
 /*******************************************************************************
 source tab
 */

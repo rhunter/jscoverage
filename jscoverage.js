@@ -181,6 +181,8 @@ function recalculateSummaryTab(cc) {
     tbody.removeChild(tbody.firstChild);
   }
 
+  var totals = { files:0, statements:0, executed:0, coverage:0 };
+
   for (var file in cc) {
     var i;
     var num_statements = 0;
@@ -220,10 +222,22 @@ function recalculateSummaryTab(cc) {
     cell.appendChild(document.createTextNode(num_executed));
     row.appendChild(cell);
 
+    // new coverage td containing a bar graph
     cell = document.createElement("td");
-    cell.className = 'numeric';
-    cell.appendChild(document.createTextNode(percentage + '%'));
+    cell.className = 'coverage';
+    var pctGraph = document.createElement("div"),
+        covered = document.createElement("div"),
+        pct = document.createElement("span");
+    pctGraph.className = "pctGraph";
+    covered.className = "covered";
+    covered.style.width = percentage + 'px';
+    pct.className = "pct";
+    pct.appendChild(document.createTextNode(percentage + '%'));
+    pctGraph.appendChild(covered);
+    cell.appendChild(pctGraph);
+    cell.appendChild(pct);
     row.appendChild(cell);
+
 
     cell = document.createElement("td");
     for (i = 0; i < missing.length; i++) {
@@ -236,6 +250,25 @@ function recalculateSummaryTab(cc) {
     row.appendChild(cell);
 
     tbody.appendChild(row);
+
+    totals['files'] ++;
+    totals['statements'] += num_statements;
+    totals['executed'] += num_executed;
+    totals['coverage'] += percentage;
+
+    // write totals data into summaryTotals row
+    var tr = document.getElementById("summaryTotals");
+    if (tr) {
+        var tds = tr.getElementsByTagName("td");
+        tds[0].getElementsByTagName("span")[1].firstChild.nodeValue = totals['files'];
+        tds[1].firstChild.nodeValue = totals['statements'];
+        tds[2].firstChild.nodeValue = totals['executed'];
+
+        var coverage = parseInt(totals['coverage'] / totals['files']);
+        tds[3].getElementsByTagName("span")[0].firstChild.nodeValue = coverage + '%';
+        tds[3].getElementsByTagName("div")[1].style.width = coverage + 'px';
+    }
+
   }
 }
 

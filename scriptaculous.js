@@ -142,21 +142,47 @@ new Test.Unit.Runner({
       recalculateSummaryTab(coverage);
       var summaryTable = document.getElementById('summaryTable');
       var rows = summaryTable.getElementsByTagName('tr');
-      assertEqual(3, rows.length);
+      assertEqual(4, rows.length);
 
-      var row = rows.item(1);
-      var cells = row.getElementsByTagName('td');
+      var row, cells, links, percentage;
+
+      row = rows.item(1);
+      cells = row.getElementsByTagName('td');
       assertEqual(5, cells.length);
-      var links = cells.item(0).getElementsByTagName('a');
+      assertEqual('4', cells.item(1).innerHTML);
+      assertEqual('2', cells.item(2).innerHTML);
+      percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
+      assertEqual('66%', percentage);
+      links = cells.item(4).getElementsByTagName('a');
+      assertEqual(0, links.length);
+
+      row = rows.item(2);
+      cells = row.getElementsByTagName('td');
+      assertEqual(5, cells.length);
+      links = cells.item(0).getElementsByTagName('a');
       assertEqual(1, links.length);
       assertEqual('foo.js', links.item(0).innerHTML);
       assertEqual('3', cells.item(1).innerHTML);
       assertEqual('1', cells.item(2).innerHTML);
-      assertEqual('33%', cells.item(3).innerHTML);
+      percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
+      assertEqual('33%', percentage);
       links = cells.item(4).getElementsByTagName('a');
       assertEqual(2, links.length);
       assertEqual('1', links.item(0).innerHTML);
       assertEqual('4', links.item(1).innerHTML);
+
+      row = rows.item(3);
+      cells = row.getElementsByTagName('td');
+      assertEqual(5, cells.length);
+      links = cells.item(0).getElementsByTagName('a');
+      assertEqual(1, links.length);
+      assertEqual('bar.js', links.item(0).innerHTML);
+      assertEqual('1', cells.item(1).innerHTML);
+      assertEqual('1', cells.item(2).innerHTML);
+      percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
+      assertEqual('100%', percentage);
+      links = cells.item(4).getElementsByTagName('a');
+      assertEqual(0, links.length);
     }
   },
 
