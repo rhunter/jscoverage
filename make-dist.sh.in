@@ -1,0 +1,35 @@
+#!/bin/sh
+
+set -e
+
+version=@VERSION@
+distdir=jscoverage-${version}
+distfile=${distdir}.tar.bz2
+
+rm -fr $distdir
+mkdir $distdir
+
+# copy all files in SVN
+svn ls -R > FILES.tmp
+for file in $(svn ls -R)
+do
+  if [ -f "$file" ]
+  then
+    cp -a --parents "$file" $distdir
+  fi
+done
+
+# add generated files
+cp -a --parents Makefile.in aclocal.m4 configure depcomp install-sh missing $distdir
+cp -a --parents tests/Makefile.in $distdir
+cp -a --parents doc/instrumented $distdir
+
+# remove unnecessary files
+rm $distdir/TIMESTAMP
+rm $distdir/bootstrap.sh
+rm -r $distdir/scriptaculous*
+
+timestamp=`cat TIMESTAMP`
+find $distdir -exec touch -d "$timestamp" {} \;
+
+BZIP2=--best tar jcvf $distfile --numeric-owner --owner=0 --group=0 --exclude=.svn $distdir

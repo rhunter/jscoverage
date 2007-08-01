@@ -1,0 +1,227 @@
+/*
+    jscoverage.css - code coverage for JavaScript
+    Copyright (C) 2007 siliconforks.com
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+body {
+  background: #bfb;
+  font-family: sans-serif;
+  font-size: small;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  margin-left: 20px;
+  margin-right: 20px;
+  padding: 0px;
+}
+
+body.busy {
+  cursor: wait;
+}
+
+h1 {
+  font-size: large;
+}
+
+span#processingSpan {
+  visibility: hidden;
+}
+
+body.busy span#processingSpan {
+  visibility: visible;
+}
+
+/*******************************************************************************
+browser tab
+*/
+
+div#locationDiv {
+  margin-bottom: 10px;
+}
+
+input, button {
+  border: 1px solid black;
+  margin-left: 1px;
+  margin-right: 1px;
+}
+
+iframe {
+  width: 100%;
+  margin: 0px;
+  padding: 0px;
+}
+
+/*******************************************************************************
+coverage report tab
+*/
+
+div#summaryDiv {
+  margin: 0px;
+  padding: 0px;
+  overflow: auto;
+}
+
+table#summaryTable {
+  width: 96%;
+  margin-left: auto;
+  margin-right: auto;
+  border-collapse: collapse;
+  font-size: small;
+}
+
+table#summaryTable, table#summaryTable th, table#summaryTable td {
+  border: 1px solid #bbb;
+  padding: 2px;
+}
+
+th {
+  background-color: #e0e0e0;
+}
+
+td.numeric {
+  text-align: right;
+}
+
+abbr {
+  cursor: help;
+}
+
+body.busy a {
+  cursor: wait;
+}
+
+a {
+  cursor: pointer;
+}
+
+/*******************************************************************************
+source tab
+*/
+
+div#fileDiv {
+  font-size: large;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+div#sourceDiv {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  padding: 0px;
+  overflow: auto;
+}
+
+table#sourceTable {
+  border: 0px;
+  border-collapse: collapse;
+  font-size: small;
+}
+
+table#sourceTable td {
+  border: 0px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+table#sourceTable pre {
+  border: 0px;
+  margin: 0px;
+}
+
+.g {
+  background-color: #bfb;
+}
+
+.r {
+  background-color: #fbb;
+}
+
+/*******************************************************************************
+tabs
+*/
+
+div.TabControl {
+  /* IE seems to require this for layout purposes, even if you can't see it */
+  border: 1px solid #bfb;
+  margin: 0px;
+  padding: 0px;
+}
+
+div.TabControl div.Tabs {
+}
+
+div.TabControl div.Tabs div {
+  background: white;
+  position: relative;
+  float: left;
+  border: 1px solid black;
+  border-bottom-width: 0px;
+  cursor: pointer;
+  margin-left: 5px;
+  margin-right: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  z-index: 2;
+}
+
+div.TabControl div.Tabs div.selected {
+  padding-bottom: 6px;
+  z-index: 2;
+}
+
+div.TabControl div.Tabs div.disabled {
+  color: #aaa;
+  cursor: default; 
+}
+
+div.TabControl div.TabPages {
+  background: white;
+  clear: left;
+  border: 1px solid black;
+  position: relative;
+  top: -1px;
+  z-index: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+div.TabControl div.TabPages div {
+}
+
+img {
+  visibility: hidden;
+}
+
+body.busy div.TabControl div.Tabs div {
+  cursor: wait;
+}
+
+body.busy div.TabControl div.Tabs div.selected {
+  cursor: wait;
+}
+
+body.busy div.TabControl div.Tabs div.disabled {
+  cursor: wait;
+}

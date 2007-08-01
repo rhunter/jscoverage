@@ -1,0 +1,9 @@
+Usage: jscoverage SOURCE-DIRECTORY DESTINATION-DIRECTORY
+Instrument JavaScript with code coverage information.
+
+Options:
+      --exclude=PATH        do not copy PATH
+      --no-instrument=PATH  copy but do not instrument PATH
+  -v, --verbose             explain what is being done
+  -h, --help                display this help and exit
+  -V, --version             display version information and exit

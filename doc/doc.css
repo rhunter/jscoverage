@@ -1,0 +1,26 @@
+body {
+  margin: 3%;
+  font-family: sans-serif;
+}
+
+pre {
+  margin-left: 3%;
+  margin-right: 3%;
+  padding: 1em;
+  border: 1px dotted black;
+  background-color: #eee;
+}
+
+td {
+  vertical-align: top;
+}
+
+td.arrow {
+  vertical-align: middle;
+  font-size: xx-large;
+}
+
+td pre {
+  height: auto;
+  margin-bottom: 0px;
+}

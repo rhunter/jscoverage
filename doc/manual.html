@@ -1,0 +1,254 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>JSCoverage user manual</title>
+<link type="text/css" href="doc.css" rel="stylesheet">
+</head>
+<body>
+
+<h1>JSCoverage user manual</h1>
+
+<p>
+JSCoverage is a tool used to measure code coverage in JavaScript
+programs.
+</p>
+
+<p>
+JSCoverage has two components:
+</p>
+
+<ol>
+<li>An executable program which is used to add instrumentation to JavaScript code.
+<li>A web application which is used to execute instrumented code and generate a
+code coverage report.
+</ol>
+
+<h2>Installing JSCoverage</h2>
+
+<p>
+You can compile JSCoverage on GNU/Linux or Microsoft Windows, using GCC. On
+Windows you will require <a href="http://cygwin.com/">Cygwin</a> or <a
+href="http://mingw.org/">MinGW/MSYS</a>.
+</p>
+
+<p>
+You can extract and compile the code with the following commands:
+</p>
+
+<pre>
+tar jxvf jscoverage-0.1.tar.bz2
+cd jscoverage-0.1
+./configure
+make
+</pre>
+
+<p>
+This will create the <code>jscoverage</code> executable (<code>jscoverage.exe</code> on Windows).
+You can install the executable in <code>/usr/local</code> with the command:
+</p>
+
+<pre>
+make install
+</pre>
+
+<p>
+Alternatively, since the program consists of only the single self-contained
+<code>jscoverage</code> executable, you may simply copy it to a suitable location
+in your <code>PATH</code>.
+</p>
+
+<h2>Using JSCoverage</h2>
+
+<p>
+Using JSCoverage requires three steps:
+</p>
+
+<h3>1. Instrumenting code</h3>
+
+<p>
+The first step is to add instrumentation to your JavaScript code.  This is the function of the
+<code>jscoverage</code> executable.  You must provide two arguments:
+</p>
+
+<pre>
+jscoverage <var>SOURCE-DIRECTORY</var> <var>DESTINATION-DIRECTORY</var>
+</pre>
+
+<p>
+<var>SOURCE-DIRECTORY</var> is the directory containing the JavaScript code to be instrumented,
+and <var>DESTINATION-DIRECTORY</var> is the name of the
+directory to which <code>jscoverage</code> should output the instrumented code.
+The <code>jscoverage</code> program will create <var>DESTINATION-DIRECTORY</var> if necessary and (recursively) copy
+<var>SOURCE-DIRECTORY</var> to <var>DESTINATION-DIRECTORY</var>, instrumenting
+any files ending with a <code>.js</code> extension.
+</p>
+
+<p>
+For example, if you have a file
+<code><var>SOURCE-DIRECTORY</var>/dir/index.html</code> referencing the script
+<code><var>SOURCE-DIRECTORY</var>/dir/script.js</code>, then
+<code>jscoverage</code> will create a copy of the HTML file at
+<code><var>DESTINATION-DIRECTORY</var>/dir/index.html</code> and an instrumented
+version of the script at
+<code><var>DESTINATION-DIRECTORY</var>/dir/script.js</code>.
+</p>
+
+<table>
+<tr>
+<td><pre>
+<var>SOURCE-DIRECTORY</var>/
+  dir/
+    index.html
+    script.js
+
+</pre></td>
+<td class="arrow">&rarr;</td>
+<td><pre>
+<var>DESTINATION-DIRECTORY</var>/
+  dir/
+    index.html
+    script.js [instrumented]
+  jscoverage.html
+</pre></td>
+</tr>
+</table>
+
+<p>
+In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html</code>
+which is used to execute the instrumented code.
+</p>
+
+<h3>2. Executing instrumented code</h3>
+
+<p>
+Open <code>jscoverage.html</code> in your web browser.
+The page contains a tabbed user interface:
+</p>
+
+<ul>
+<li>The "Browser" tab is used to display pages with instrumented scripts.
+<li>The "Summary" tab is used to display code coverage data.
+<li>The "Source" tab is used to display JavaScript code, showing the number of times
+each line of code was executed.
+<li>The "About" tab displays information about the current version of JSCoverage.
+</ul>
+
+<img src="screenshot.png" alt="Screenshot">
+
+<p>
+The "Browser" tab contains an <code>&lt;iframe&gt;</code>, which is initially empty.
+You can load a page into this frame by
+entering its URL into the "URL" input field.  For example, to load
+the file <code><var>DESTINATION-DIRECTORY</var>/dir/index.html</code>, you can
+enter the relative URL <code>dir/index.html</code> into the input field.
+</p>
+
+<h3>3. Generating the coverage report</h3>
+
+<p>
+Once the JavaScript code in the page in the "Browser" tab has been executed, click on
+the "Summary" tab.  This will display the current code coverage statistics.
+</p>
+
+<p>
+As long as you do not reload the
+<code>jscoverage.html</code> page, the coverage report statistics are
+cumulative.  If you execute more JavaScript in the frame in the "Browser" tab (e.g., by clicking on a link to
+another scripted page, or by reloading the frame containing a scripted
+page) and switch to the "Summary" tab again,
+the coverage report will combine the statistics from the previous report with any newly generated statistics.
+Reloading <code>jscoverage.html</code> resets all code coverage statistics to zero.
+</p>
+
+<h2>Example</h2>
+
+<p>
+The JSCoverage distribution comes with a trivial example program in the <code>doc/example</code> directory.
+You can view the file <code>doc/example/index.html</code> in your web browser to run the (uninstrumented) program.
+To instrument this program, follow these steps:
+</p>
+
+<h3>1. Instrumenting code</h3>
+
+<p>
+From the main distribution directory, execute the command:
+</p>
+
+<pre>
+jscoverage doc/example doc/instrumented
+</pre>
+
+<p>
+This will create the directory <code>doc/instrumented</code> and
+place an instrumented copy of the code from <code>doc/example</code> in <code>doc/instrumented</code>.
+</p>
+
+<h3>2. Executing instrumented code</h3>
+
+<p>
+You can load the file <code>doc/instrumented/jscoverage.html</code> in your web browser and type
+the URL for the instrumented code in the "URL" input field.  Since a relative URL is accepted, you
+can simply type <code>index.html</code> to load the page.
+</p>
+
+<p>
+Alternatively, you can append the URL to the query string of the
+<code>jscoverage.html</code> URL; for example, if you are in the main JSCoverage
+directory and the Firefox executable is in your <code>PATH</code>, you can load
+the <code>jscoverage.html</code> frameset and the <code>index.html</code> page
+all in one command line:
+</p>
+
+<pre>
+firefox "doc/instrumented/jscoverage.html?index.html"
+</pre>
+
+<img src="screenshot2.png" alt="Screenshot">
+
+<p>
+For this particular page, the JavaScript does not execute automatically:
+you have to select one of the radio buttons to execute the code.
+</p>
+
+<img src="screenshot3.png" alt="Screenshot">
+
+<h3>3. Generating the coverage report</h3>
+
+<p>
+Once you have executed the JavaScript code, you will be instructed to click on the
+"Summary" tab.
+</p>
+
+<img src="screenshot4.png" alt="Screenshot">
+
+<p>
+From the "Summary" tab, you can click the links to get a detailed view of a JavaScript source file.
+</p>
+
+<img src="screenshot5.png" alt="Screenshot">
+
+<h2>Caveats</h2>
+
+<ul>
+<li>JSCoverage adds instrumentation to JavaScript code, which will slow down execution speed.
+Expect instrumented code to take at least twice as much time to run.
+<li>JSCoverage currently instruments only <code>.js</code> files; it does not instrument code in <code>&lt;script&gt;</code>
+elements in HTML files.
+<li>HTML files must use relative URLs to reference scripts.  If you use an absolute URL, your page will reference
+the original uninstrumented script rather than the instrumented one, and no code coverage data will be collected.
+<li>JSCoverage instruments physical lines of code rather than logical JavaScript statements; it works bests with code
+that has exactly one statement per line.  If you put multiple statements on a line, or  split a line across two or more
+statements, you may get strange results.
+<li>JSCoverage uses frames.  Some web pages that use frames may not function properly when run under JSCoverage, especially
+those which try to access the top-level frame (<code>window.top</code>, <code>target="_top"</code>, etc.).
+<li>JSCoverage is alpha software.  Use at your own risk.
+</ul>
+
+<address>
+  Copyright &copy; 2007 siliconforks.com<br>
+  Last updated July 8, 2007<br>
+  <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
+</address>
+
+</body>
+</html>

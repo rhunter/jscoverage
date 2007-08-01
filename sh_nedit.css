@@ -1,0 +1,67 @@
+pre.sh_sourceCode {
+  background-color: #ffffff;
+  color: #000000;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_keyword {
+  color: #000000;
+  font-weight: bold;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_type {
+  color: #a52a2a;
+  font-weight: bold;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_string {
+  color: #006400;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_specialchar {
+  color: #2e8b57;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_comment {
+  color: #000000;
+  font-weight: normal;
+  font-style: italic;
+}
+
+pre.sh_sourceCode span.sh_number {
+  color: #006400;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_preproc {
+  color: #27408b;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_symbol {
+  color: #000000;
+  font-weight: bold;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_function {
+  color: #000000;
+  font-weight: normal;
+  font-style: normal;
+}
+
+pre.sh_sourceCode span.sh_cbracket {
+  color: #000000;
+  font-weight: bold;
+  font-style: normal;
+}
+
