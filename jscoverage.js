@@ -25,6 +25,7 @@ var gCurrentFile = null;
 var gCurrentLine = null;
 var gCurrentSource = null;
 var gCurrentLines = null;
+var gMissing = null;
 
 // http://www.quirksmode.org/js/findpos.html
 function findPos(obj) {
@@ -103,9 +104,45 @@ function body_load() {
 
   // check if a URL was passed in the query string
   if (location.search.length > 0) {
-    var url = location.search.substring(1);
+    var queryString = location.search.substring(1);
+    var parameters = queryString.split(/&|;/);
+    var url, parameter, index, name, value;
+    for (var i = 0; i < parameters.length; i++) {
+      parameter = parameters[i];
+      index = parameter.indexOf('=');
+      if (index === -1) {
+        // still works with old syntax
+        url = parameter;
+      }
+      else {
+        name = parameter.substr(0, index);
+        value = parameter.substr(index + 1);
+        if (name === 'missing' || name === 'm') {
+          if (value === '0') {
+            gMissing = false;
+          }
+          else {
+            gMissing = true;
+          }
+        }
+        else if (name === 'url' || name === 'u') {
+          url = value;
+        }
+      }
+    }
+
+    if (! gMissing) {
+      var missingNode;
+      missingNode = document.getElementById('missingHeader');
+      missingNode.parentNode.removeChild(missingNode);
+      missingNode = document.getElementById('missingCell');
+      missingNode.parentNode.removeChild(missingNode);
+    }
+
     // this will automatically propagate to the input field
-    frames[0].location = url;
+    if (url) {
+      frames[0].location = url;
+    }
   }
 }
 
@@ -238,16 +275,17 @@ function recalculateSummaryTab(cc) {
     cell.appendChild(pct);
     row.appendChild(cell);
 
-
-    cell = document.createElement("td");
-    for (i = 0; i < missing.length; i++) {
-      if (i !== 0) {
-        cell.appendChild(document.createTextNode(", "));
+    if (gMissing) {
+      cell = document.createElement("td");
+      for (i = 0; i < missing.length; i++) {
+        if (i !== 0) {
+          cell.appendChild(document.createTextNode(", "));
+        }
+        link = createLink(file, missing[i]);
+        cell.appendChild(link);
       }
-      link = createLink(file, missing[i]);
-      cell.appendChild(link);
+      row.appendChild(cell);
     }
-    row.appendChild(cell);
 
     tbody.appendChild(row);
 

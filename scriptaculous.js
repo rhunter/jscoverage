@@ -139,6 +139,7 @@ new Test.Unit.Runner({
       coverage['foo.js'][4] = 0;
       coverage['bar.js'] = [];
       coverage['bar.js'][2] = 10;
+      gMissing = true;
       recalculateSummaryTab(coverage);
       var summaryTable = document.getElementById('summaryTable');
       var rows = summaryTable.getElementsByTagName('tr');
