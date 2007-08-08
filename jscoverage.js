@@ -99,15 +99,16 @@ function setSize() {
 }
 
 function body_load() {
+  var queryString, parameters, parameter, i, index, url, name, value;
+
   initTabControl();
   setSize();
 
   // check if a URL was passed in the query string
   if (location.search.length > 0) {
-    var queryString = location.search.substring(1);
-    var parameters = queryString.split(/&|;/);
-    var url, parameter, index, name, value;
-    for (var i = 0; i < parameters.length; i++) {
+    queryString = location.search.substring(1);
+    parameters = queryString.split(/&|;/);
+    for (i = 0; i < parameters.length; i++) {
       parameter = parameters[i];
       index = parameter.indexOf('=');
       if (index === -1) {
@@ -130,19 +131,19 @@ function body_load() {
         }
       }
     }
+  }
 
-    if (! gMissing) {
-      var missingNode;
-      missingNode = document.getElementById('missingHeader');
-      missingNode.parentNode.removeChild(missingNode);
-      missingNode = document.getElementById('missingCell');
-      missingNode.parentNode.removeChild(missingNode);
-    }
+  if (! gMissing) {
+    var missingNode;
+    missingNode = document.getElementById('missingHeader');
+    missingNode.parentNode.removeChild(missingNode);
+    missingNode = document.getElementById('missingCell');
+    missingNode.parentNode.removeChild(missingNode);
+  }
 
-    // this will automatically propagate to the input field
-    if (url) {
-      frames[0].location = url;
-    }
+  // this will automatically propagate to the input field
+  if (url) {
+    frames[0].location = url;
   }
 }
 
