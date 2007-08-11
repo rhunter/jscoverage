@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <!--
     jscoverage.html - code coverage for JavaScript
     Copyright (C) 2007 siliconforks.com
@@ -22,13 +23,17 @@
 <title>JSCoverage</title>
 <link rel="stylesheet" type="text/css" href="sh_nedit.css">
 <link rel="stylesheet" type="text/css" href="jscoverage.css">
-<script type="text/javascript" src="sh_main.min.js"></script>
+<script type="text/javascript" src="sh_main.js"></script>
 <script type="text/javascript" src="sh_javascript.min.js"></script>
 <script type="text/javascript" src="jscoverage.js"></script>
 </head>
 
 <body onload="body_load();" onresize="body_resize();">
-<h1>JSCoverage <span id="processingSpan">(working ...)</span></h1>
+<div id="headingDiv">
+<div id="progressBar" class="ProgressBar"><div class="pctGraph"><div class="covered"></div></div><span class="pct"></span></div>
+<div id="progressLabel"></div>
+<h1>JSCoverage</h1>
+</div>
 
 <div id="tabControl" class="TabControl">
   <div id="tabs" class="Tabs">

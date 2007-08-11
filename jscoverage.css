@@ -28,20 +28,8 @@ body {
   padding: 0px;
 }
 
-body.busy {
-  cursor: wait;
-}
-
 h1 {
   font-size: large;
-}
-
-span#processingSpan {
-  visibility: hidden;
-}
-
-body.busy span#processingSpan {
-  visibility: visible;
 }
 
 /*******************************************************************************
@@ -99,14 +87,6 @@ abbr {
   cursor: help;
 }
 
-body.busy a {
-  cursor: wait;
-}
-
-a {
-  cursor: pointer;
-}
-
 td.totals span {
     float: right;
 }
@@ -139,6 +119,47 @@ td.coverage span {
     height: 10px;
 }
 
+#headingDiv {
+  width: 600px;
+}
+
+#headingDiv h1 {
+}
+
+#progressBar {
+  visibility: hidden;
+  margin-top: 5px;
+}
+
+#progressLabel {
+  width: 150px;
+  float: right;
+  margin-top: 5px;
+}
+
+div.ProgressBar {
+  width: 150px;
+  float: right;
+}
+
+div.ProgressBar .pctGraph {
+  width: 100px;
+  height: 10px;
+  border: 1px solid #000;
+  background-color: gray;
+}
+
+div.ProgressBar .covered {
+  background-color: #0000aa;
+  width: 0;
+  height: 10px;
+}
+
+div.ProgressBar .pct {
+  margin-right: 5px;
+  float: right;
+  text-align: right;
+}
 
 /*******************************************************************************
 source tab
@@ -220,6 +241,7 @@ div.TabControl div.Tabs div {
 div.TabControl div.Tabs div.selected {
   padding-bottom: 6px;
   z-index: 2;
+  cursor: default;
 }
 
 div.TabControl div.Tabs div.disabled {
@@ -245,16 +267,4 @@ div.TabControl div.TabPages div {
 
 img {
   visibility: hidden;
-}
-
-body.busy div.TabControl div.Tabs div {
-  cursor: wait;
-}
-
-body.busy div.TabControl div.Tabs div.selected {
-  cursor: wait;
-}
-
-body.busy div.TabControl div.Tabs div.disabled {
-  cursor: wait;
 }

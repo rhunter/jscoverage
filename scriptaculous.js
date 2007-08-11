@@ -67,17 +67,10 @@ new Test.Unit.Runner({
   testLengthyOperation: function() {
     with (this) {
       var body = document.getElementById('body');
-      var called = false;
-      var f = function() {
-        called = true;
-      };
-      lengthyOperation(f);
-      assert(! called);
-      wait(200, function() {
-        with (this) {
-          assert(called);
-        }
-      });
+      beginLengthyOperation();
+      assertEqual('wait', body.style.cursor);
+      endLengthyOperation();
+      assertEqual('', body.style.cursor);
     }
   },
 
@@ -196,13 +189,15 @@ new Test.Unit.Runner({
       gCurrentSource = 'foo\nbar\n';
       gCurrentLines = ['foo', 'bar'];
       makeTable();
-      var sourceDiv = document.getElementById('sourceDiv');
-      var cells = sourceDiv.getElementsByTagName('td');
-      assertIdentical('1', cells.item(0).innerHTML);
-      assertIdentical('10', cells.item(1).innerHTML);
-      assertIdentical('2', cells.item(3).innerHTML);
-      assertIdentical('100', cells.item(4).innerHTML);
-      delete(_$jscoverage[gCurrentFile]);
+      wait(1000, function() {
+        var sourceDiv = document.getElementById('sourceDiv');
+        var cells = sourceDiv.getElementsByTagName('td');
+        assertIdentical('1', cells.item(0).innerHTML);
+        assertIdentical('10', cells.item(1).innerHTML);
+        assertIdentical('2', cells.item(3).innerHTML);
+        assertIdentical('100', cells.item(4).innerHTML);
+        delete(_$jscoverage[gCurrentFile]);
+      });
     }
   },
 

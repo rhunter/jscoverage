@@ -20,7 +20,7 @@ SUBDIRS = js
 AM_CFLAGS = -Ijs/src -DXP_UNIX
 
 resources = help.txt \
-            sh_main.min.js sh_javascript.min.js sh_nedit.css \
+            sh_main.js sh_javascript.min.js sh_nedit.css \
             jscoverage.html jscoverage.css jscoverage.js jscoverage-throbber.gif
 
 bin_PROGRAMS = jscoverage

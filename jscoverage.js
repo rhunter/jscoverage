@@ -57,20 +57,56 @@ function getViewportHeight() {
   }
 }
 
-function lengthyOperation(f) {
+/**
+Indicates visually that a lengthy operation has begun.  The progress bar is
+displayed, and the cursor is changed to busy (on browsers which support this).
+*/
+function beginLengthyOperation() {
+  var progressBar = document.getElementById('progressBar');
+  progressBar.style.visibility = 'visible';
+  ProgressBar.setPercentage(progressBar, 0);
+
+  /* blacklist buggy browsers */
+  if (BrowserDetect.browser === 'Opera' || BrowserDetect.browser === 'Safari') {
+    return;
+  }
   var body = document.getElementsByTagName('body').item(0);
-  body.className = 'busy';
-  setTimeout(function() {
-    try {
-      f();
-    }
-    finally {
-      body.className = '';
-      body = null;
-    }
-  }, 0);
+  /*
+  Change the cursor style of each element.  Note that changing the class of the
+  element (to one with a busy cursor) is buggy in IE.
+  */
+  body.style.cursor = 'wait';
+  var tabs = document.getElementById('tabs').getElementsByTagName('div');
+  var i;
+  for (i = 0; i < tabs.length; i++) {
+    tabs.item(i).style.cursor = 'wait';
+  }
 }
 
+/**
+Removes the progress bar and busy cursor.
+*/
+function endLengthyOperation() {
+  var progressBar = document.getElementById('progressBar');
+  progressBar.style.visibility = 'hidden';
+  var progressLabel = document.getElementById('progressLabel');
+  progressLabel.innerHTML = '';
+  var body = document.getElementsByTagName('body').item(0);
+  body.style.cursor = '';
+  var tabs = document.getElementById('tabs').getElementsByTagName('div');
+  var i;
+  for (i = 0; i < tabs.length; i++) {
+    tabs.item(i).style.cursor = '';
+  }
+}
+
+/**
+Sets the sizes of various elements according to the viewport size.  This
+function must be called:
+1. When the document is loaded
+2. When the window is resized
+3. When a tab is selected
+*/
 function setSize() {
   var viewportHeight = getViewportHeight();
 
@@ -99,12 +135,15 @@ function setSize() {
 }
 
 function body_load() {
-  var queryString, parameters, parameter, i, index, url, name, value;
+  var progressBar = document.getElementById('progressBar');
+  ProgressBar.init(progressBar);
 
   initTabControl();
+
   setSize();
 
   // check if a URL was passed in the query string
+  var queryString, parameters, parameter, i, index, url, name, value;
   if (location.search.length > 0) {
     queryString = location.search.substring(1);
     parameters = queryString.split(/&|;/);
@@ -151,9 +190,8 @@ function body_resize() {
   setSize();
 }
 
-/*******************************************************************************
-tab 1
-*/
+// -----------------------------------------------------------------------------
+// tab 1
 
 function updateBrowser() {
   var input = document.getElementById("location");
@@ -179,9 +217,8 @@ function browser_load() {
   updateInput();
 }
 
-/*******************************************************************************
-tab 2
-*/
+// -----------------------------------------------------------------------------
+// tab 2
 
 function createLink(file, line) {
   var link = document.createElement("a");
@@ -309,91 +346,162 @@ function recalculateSummaryTab(cc) {
     }
 
   }
+  endLengthyOperation();
 }
 
-/*******************************************************************************
-tab 3
-*/
+// -----------------------------------------------------------------------------
+// tab 3
 
 function makeTable() {
-  var rows = [];
   var coverage = _$jscoverage[gCurrentFile];
   var lines = gCurrentLines;
-  var i;
-  for (i = 0; i < lines.length; i++) {
-    var lineNumber = i + 1;
-
-    var row = '<tr>';
-    row += '<td class="numeric">' + lineNumber + '</td>';
-    if (lineNumber in coverage) {
-      var timesExecuted = coverage[lineNumber];
-      if (timesExecuted === 0) {
-        row += '<td class="r numeric" id="line-' + lineNumber + '">';
+  var rows = ['<table id="sourceTable">'];
+  var i = 0;
+  var progressBar = document.getElementById('progressBar');
+  var tableHTML;
+  var oldDate = new Date().valueOf();
+  function makeTableRows() {
+    while (i < lines.length) {
+      var lineNumber = i + 1;
+  
+      var row = '<tr>';
+      row += '<td class="numeric">' + lineNumber + '</td>';
+      if (lineNumber in coverage) {
+        var timesExecuted = coverage[lineNumber];
+        if (timesExecuted === 0) {
+          row += '<td class="r numeric" id="line-' + lineNumber + '">';
+        }
+        else {
+          row += '<td class="g numeric">';
+        }
+        row += timesExecuted;
+        row += '</td>';
       }
       else {
-        row += '<td class="g numeric">';
+        row += '<td></td>';
       }
-      row += timesExecuted;
-      row += '</td>';
+      row += '<td><pre class="sh_sourceCode sh_javascript">' + lines[i] + '</pre></td>';
+      row += '</tr>';
+      row += '\n';
+      rows[lineNumber] = row;
+      i++;
+      var newDate = new Date().valueOf();
+      if (newDate - oldDate > 250) {
+        oldDate = newDate;
+        ProgressBar.setPercentage(progressBar, parseInt(50 * i / lines.length));
+        setTimeout(makeTableRows, 0);
+        return;
+      }
     }
-    else {
-      row += '<td></td>';
+    rows[i + 1] = '</table>';
+    ProgressBar.setPercentage(progressBar, 50);
+    setTimeout(joinTableRows, 0);
+  }
+
+  function joinTableRows() {
+    tableHTML = rows.join('');
+    ProgressBar.setPercentage(progressBar, 75);
+    setTimeout(appendTable, 0);
+  }
+
+  function appendTable() {
+    var sourceDiv = document.getElementById('sourceDiv');
+    while (sourceDiv.hasChildNodes()) {
+      sourceDiv.removeChild(sourceDiv.firstChild);
     }
-    row += '<td><pre class="sh_sourceCode sh_javascript">' + lines[i] + '</pre></td>';
-    row += '</tr>';
-    row += '\n';
-    rows[i] = row;
+    sourceDiv.innerHTML = tableHTML;
+    ProgressBar.setPercentage(progressBar, 100);
+    setTimeout(scrollToLine, 0);
   }
-  var result = rows.join('');
-  var sourceDiv = document.getElementById('sourceDiv');
-  while (sourceDiv.hasChildNodes()) {
-    sourceDiv.removeChild(sourceDiv.firstChild);
+
+  setTimeout(makeTableRows, 0);
+}
+
+function countLines(text) {
+  var length = text.length;
+  var pos = 0;
+  var count = 0;
+  while (pos < length) {
+    pos = text.indexOf('\n', pos);
+    if (pos == -1) {
+      break;
+    }
+    count++;
+    pos++;
   }
-  sourceDiv.innerHTML = '<table id="sourceTable">' + result + '</table>';
+  return count;
 }
 
 function highlightSource() {
+  var progressLabel = document.getElementById('progressLabel');
+  progressLabel.innerHTML = 'Loading source ...';
+
   // set file name
   var fileDiv = document.getElementById('fileDiv');
   fileDiv.innerHTML = gCurrentFile;
 
   // highlight source and break into lines
-  var pre = document.createElement('pre');
-  pre.appendChild(document.createTextNode(gCurrentSource));
-  sh_highlightElement(document, pre, sh_languages['javascript']);
-  var source = pre.innerHTML;
-  var length = source.length;
-  var endOfLinePattern = /\r\n|\r|\n/g;
-  endOfLinePattern.lastIndex = 0;
-  var lines = [];
+  var builder = {
+    lines: [],
+    currentLine: null,
+    _initCurrentLine: function() {
+      if (this.currentLine === null) {
+        this.currentLine = "";
+      }
+    },
+    startElement: function(style) {
+      this._initCurrentLine();
+      this.currentLine += '<span class="' + style + '">';
+    },
+    endElement: function() {
+      this._initCurrentLine();
+      this.currentLine += '</span>';
+    },
+    text: function(s) {
+      this._initCurrentLine();
+      if (s === '\r\n' || s === '\r' || s === '\n') {
+        this.close();
+        this.currentLine = null;
+      }
+      else {
+        this.currentLine += s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+    },
+    close: function() {
+      if (this.currentLine !== null) {
+        this.lines.push(this.currentLine);
+      }
+    }
+  };
+  var progressBar = document.getElementById('progressBar');
+  var numLines = countLines(gCurrentSource);
+  var oldDate = new Date().valueOf();
   var i = 0;
-  while (i < length) {
-    var start = i;
-    var end;
-    var startOfNextLine;
-    var endOfLineMatch = endOfLinePattern.exec(source);
-    if (endOfLineMatch === null) {
-      end = length;
-      startOfNextLine = length;
+  function updateFunction() {
+    i++;
+    var newDate = new Date().valueOf();
+    if (newDate - oldDate > 250) {
+      ProgressBar.setPercentage(progressBar, parseInt(100 * i / numLines));
+      oldDate = newDate;
+      return true;
     }
     else {
-      end = endOfLineMatch.index;
-      startOfNextLine = endOfLinePattern.lastIndex;
+      return false;
     }
-    var line = source.substring(start, end);
-    lines.push(line);
-    i = startOfNextLine;
   }
-  gCurrentLines = lines;
-
-  // coverage
-  recalculateSourceTab();
+  sh_highlightString(gCurrentSource, sh_languages['javascript'], builder, updateFunction, function() {
+    builder.close();
+    gCurrentLines = builder.lines;
+    ProgressBar.setPercentage(progressBar, 100);
+    // coverage
+    recalculateSourceTab();
+  });
 }
 
 function scrollToLine() {
-  setSize();
   selectTab(2);
   if (! window.gCurrentLine) {
+    endLengthyOperation();
     return;
   }
   var div = document.getElementById('sourceDiv');
@@ -407,6 +515,7 @@ function scrollToLine() {
     div.scrollTop = cellOffset - divOffset;
   }
   gCurrentLine = 0;
+  endLengthyOperation();
 }
 
 function setThrobber() {
@@ -427,16 +536,20 @@ function httpError(file) {
   var sourceDiv = document.getElementById('sourceDiv');
   sourceDiv.innerHTML = "Error retrieving document " + file + ".";
   selectTab(2);
+  endLengthyOperation();
 }
 
 /**
 Loads the given file (and optional line) in the source tab.
 */
 function get(file, line) {
+  beginLengthyOperation();
   if (file === gCurrentFile) {
-    selectTab(2);
-    gCurrentLine = line;
-    lengthyOperation(recalculateSourceTab);
+    setTimeout(function() {
+      selectTab(2);
+      gCurrentLine = line;
+      recalculateSourceTab();
+    }, 50);
   }
   else {
     if (gCurrentFile === null) {
@@ -444,51 +557,53 @@ function get(file, line) {
       tab.className = '';
       tab.onclick = tab_click;
     }
-    selectTab(2);
-    setThrobber();
-    // Note that the IE7 XMLHttpRequest does not support file URL's.
-    // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
-    // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
-    var request;
-    if (window.ActiveXObject) {
-      request = new ActiveXObject("Microsoft.XMLHTTP");
-    }
-    else {
-      request = new XMLHttpRequest();
-    }
-    request.open("GET", file + ".jscoverage.js", true);
-    request.onreadystatechange = function(event) {
-      if (request.readyState === 4) {
-        if (request.status === 0 || request.status === 200) {
-          var response = request.responseText;
-          // opera returns status zero even if there is a missing file???
-          if (response === '') {
-            httpError(file);
+    setTimeout(function() {
+      selectTab(2);
+      setThrobber();
+      // Note that the IE7 XMLHttpRequest does not support file URL's.
+      // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
+      // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
+      var request;
+      if (window.ActiveXObject) {
+        request = new ActiveXObject("Microsoft.XMLHTTP");
+      }
+      else {
+        request = new XMLHttpRequest();
+      }
+      request.open("GET", file + ".jscoverage.js", true);
+      request.onreadystatechange = function(event) {
+        if (request.readyState === 4) {
+          if (request.status === 0 || request.status === 200) {
+            var response = request.responseText;
+            // opera returns status zero even if there is a missing file???
+            if (response === '') {
+              httpError(file);
+            }
+            else {
+              clearThrobber();
+              gCurrentFile = file;
+              gCurrentLine = line || 1;
+              gCurrentSource = response;
+              highlightSource();
+            }
           }
           else {
-            clearThrobber();
-            gCurrentFile = file;
-            gCurrentLine = line || 1;
-            gCurrentSource = response;
-            lengthyOperation(highlightSource);
+            httpError(file);
           }
         }
-        else {
-          httpError(file);
-        }
-      }
-    };
-    if ('onerror' in request) {
-      request.onerror = function(event) {
-        httpError(file);
       };
-    }
-    try {
-      request.send(null);
-    }
-    catch (e) {
-      httpError(file);
-    }
+      if ('onerror' in request) {
+        request.onerror = function(event) {
+          httpError(file);
+        };
+      }
+      try {
+        request.send(null);
+      }
+      catch (e) {
+        httpError(file);
+      }
+    }, 50);
   }
 }
 
@@ -497,16 +612,23 @@ Calculates coverage statistics for the current source file.
 */
 function recalculateSourceTab() {
   if (! gCurrentFile) {
+    endLengthyOperation();
     return;
   }
-  makeTable();
-  scrollToLine();
+  var progressLabel = document.getElementById('progressLabel');
+  progressLabel.innerHTML = 'Calculating coverage ...';
+  var progressBar = document.getElementById('progressBar');
+  ProgressBar.setPercentage(progressBar, 0);
+  setTimeout(makeTable, 0);
 }
 
-/*******************************************************************************
-tabs
-*/
+// -----------------------------------------------------------------------------
+// tabs
 
+/**
+Initializes the tab control.  This function must be called when the document is
+loaded.
+*/
 function initTabControl() {
   var tabs = document.getElementById('tabs');
   var i;
@@ -524,6 +646,12 @@ function initTabControl() {
   selectTab(0);
 }
 
+/**
+Selects a tab.
+@param  tab  the integer index of the tab (0, 1, 2, or 3)
+             OR
+             the tab element itself
+*/
 function selectTab(tab) {
   if (typeof tab !== 'number') {
     tab = tabIndexOf(tab);
@@ -580,11 +708,165 @@ function tab_click(e) {
     // IE
     target = window.event.srcElement;
   }
-  selectTab(target);
-  if (target.id === 'summaryTab') {
-    lengthyOperation(recalculateSummaryTab);
+  if (target.className === 'selected') {
+    return;
   }
-  else if (target.id === 'sourceTab') {
-    lengthyOperation(recalculateSourceTab);
-  }
+  beginLengthyOperation();
+  setTimeout(function() {
+    selectTab(target);
+    if (target.id === 'summaryTab') {
+      recalculateSummaryTab();
+    }
+    else if (target.id === 'sourceTab') {
+      recalculateSourceTab();
+    }
+    else {
+      endLengthyOperation();
+    }
+  }, 50);
 }
+
+// -----------------------------------------------------------------------------
+// progress bar
+
+var ProgressBar = {
+  init: function(element) {
+    element._percentage = 0;
+
+    /* doing this via JavaScript crashes Safari */
+/*
+    var pctGraph = document.createElement('div');
+    pctGraph.className = 'pctGraph';
+    element.appendChild(pctGraph);
+    var covered = document.createElement('div');
+    covered.className = 'covered';
+    pctGraph.appendChild(covered);
+    var pct = document.createElement('span');
+    pct.className = 'pct';
+    element.appendChild(pct);
+*/
+
+    ProgressBar._update(element);
+  },
+  setPercentage: function(element, percentage) {
+    element._percentage = percentage;
+    ProgressBar._update(element);
+  },
+  _update: function(element) {
+    var pctGraph = element.getElementsByTagName('div').item(0);
+    var covered = pctGraph.getElementsByTagName('div').item(0);
+    var pct = element.getElementsByTagName('span').item(0);
+    pct.innerHTML = element._percentage.toString() + '%';
+    covered.style.width = element._percentage + 'px';
+  }
+};
+
+// -----------------------------------------------------------------------------
+// browser detection
+
+// http://www.quirksmode.org/js/detect.html
+var BrowserDetect = {
+	init: function () {
+		this.browser = this.searchString(this.dataBrowser) || "An unknown browser";
+		this.version = this.searchVersion(navigator.userAgent)
+			|| this.searchVersion(navigator.appVersion)
+			|| "an unknown version";
+		this.OS = this.searchString(this.dataOS) || "an unknown OS";
+	},
+	searchString: function (data) {
+		for (var i=0;i<data.length;i++)	{
+			var dataString = data[i].string;
+			var dataProp = data[i].prop;
+			this.versionSearchString = data[i].versionSearch || data[i].identity;
+			if (dataString) {
+				if (dataString.indexOf(data[i].subString) != -1)
+					return data[i].identity;
+			}
+			else if (dataProp)
+				return data[i].identity;
+		}
+	},
+	searchVersion: function (dataString) {
+		var index = dataString.indexOf(this.versionSearchString);
+		if (index == -1) return;
+		return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
+	},
+	dataBrowser: [
+		{ 	string: navigator.userAgent,
+			subString: "OmniWeb",
+			versionSearch: "OmniWeb/",
+			identity: "OmniWeb"
+		},
+		{
+			string: navigator.vendor,
+			subString: "Apple",
+			identity: "Safari"
+		},
+		{
+			prop: window.opera,
+			identity: "Opera"
+		},
+		{
+			string: navigator.vendor,
+			subString: "iCab",
+			identity: "iCab"
+		},
+		{
+			string: navigator.vendor,
+			subString: "KDE",
+			identity: "Konqueror"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "Firefox",
+			identity: "Firefox"
+		},
+		{
+			string: navigator.vendor,
+			subString: "Camino",
+			identity: "Camino"
+		},
+		{		// for newer Netscapes (6+)
+			string: navigator.userAgent,
+			subString: "Netscape",
+			identity: "Netscape"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "MSIE",
+			identity: "Explorer",
+			versionSearch: "MSIE"
+		},
+		{
+			string: navigator.userAgent,
+			subString: "Gecko",
+			identity: "Mozilla",
+			versionSearch: "rv"
+		},
+		{ 		// for older Netscapes (4-)
+			string: navigator.userAgent,
+			subString: "Mozilla",
+			identity: "Netscape",
+			versionSearch: "Mozilla"
+		}
+	],
+	dataOS : [
+		{
+			string: navigator.platform,
+			subString: "Win",
+			identity: "Windows"
+		},
+		{
+			string: navigator.platform,
+			subString: "Mac",
+			identity: "Mac"
+		},
+		{
+			string: navigator.platform,
+			subString: "Linux",
+			identity: "Linux"
+		}
+	]
+
+};
+BrowserDetect.init();
