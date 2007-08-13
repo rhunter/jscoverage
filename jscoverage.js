@@ -124,7 +124,10 @@ function setSize() {
   tabPages.style.height = tabPagesHeight;
 
   var browserIframe = document.getElementById('browserIframe');
-  browserIframe.height = viewportHeight - findPos(browserIframe) - 23;
+  // may not exist if we have removed the first tab
+  if (browserIframe) {
+    browserIframe.height = viewportHeight - findPos(browserIframe) - 23;
+  }
 
   var coverageSummaryDiv = document.getElementById('summaryDiv');
   coverageSummaryDiv.style.height = tabPagesHeight;
@@ -135,6 +138,17 @@ function setSize() {
 }
 
 function body_load() {
+  var isChildWindow = false;
+  if (window.opener && window.opener.top._$jscoverage === _$jscoverage) {
+    isChildWindow = true;
+    var tabs = document.getElementById('tabs');
+    var browserTab = document.getElementById('browserTab');
+    tabs.removeChild(browserTab);
+    var tabPages = document.getElementById('tabPages');
+    var browserTabPage = tabPages.getElementsByTagName('div').item(0);
+    tabPages.removeChild(browserTabPage);
+  }
+
   var progressBar = document.getElementById('progressBar');
   ProgressBar.init(progressBar);
 
@@ -183,6 +197,10 @@ function body_load() {
   // this will automatically propagate to the input field
   if (url) {
     frames[0].location = url;
+  }
+
+  if (isChildWindow) {
+    recalculateSummaryTab();
   }
 }
 
@@ -499,7 +517,7 @@ function highlightSource() {
 }
 
 function scrollToLine() {
-  selectTab(2);
+  selectTab('sourceTab');
   if (! window.gCurrentLine) {
     endLengthyOperation();
     return;
@@ -535,7 +553,7 @@ function httpError(file) {
   fileDiv.innerHTML = '';
   var sourceDiv = document.getElementById('sourceDiv');
   sourceDiv.innerHTML = "Error retrieving document " + file + ".";
-  selectTab(2);
+  selectTab('sourceTab');
   endLengthyOperation();
 }
 
@@ -546,7 +564,7 @@ function get(file, line) {
   beginLengthyOperation();
   if (file === gCurrentFile) {
     setTimeout(function() {
-      selectTab(2);
+      selectTab('sourceTab');
       gCurrentLine = line;
       recalculateSourceTab();
     }, 50);
@@ -558,7 +576,7 @@ function get(file, line) {
       tab.onclick = tab_click;
     }
     setTimeout(function() {
-      selectTab(2);
+      selectTab('sourceTab');
       setThrobber();
       // Note that the IE7 XMLHttpRequest does not support file URL's.
       // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
@@ -650,6 +668,8 @@ function initTabControl() {
 Selects a tab.
 @param  tab  the integer index of the tab (0, 1, 2, or 3)
              OR
+             the ID of the tab element
+             OR
              the tab element itself
 */
 function selectTab(tab) {
@@ -682,7 +702,16 @@ function selectTab(tab) {
   setSize();
 }
 
+/**
+Returns an integer (0, 1, 2, or 3) representing the index of a given tab.
+@param  tab  the ID of the tab element
+             OR
+             the tab element itself
+*/
 function tabIndexOf(tab) {
+  if (typeof tab === 'string') {
+    tab = document.getElementById(tab);
+  }
   var tabs = document.getElementById('tabs');
   var i;
   var child;
