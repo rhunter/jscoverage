@@ -279,18 +279,16 @@ new Test.Unit.Runner({
   },
 
   test_recalculateSourceTab: function() {
-    with (this) {
-      get('scriptaculous-data.js');
-      wait(500, function() {
-        with (this) {
-          recalculateSourceTab();
-          var sourceDiv = document.getElementById('sourceDiv');
-          var cells = sourceDiv.getElementsByTagName('td');
-          assertIdentical('0', cells.item(298).innerHTML);
-          assertIdentical('1', cells.item(598).innerHTML);
-        }
+    get('scriptaculous-data.js');
+    this.wait(500, function() {
+      recalculateSourceTab();
+      this.wait(500, function() {
+        var sourceDiv = document.getElementById('sourceDiv');
+        var cells = sourceDiv.getElementsByTagName('td');
+        this.assertIdentical('0', cells.item(298).innerHTML);
+        this.assertIdentical('1', cells.item(598).innerHTML);
       });
-    }
+    });
   },
 
   test_initTabControl: function() {
