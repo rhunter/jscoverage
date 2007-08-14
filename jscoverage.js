@@ -174,6 +174,14 @@ function setSize() {
   sourceDiv.style.height = (viewportHeight - findPos(sourceDiv) - 21) + 'px';
 }
 
+function getBooleanValue(s) {
+  s = s.toLowerCase();
+  if (s === 'false' || s === 'f' || s === 'no' || s === 'n' || s === 'off' || s === '0') {
+    return false;
+  }
+  return true;
+}
+
 function body_load() {
   if (window.opener) {
     var tabs = document.getElementById('tabs');
@@ -207,12 +215,7 @@ function body_load() {
         name = parameter.substr(0, index);
         value = parameter.substr(index + 1);
         if (name === 'missing' || name === 'm') {
-          if (value === '0') {
-            gMissing = false;
-          }
-          else {
-            gMissing = true;
-          }
+          gMissing = getBooleanValue(value);
         }
         else if (name === 'url' || name === 'u') {
           url = value;

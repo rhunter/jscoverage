@@ -85,6 +85,31 @@ new Test.Unit.Runner({
     }
   },
 
+  test_getBooleanValue: function() {
+    with (this) {
+      assert(getBooleanValue('t'));
+      assert(getBooleanValue('T'));
+      assert(getBooleanValue('true'));
+      assert(getBooleanValue('TRUE'));
+      assert(getBooleanValue('y'));
+      assert(getBooleanValue('Y'));
+      assert(getBooleanValue('yes'));
+      assert(getBooleanValue('YES'));
+      assert(getBooleanValue('on'));
+      assert(getBooleanValue('ON'));
+      assert(!getBooleanValue('f'));
+      assert(!getBooleanValue('F'));
+      assert(!getBooleanValue('false'));
+      assert(!getBooleanValue('FALSE'));
+      assert(!getBooleanValue('n'));
+      assert(!getBooleanValue('N'));
+      assert(!getBooleanValue('no'));
+      assert(!getBooleanValue('NO'));
+      assert(!getBooleanValue('off'));
+      assert(!getBooleanValue('OFF'));
+    }
+  },
+
   test_updateBrowser: function() {
     with (this) {
       var input = document.getElementById("location");
