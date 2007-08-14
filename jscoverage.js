@@ -26,6 +26,7 @@ var gCurrentLine = null;
 var gCurrentSource = null;
 var gCurrentLines = null;
 var gMissing = null;
+var gInLengthyOperation = false;
 
 // http://www.quirksmode.org/js/findpos.html
 function findPos(obj) {
@@ -62,6 +63,8 @@ Indicates visually that a lengthy operation has begun.  The progress bar is
 displayed, and the cursor is changed to busy (on browsers which support this).
 */
 function beginLengthyOperation() {
+  gInLengthyOperation = true;
+
   var progressBar = document.getElementById('progressBar');
   progressBar.style.visibility = 'visible';
   ProgressBar.setPercentage(progressBar, 0);
@@ -87,6 +90,8 @@ function beginLengthyOperation() {
 Removes the progress bar and busy cursor.
 */
 function endLengthyOperation() {
+  gInLengthyOperation = false;
+
   var progressBar = document.getElementById('progressBar');
   progressBar.style.visibility = 'hidden';
   var progressLabel = document.getElementById('progressLabel');
@@ -565,6 +570,9 @@ function httpError(file) {
 Loads the given file (and optional line) in the source tab.
 */
 function get(file, line) {
+  if (gInLengthyOperation) {
+    return;
+  }
   beginLengthyOperation();
   if (file === gCurrentFile) {
     setTimeout(function() {
@@ -733,6 +741,9 @@ function tabIndexOf(tab) {
 }
 
 function tab_click(e) {
+  if (gInLengthyOperation) {
+    return;
+  }
   var target;
   if (e) {
     target = e.target;
