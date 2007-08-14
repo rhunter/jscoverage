@@ -419,7 +419,11 @@ function makeTable() {
   function joinTableRows() {
     tableHTML = rows.join('');
     ProgressBar.setPercentage(progressBar, 75);
-    setTimeout(appendTable, 0);
+    /*
+    This may be a long delay, so set a timeout of 100 ms to make sure the
+    display is updated.
+    */
+    setTimeout(appendTable, 100);
   }
 
   function appendTable() {
