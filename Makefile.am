@@ -44,3 +44,7 @@ CLEANFILES = *.gcno *.exe resources.c *~
 
 example: jscoverage
 	$(srcdir)/jscoverage --exclude=.svn doc/example doc/instrumented
+
+example-inverted: jscoverage
+	$(srcdir)/jscoverage --exclude=.svn doc/example-inverted doc/instrumented-inverted
+

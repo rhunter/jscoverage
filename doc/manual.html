@@ -118,7 +118,7 @@ In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html
 which is used to execute the instrumented code.
 </p>
 
-<h3>2. Executing instrumented code</h3>
+<h3>2. Running instrumented code in the web application</h3>
 
 <p>
 Open <code>jscoverage.html</code> in your web browser.
@@ -215,7 +215,7 @@ you have to select one of the radio buttons to execute the code.
 <h3>3. Generating the coverage report</h3>
 
 <p>
-Once you have executed the JavaScript code, you will be instructed to click on the
+Once you have executed the JavaScript code, you are instructed to click on the
 "Summary" tab.
 </p>
 
@@ -226,6 +226,58 @@ From the "Summary" tab, you can click the links to get a detailed view of a Java
 </p>
 
 <img src="screenshot5.png" alt="Screenshot">
+
+<h2>Inverted mode</h2>
+
+<p>
+In some circumstances it may be difficult to execute your code within the
+JSCoverage "Browser" tab. For example, the code may assume that it is running in
+the top-level browser window, generating errors if it is executed from within a
+frame. JSCoverage has an alternative mode of operation, called <dfn>inverted
+mode</dfn>, which may be useful in this situation.
+</p>
+
+<p>
+Normally you load <code>jscoverage.html</code> in your web browser, and in its
+"Browser" tab you launch your test code. In inverted mode, you do the
+opposite: you load your test page directly in your web browser, and from there
+you launch JSCoverage. To do this you need to add some code to your test page:
+</p>
+
+<pre>
+window.open("path/to/jscoverage.html");
+</pre>
+
+<p>
+The <code>"path/to/jscoverage.html"</code> should be a URL pointing to the
+location of the <code>jscoverage.html</code> file (remember, this will be in the
+top level of the <var>DESTINATION-DIRECTORY</var> you specified when running
+the <code>jscoverage</code> executable).
+</p>
+
+<p>
+You can place this code wherever you like in your page: for example, you could
+attach it to a button:
+</p>
+
+<pre>
+&lt;button onclick='window.open("path/to/jscoverage.html");'&gt;Coverage report&lt;/button&gt;
+</pre>
+
+<p>
+An example is located in the <code>doc/example-inverted</code> directory.
+You can instrument the code and launch the <code>index.html</code> page:
+</p>
+
+<pre>
+jscoverage doc/example-inverted doc/instrumented-inverted
+firefox "doc/instrumented-inverted/index.html"
+</pre>
+
+<p>
+From this page, you select one of the radio buttons and then click the "Coverage
+report" button to launch the JSCoverage report.
+</p>
 
 <h2>Caveats</h2>
 
