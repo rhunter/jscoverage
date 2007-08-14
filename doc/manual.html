@@ -279,6 +279,67 @@ From this page, you select one of the radio buttons and then click the "Coverage
 report" button to launch the JSCoverage report.
 </p>
 
+<h2>Command line options</h2>
+
+<p>
+The <code>jscoverage</code> program accepts the following options:
+</p>
+
+<dl>
+<dt><code>-h</code>, <code>--help</code>
+<dd>Display a brief help message.
+<dt><code>-V</code>, <code>--version</code>
+<dd>Display the version of the program.
+<dt><code>-v</code>, <code>--verbose</code>
+<dd>Explain what is being done.
+<dt><code>--exclude=<var>PATH</var></code>
+<dd>The command
+<pre>
+jscoverage --exclude=<var>PATH</var> <var>SOURCE-DIRECTORY</var> <var>DESTINATION-DIRECTORY</var>
+</pre>
+copies <var>SOURCE-DIRECTORY</var> to <var>DESTINATION-DIRECTORY</var>
+recursively, but does not copy <var>SOURCE-DIRECTORY</var>/<var>PATH</var>.
+<var>PATH</var> must be a complete path relative to <var>SOURCE-DIRECTORY</var>
+<var>PATH</var> can be a file or a directory (in which case the directory and
+its entire contents are skipped). This option may be given multiple times.
+<dt><code>--no-instrument=<var>PATH</var></code>
+<dd>The command
+<pre>
+jscoverage --exclude=<var>PATH</var> <var>SOURCE-DIRECTORY</var> <var>DESTINATION-DIRECTORY</var>
+</pre>
+copies <var>SOURCE-DIRECTORY</var> to <var>DESTINATION-DIRECTORY</var>
+recursively, but does not instrument any JavaScript code in
+<var>SOURCE-DIRECTORY</var>/<var>PATH</var>. <var>PATH</var> must be a complete
+path relative to <var>SOURCE-DIRECTORY</var> <var>PATH</var> can be a
+(JavaScript) file or a directory (in which case any JavaScript files located
+anywhere underneath the directory are not instrumented). This option may be
+given multiple times.
+</dl>
+
+<h2>Query string options</h2>
+
+<p>
+When accessing <code>jscoverage.html</code> in a web browser, you may provide a
+query string consisting of options separated by ampersand (<code>&amp;</code>)
+or semicolon (<code>;</code>). Any option not containing an equals sign
+(<code>=</code>) is considered to be a URL which will be loaded in the "Browser"
+tab.
+</p>
+
+<dl>
+<dt><code>u=<var>URL</var></code>, <code>url=<var>URL</var></code>
+<dd>Load <var>URL</var> in the "Browser" tab.  (This is the same as specifying
+an option without an equals sign.)
+<dt><code>m=<var>BOOLEAN</var></code>, <code>missing=<var>BOOLEAN</var></code>
+<dd>Determines whether to initially display the "Missing" column in the "Summary"
+tab.  <var>BOOLEAN</var> can be 
+<code>true</code>, <code>t</code>, <code>yes</code>, <code>y</code> <code>on</code>, <code>1</code>
+(to display the "Missing" column), or
+<code>false</code>, <code>f</code>, <code>no</code>, <code>n</code>, <code>off</code>, <code>0</code>
+(to hide the "Missing" column)
+(By default, the "Missing" column is not displayed.)
+</dl>
+
 <h2>Caveats</h2>
 
 <ul>
