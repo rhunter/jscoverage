@@ -19,7 +19,7 @@
 
 if (window.opener) {
   /*
-  Presumably we are in inside-out mode.
+  Presumably we are in inverted mode.
   */
   if (('_$jscoverage' in window.opener.top) && ('_$jscoverage' in window)) {
     /*
@@ -37,7 +37,7 @@ if (window.opener) {
     /*
     Presumably the opener has not run its tests yet.  Not sure why there is a
     _$jscoverage object here already; we'll assume whoever put it here knew
-    what they were doing, and we'll use it.
+    what they were doing, and we'll us it.
     */
     window.opener.top._$jscoverage = window._$jscoverage;
   }
@@ -159,8 +159,7 @@ function setSize() {
                        32px
   */
   var tabPages = document.getElementById('tabPages');
-  var tabPagesHeight = (viewportHeight - findPos(tabPages) - 32) + 'px';
-  tabPages.style.height = tabPagesHeight;
+  tabPages.style.height = (viewportHeight - findPos(tabPages) - 32) + 'px';
 
   var browserIframe = document.getElementById('browserIframe');
   // may not exist if we have removed the first tab
@@ -168,12 +167,11 @@ function setSize() {
     browserIframe.height = viewportHeight - findPos(browserIframe) - 23;
   }
 
-  var coverageSummaryDiv = document.getElementById('summaryDiv');
-  coverageSummaryDiv.style.height = tabPagesHeight;
+  var summaryDiv = document.getElementById('summaryDiv');
+  summaryDiv.style.height = (viewportHeight - findPos(summaryDiv) - 21) + 'px';
 
   var sourceDiv = document.getElementById('sourceDiv');
-  var sourceDivHeight = (viewportHeight - findPos(sourceDiv) - 23) + 'px';
-  sourceDiv.style.height = sourceDivHeight;
+  sourceDiv.style.height = (viewportHeight - findPos(sourceDiv) - 21) + 'px';
 }
 
 function body_load() {
@@ -223,12 +221,10 @@ function body_load() {
     }
   }
 
-  if (! gMissing) {
-    var missingNode;
-    missingNode = document.getElementById('missingHeader');
-    missingNode.parentNode.removeChild(missingNode);
-    missingNode = document.getElementById('missingCell');
-    missingNode.parentNode.removeChild(missingNode);
+  var checkbox = document.getElementById('checkbox');
+  checkbox.checked = gMissing;
+  if (gMissing) {
+    appendMissingColumn();
   }
 
   // this will automatically propagate to the input field
@@ -402,6 +398,44 @@ function recalculateSummaryTab(cc) {
 
   }
   endLengthyOperation();
+}
+
+function appendMissingColumn() {
+  var headerRow = document.getElementById('headerRow');
+  var missingHeader = document.createElement('th');
+  missingHeader.id = 'missingHeader';
+  missingHeader.innerHTML = '<abbr title="List of statements missed during execution">Missing</abbr>';
+  headerRow.appendChild(missingHeader);
+  var summaryTotals = document.getElementById('summaryTotals');
+  var empty = document.createElement('td');
+  empty.id = 'missingCell';
+  summaryTotals.appendChild(empty);
+}
+
+function removeMissingColumn() {
+  var missingNode;
+  missingNode = document.getElementById('missingHeader');
+  missingNode.parentNode.removeChild(missingNode);
+  missingNode = document.getElementById('missingCell');
+  missingNode.parentNode.removeChild(missingNode);
+}
+
+function checkbox_click() {
+  if (gInLengthyOperation) {
+    return;
+  }
+  beginLengthyOperation();
+  setTimeout(function() {
+    var checkbox = document.getElementById('checkbox');
+    gMissing = checkbox.checked;
+    if (gMissing) {
+      appendMissingColumn();
+    }
+    else {
+      removeMissingColumn();
+    }
+    recalculateSummaryTab();
+  }, 100);
 }
 
 // -----------------------------------------------------------------------------

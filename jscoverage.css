@@ -40,7 +40,7 @@ div#locationDiv {
   margin-bottom: 10px;
 }
 
-input, button {
+input#location, button {
   border: 1px solid black;
   margin-left: 1px;
   margin-right: 1px;
@@ -63,15 +63,18 @@ div#summaryDiv {
 }
 
 table#summaryTable {
-  width: 96%;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  margin-left: 0px;
+  margin-right: 0px;
   border-collapse: collapse;
   font-size: small;
 }
 
 table#summaryTable, table#summaryTable th, table#summaryTable td {
   border: 1px solid #bbb;
+}
+
+table#summaryTable th, table#summaryTable td {
   padding: 2px;
 }
 
@@ -213,8 +216,7 @@ tabs
 */
 
 div.TabControl {
-  /* IE seems to require this for layout purposes, even if you can't see it */
-  border: 1px solid #bfb;
+  border-width: 0px;
   margin: 0px;
   padding: 0px;
 }

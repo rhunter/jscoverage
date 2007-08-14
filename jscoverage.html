@@ -51,15 +51,15 @@
       <iframe id="browserIframe" onload="browser_load();"></iframe>
     </div>
     <div class="TabPage">
+      <input type="checkbox" id="checkbox" onclick="checkbox_click();"> <label for="checkbox">Show missing statements column</label>
       <div id="summaryDiv">
       <table id="summaryTable">
       <thead>
-      <tr>
+      <tr id="headerRow">
       <th>File</th>
       <th><abbr title="The total number of executable statements">Statements</abbr></th>
       <th><abbr title="The number of statements actually executed">Executed</abbr></th>
       <th><abbr title="Number of executed statements as a percentage of total number of statements">Coverage</abbr></th>
-      <th id="missingHeader"><abbr title="List of statements missed during execution">Missing</abbr></th>
       </tr>
       <tr id="summaryTotals">
           <td class="totals">
@@ -74,7 +74,6 @@
               </div>
               <span class="pct">0%</span>
           </td>
-          <td id="missingCell"></td>
       </tr>
 
       </thead>
