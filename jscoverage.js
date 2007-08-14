@@ -111,10 +111,10 @@ function setSize() {
   var viewportHeight = getViewportHeight();
 
   /*
-  padding-top:         10px
   border-top-width:     1px
-  border-bottom-width:  1px
+  padding-top:         10px
   padding-bottom:      10px
+  border-bottom-width:  1px
   margin-bottom:       10px
                        ----
                        32px
