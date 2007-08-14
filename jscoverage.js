@@ -17,8 +17,42 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-if (!('_$jscoverage' in window)) {
-  window._$jscoverage = {};
+if (window.opener) {
+  /*
+  Presumably we are in inside-out mode.
+  */
+  if (('_$jscoverage' in window.opener.top) && ('_$jscoverage' in window)) {
+    /*
+    Presumably the opener has already set our _$jscoverage to point to the
+    opener's _$jscoverage.  We don't have to do anything.
+    */
+  }
+  else if ('_$jscoverage' in window.opener.top) {
+    /*
+    Presumably the opener has already run its tests.
+    */
+    window._$jscoverage = window.opener.top._$jscoverage;
+  }
+  else if ('_$jscoverage' in window) {
+    /*
+    Presumably the opener has not run its tests yet.  Not sure why there is a
+    _$jscoverage object here already; we'll assume whoever put it here knew
+    what they were doing, and we'll use it.
+    */
+    window.opener.top._$jscoverage = window._$jscoverage;
+  }
+  else {
+    window.opener.top._$jscoverage = window._$jscoverage = {};
+  }
+}
+else {
+  /*
+  No opener.  This is what happens when jscoverage.html is opened in a web
+  browser.
+  */
+  if (!('_$jscoverage' in window)) {
+    window._$jscoverage = {};
+  }
 }
 
 var gCurrentFile = null;
@@ -143,9 +177,7 @@ function setSize() {
 }
 
 function body_load() {
-  var isChildWindow = false;
-  if (window.opener && window.opener.top._$jscoverage === _$jscoverage) {
-    isChildWindow = true;
+  if (window.opener) {
     var tabs = document.getElementById('tabs');
     var browserTab = document.getElementById('browserTab');
     tabs.removeChild(browserTab);
@@ -204,7 +236,7 @@ function body_load() {
     frames[0].location = url;
   }
 
-  if (isChildWindow) {
+  if (window.opener) {
     recalculateSummaryTab();
   }
 }
