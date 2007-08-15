@@ -458,7 +458,7 @@ function makeTable() {
   
       var row = '<tr>';
       row += '<td class="numeric">' + lineNumber + '</td>';
-      if (lineNumber in coverage) {
+      if (coverage[lineNumber] !== undefined) {
         var timesExecuted = coverage[lineNumber];
         if (timesExecuted === 0) {
           row += '<td class="r numeric" id="line-' + lineNumber + '">';
