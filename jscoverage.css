@@ -28,8 +28,53 @@ body {
   padding: 0px;
 }
 
-h1 {
+#headingDiv {
+  width: 500px;
+  padding: 0px;
+}
+
+#headingDiv h1 {
   font-size: large;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+#progressBar {
+  visibility: hidden;
+}
+
+#progressLabel {
+  float: right;
+  margin-top: 10px;
+  font-size: small;
+  text-align: right;
+}
+
+div.ProgressBar {
+  float: right;
+  width: 150px;
+  margin-top: 10px;
+}
+
+div.ProgressBar .pctGraph {
+  width: 100px;
+  height: 10px;
+  margin-top: 2px;
+  border: 1px solid #000;
+  background-color: #aaa;
+}
+
+div.ProgressBar .covered {
+  background-color: #000077;
+  width: 0;
+  height: 10px;
+}
+
+div.ProgressBar .pct {
+  margin-right: 2px;
+  float: right;
+  text-align: right;
+  font-size: small;
 }
 
 /*******************************************************************************
@@ -122,48 +167,6 @@ td.coverage span {
     height: 10px;
 }
 
-#headingDiv {
-  width: 600px;
-}
-
-#headingDiv h1 {
-}
-
-#progressBar {
-  visibility: hidden;
-  margin-top: 5px;
-}
-
-#progressLabel {
-  width: 150px;
-  float: right;
-  margin-top: 5px;
-}
-
-div.ProgressBar {
-  width: 150px;
-  float: right;
-}
-
-div.ProgressBar .pctGraph {
-  width: 100px;
-  height: 10px;
-  border: 1px solid #000;
-  background-color: gray;
-}
-
-div.ProgressBar .covered {
-  background-color: #0000aa;
-  width: 0;
-  height: 10px;
-}
-
-div.ProgressBar .pct {
-  margin-right: 5px;
-  float: right;
-  text-align: right;
-}
-
 /*******************************************************************************
 source tab
 */
@@ -187,6 +190,15 @@ div#sourceDiv {
 table#sourceTable {
   border: 0px;
   border-collapse: collapse;
+  font-size: small;
+}
+
+/*
+IE default behavior is to make <pre> smaller than surrounding text.  Because
+the table already has font-size small, this would make the font-size within the
+<pre> x-small.  So we don't rely on the default.
+*/
+table#sourceTable pre {
   font-size: small;
 }
 
