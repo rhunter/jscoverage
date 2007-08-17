@@ -102,6 +102,8 @@ function beginLengthyOperation() {
   var progressBar = document.getElementById('progressBar');
   progressBar.style.visibility = 'visible';
   ProgressBar.setPercentage(progressBar, 0);
+  var progressLabel = document.getElementById('progressLabel');
+  progressLabel.style.visibility = 'visible';
 
   /* blacklist buggy browsers */
   if (BrowserDetect.browser === 'Opera' || BrowserDetect.browser === 'Safari') {
@@ -129,6 +131,7 @@ function endLengthyOperation() {
   var progressBar = document.getElementById('progressBar');
   progressBar.style.visibility = 'hidden';
   var progressLabel = document.getElementById('progressLabel');
+  progressLabel.style.visibility = 'hidden';
   progressLabel.innerHTML = '';
   var body = document.getElementsByTagName('body').item(0);
   body.style.cursor = '';
