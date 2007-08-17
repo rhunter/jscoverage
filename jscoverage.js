@@ -313,8 +313,9 @@ function recalculateSummaryTab(cc) {
     tbody.removeChild(tbody.firstChild);
   }
 
-  var totals = { files:0, statements:0, executed:0, coverage:0 };
+  var totals = { files:0, statements:0, executed:0, coverage:0, skipped:0 };
 
+  var rowCounter = 0;
   for (var file in cc) {
     var i;
     var num_statements = 0;
@@ -334,9 +335,10 @@ function recalculateSummaryTab(cc) {
       num_statements++;
     }
 
-    var percentage = parseInt(100 * num_executed / num_statements);
+    var percentage = ( num_statements === 0 ? 0 : parseInt(100 * num_executed / num_statements) );
 
     var row = document.createElement("tr");
+    row.className = ( rowCounter++ % 2 == 0 ? "odd" : "even" );
 
     var cell = document.createElement("td");
     var link = createLink(file);
@@ -361,10 +363,15 @@ function recalculateSummaryTab(cc) {
         covered = document.createElement("div"),
         pct = document.createElement("span");
     pctGraph.className = "pctGraph";
-    covered.className = "covered";
-    covered.style.width = percentage + 'px';
+    if( num_statements === 0 ) {
+        covered.className = "skipped";
+        pct.appendChild(document.createTextNode("N/A"));
+    } else {
+        covered.className = "covered";
+        covered.style.width = percentage + "px";
+        pct.appendChild(document.createTextNode(percentage + '%'));
+    }
     pct.className = "pct";
-    pct.appendChild(document.createTextNode(percentage + '%'));
     pctGraph.appendChild(covered);
     cell.appendChild(pctGraph);
     cell.appendChild(pct);
@@ -388,6 +395,9 @@ function recalculateSummaryTab(cc) {
     totals['statements'] += num_statements;
     totals['executed'] += num_executed;
     totals['coverage'] += percentage;
+    if( num_statements === 0 ) {
+        totals['skipped']++;
+    }
 
     // write totals data into summaryTotals row
     var tr = document.getElementById("summaryTotals");
@@ -397,7 +407,10 @@ function recalculateSummaryTab(cc) {
         tds[1].firstChild.nodeValue = totals['statements'];
         tds[2].firstChild.nodeValue = totals['executed'];
 
-        var coverage = parseInt(totals['coverage'] / totals['files']);
+        var coverage = parseInt(totals['coverage'] / ( totals['files'] - totals['skipped'] ) );
+        if( isNaN( coverage ) ) {
+            coverage = 0;
+        }
         tds[3].getElementsByTagName("span")[0].firstChild.nodeValue = coverage + '%';
         tds[3].getElementsByTagName("div")[1].style.width = coverage + 'px';
     }

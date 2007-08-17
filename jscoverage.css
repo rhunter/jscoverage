@@ -166,6 +166,14 @@ td.coverage span {
     width: 0;
     height: 10px;
 }
+.pctGraph .skipped {
+    background-color: #eaeaea;
+    width: 100px;
+    height: 10px;
+}
+tbody#summaryTbody tr.even td {
+    background-color: #f9f9f9;
+}
 
 /*******************************************************************************
 source tab
