@@ -31,12 +31,14 @@ body {
 #headingDiv {
   width: 500px;
   padding: 0px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 #headingDiv h1 {
   font-size: large;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-top: 0px;
+  margin-bottom: 0px;
 }
 
 #progressBar {
@@ -45,7 +47,6 @@ body {
 
 #progressLabel {
   float: right;
-  margin-top: 10px;
   font-size: small;
   text-align: right;
 }
@@ -53,7 +54,6 @@ body {
 div.ProgressBar {
   float: right;
   width: 150px;
-  margin-top: 10px;
 }
 
 div.ProgressBar .pctGraph {
