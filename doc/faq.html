@@ -35,9 +35,12 @@ jscoverage --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
        <p>
        You can then run the <code>test.html</code> file in JsUnit's <code>jsunit/testRunner.html</code>.
        The simplest way to do this is probably to copy the contents of <code>doc/instrumented-jsunit</code>
-       to the root of a web server and then access
-       <a href="http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;autorun=true">this URL</a>.
+       to the root of a web server and then access the URL
        </p>
+
+<pre>
+http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;autorun=true
+</pre>
 
         <h3>I'm trying to load my code with the URL
         <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
