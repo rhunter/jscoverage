@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+<head>
+<title>JSCoverage - help</title>
+<link rel="stylesheet" type="text/css" href="reset-fonts-grids.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<div id="doc3" class="yui-t5"> 
+  <div id="hd"><h1><a href="./">JSCoverage</a><br><span class="tag">code coverage for JavaScript</span></h1></div>  
+  <div id="bd">
+    <div id="yui-main"> 
+      <div id="jscoverage-main" class="yui-b">
+        <h2><abbr title="Frequently Asked Questions">FAQ</abbr></h2>
+
+        <h3>Can JSCoverage be used with <a href="http://www.jsunit.net/">JsUnit</a>?</h3>
+
+        <p>
+        It is necessary to run JSCoverage in <dfn>inverted mode</dfn>.  You will have to
+        modify JsUnit to launch JSCoverage.
+        </p>
+
+        <p>
+        See the directory <code>doc/example-jsunit</code> for an example. It
+        contains a copy of JsUnit version 2.2alpha11, with the file
+        <code>jsunit/app/main-data.html</code> slightly modified to add a button
+        which launches JSCoverage.  It also contains a simple unit test file <code>test.html</code>.  You
+        can instrument this example as follows:
+        </p>
+
+<pre>
+jscoverage --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
+</pre>
+
+       <p>
+       You can then run the <code>test.html</code> file in JsUnit's <code>jsunit/testRunner.html</code>.
+       The simplest way to do this is probably to copy the contents of <code>doc/instrumented-jsunit</code>
+       to the root of a web server and then access
+       <a href="http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;autorun=true">this URL</a>.
+       </p>
+
+        <h3>I'm trying to load my code with the URL
+        <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
+        and I'm getting all kinds of JavaScript errors.</h3>
+
+        <p>
+        Internet Explorer 6 seems to have problems with a <code>file:</code> URL
+        that has a query string with a slash in it.
+        </p>
+        <p>
+        As a workaround:
+        </p>
+        <ul class="list">
+        <li>Place your files on a web server instead of loading them from the file system.
+            (<code>http:</code> URLs work fine.)
+        <li>Do not use a query string; enter your URL in the "URL" field in the "Browser" tab.
+        <li>Rearrange your directory structure so that <code>bar.html</code>
+            ends up in the same directory as <code>jscoverage.html</code>; then
+            you can use the URL
+            <code>file:///C:/foo/bar/jscoverage.html?bar.html</code>
+            with no slash in the query string.
+        <li>Use a different browser.  (IE 7 seems to work.)
+        </ul>
+
+        <h3>JSCoverage changes my cursor to a busy cursor, and it never changes back!</h3>
+
+        <p>
+        Certain browsers (<i>e. g</i>., Internet Explorer 6, Opera, Safari) have trouble changing
+        the cursor.  Try moving the mouse and your cursor should change back to normal.
+        </p>
+
+        <p>
+        See the discussion <a href="http://groups.google.com/group/Google-Web-Toolkit/browse_thread/thread/631908bd63241136/783c307480f95d8c">here</a> for more information.
+        </p>
+
+        <h3>JSCoverage hangs sometimes when rendering the coverage report.</h3>
+
+        <p>
+        With Internet Explorer 6 (I think I see a pattern here), garbage collection can cause performance problems.
+        (More information <a href="http://ajaxian.com/archives/garbage-collection-in-ie6">here</a>.)
+        </p>
+
+      </div>
+    </div> 
+    <div id="jscoverage-sidebar" class="yui-b">
+      <ul>
+      <li><a href="./">Home</a>
+      <li><a href="news.html">News</a> <a href="http://siliconforks.com/jscoverage/news.xml" type="application/rss+xml" title="RSS feed for JSCoverage"><img src="feed-icon-14x14.png" alt="RSS feed"></a>
+      <li><a href="manual.html">Documentation</a>
+      <li><a href="demo.html">Demo</a>
+      <li><a href="download.html">Download</a>
+      <li>FAQ
+      <li><a href="help.html">Help</a>
+      <li><a href="license.html">License</a>
+      <li><a href="links.html">Links</a>
+      </ul>
+    </div> 
+  </div>  
+  <div id="ft">
+    <address>
+      Copyright &copy; 2007 siliconforks.com<br>
+      Last updated August 15, 2007<br>
+      <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
+    </address>
+  </div>  
+</div>
+</body>
+</html>
