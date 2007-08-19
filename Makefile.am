@@ -48,3 +48,5 @@ example: jscoverage
 example-inverted: jscoverage
 	$(srcdir)/jscoverage --exclude=.svn doc/example-inverted doc/instrumented-inverted
 
+example-jsunit: jscoverage
+	$(srcdir)/jscoverage --exclude=.svn --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
