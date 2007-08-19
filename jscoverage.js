@@ -441,7 +441,7 @@ function removeMissingColumn() {
 
 function checkbox_click() {
   if (gInLengthyOperation) {
-    return;
+    return false;
   }
   beginLengthyOperation();
   setTimeout(function() {
@@ -455,6 +455,7 @@ function checkbox_click() {
     }
     recalculateSummaryTab();
   }, 100);
+  return true;
 }
 
 // -----------------------------------------------------------------------------
