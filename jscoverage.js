@@ -535,11 +535,11 @@ function countLines(text) {
   var pos = 0;
   var count = 0;
   while (pos < length) {
+    count++;
     pos = text.indexOf('\n', pos);
     if (pos == -1) {
       break;
     }
-    count++;
     pos++;
   }
   return count;
