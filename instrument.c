@@ -84,7 +84,7 @@ static void highlight_file(const char * source_file, const char * destination_fi
   fprintf(output, "<link rel=\"stylesheet\" type='text/css' href='%ssh_nedit.css'>\n", relative_path_to_ancestor);
   fprintf(output, "<script src=\"%sjscoverage.js\"></script>\n", relative_path_to_ancestor);
   fprintf(output, "<script src=\"%ssh_main.js\"></script>\n", relative_path_to_ancestor);
-  fprintf(output, "<script src=\"%ssh_javascript.min.js\"></script>\n", relative_path_to_ancestor);
+  fprintf(output, "<script src=\"%ssh_javascript.js\"></script>\n", relative_path_to_ancestor);
   fprintf(output, "<script>\n");
   fprintf(output, "var gCurrentFile = \"%s\";\n", relative_path);
   fprintf(output, "</script>\n");
@@ -271,6 +271,6 @@ void jscoverage_copy_resources(const char * destination_directory) {
   copy_resource("jscoverage.js", destination_directory);
   copy_resource("jscoverage-throbber.gif", destination_directory);
   copy_resource("sh_main.js", destination_directory);
-  copy_resource("sh_javascript.min.js", destination_directory);
+  copy_resource("sh_javascript.js", destination_directory);
   copy_resource("sh_nedit.css", destination_directory);
 }
