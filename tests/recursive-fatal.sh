@@ -32,7 +32,7 @@ $VALGRIND jscoverage DIR DIR/1 2>ERR && exit 1
 mkdir DIR/1
 $VALGRIND jscoverage DIR/1 DIR 2>ERR && exit 1
 
-ln -s DIR SYM
+cp -r DIR SYM
 $VALGRIND jscoverage DIR SYM 2>ERR && exit 1
 
 $VALGRIND jscoverage SYM DIR 2>ERR && exit 1
