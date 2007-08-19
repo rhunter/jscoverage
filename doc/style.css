@@ -88,3 +88,11 @@ address {
 em {
   font-style: italic;
 }
+dfn {
+  font-style: italic;
+}
+abbr {
+  cursor: help;
+  border-bottom-width: 1px;
+  border-bottom-style: dotted;
+}
