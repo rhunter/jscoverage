@@ -110,6 +110,10 @@ new Test.Unit.Runner({
     }
   },
 
+  test_body_load: function() {
+    
+  },
+
   test_updateBrowser: function() {
     with (this) {
       var input = document.getElementById("location");
@@ -157,17 +161,23 @@ new Test.Unit.Runner({
       coverage['foo.js'][4] = 0;
       coverage['bar.js'] = [];
       coverage['bar.js'][2] = 10;
+      coverage['baz.js'] = [];  // empty file
+
       gMissing = true;
+      appendMissingColumn();
+
+      assert(gMissing, "gMissing should be true");
+
       recalculateSummaryTab(coverage);
       var summaryTable = document.getElementById('summaryTable');
       var rows = summaryTable.getElementsByTagName('tr');
-      assertEqual(4, rows.length);
+      assertEqual(5, rows.length);
 
       var row, cells, links, percentage;
 
       row = rows.item(1);
       cells = row.getElementsByTagName('td');
-      assertEqual(5, cells.length);
+      assertEqual(5, cells.length, "table should have 5 columns");
       assertEqual('4', cells.item(1).innerHTML);
       assertEqual('2', cells.item(2).innerHTML);
       percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
@@ -202,7 +212,40 @@ new Test.Unit.Runner({
       assertEqual('100%', percentage);
       links = cells.item(4).getElementsByTagName('a');
       assertEqual(0, links.length);
+
+      row = rows.item(4);
+      cells = row.getElementsByTagName('td');
+      assertEqual(5, cells.length);
+      links = cells.item(0).getElementsByTagName('a');
+      assertEqual(1, links.length);
+      assertEqual('baz.js', links.item(0).innerHTML);
+      assertEqual('0', cells.item(1).innerHTML, "number of statements should be 0");
+      assertEqual('0', cells.item(2).innerHTML, "number executed should be 0");
+      percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
+      assertEqual('N/A', percentage);
+      links = cells.item(4).getElementsByTagName('a');
+      assertEqual(0, links.length);
+
+      // restore gMissing
+      gMissing = false;
+      removeMissingColumn();
     }
+  },
+  
+  test_missingColumn: function() {
+    this.assert(! gMissing, "gMissing should be false");
+
+    var headerRow = document.getElementById('headerRow');
+    var cells = headerRow.getElementsByTagName('th');
+    this.assertIdentical(4, cells.length);
+
+    appendMissingColumn();
+    cells = headerRow.getElementsByTagName('th');
+    this.assertIdentical(5, cells.length);
+
+    removeMissingColumn();
+    cells = headerRow.getElementsByTagName('th');
+    this.assertIdentical(4, cells.length);
   },
 
   test_makeTable: function() {
@@ -224,6 +267,13 @@ new Test.Unit.Runner({
         delete(_$jscoverage[gCurrentFile]);
       });
     }
+  },
+
+  test_countLines: function() {
+    this.assertIdentical(0, countLines(""));
+    this.assertIdentical(1, countLines("\n"));
+    this.assertIdentical(2, countLines("foo\n\bar\n"));
+    this.assertIdentical(2, countLines("foo\n\bar"));
   },
 
   test_scrollToLine: function() {
