@@ -372,6 +372,7 @@ function recalculateSummaryTab(cc) {
     row.className = ( rowCounter++ % 2 == 0 ? "odd" : "even" );
 
     var cell = document.createElement("td");
+    cell.className = 'leftColumn';
     var link = createLink(file);
     cell.appendChild(link);
 

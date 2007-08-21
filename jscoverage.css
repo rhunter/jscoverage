@@ -18,7 +18,7 @@
 */
 
 body {
-  background: #bfb;
+  background: #bfffbf;
   font-family: sans-serif;
   font-size: small;
   margin-top: 0px;
@@ -60,12 +60,13 @@ div.ProgressBar .pctGraph {
   width: 100px;
   height: 10px;
   margin-top: 2px;
-  border: 1px solid #000;
-  background-color: #aaa;
+  border: 1px solid black;
+  background-color: #d4d0c8;
 }
 
 div.ProgressBar .covered {
-  background-color: #000077;
+  /* windows system color ActiveCaption or Highlight */
+  background-color: #0a246a;
   width: 0;
   height: 10px;
 }
@@ -115,8 +116,12 @@ table#summaryTable {
   font-size: small;
 }
 
-table#summaryTable, table#summaryTable th, table#summaryTable td {
-  border: 1px solid #bbb;
+table#summaryTable th, table#summaryTable td {
+  border-left: 1px solid #d9d9d9;
+}
+
+table#summaryTable th.leftColumn, table#summaryTable td.leftColumn {
+  border-left-width: 0px;
 }
 
 table#summaryTable th, table#summaryTable td {
@@ -124,7 +129,7 @@ table#summaryTable th, table#summaryTable td {
 }
 
 th {
-  background-color: #e0e0e0;
+  background-color: #e6ffe6;
 }
 
 td.numeric {
@@ -135,10 +140,10 @@ abbr {
   cursor: help;
 }
 
-td.totals span {
+tr#summaryTotals td.leftColumn span {
     float: right;
 }
-td.totals span.title {
+tr#summaryTotals td.leftColumn span.title {
     float: left;
     font-weight: bold;
 }
@@ -167,12 +172,12 @@ td.coverage span {
     height: 10px;
 }
 .pctGraph .skipped {
-    background-color: #eaeaea;
+    background-color: #d4d0c8;
     width: 100px;
     height: 10px;
 }
 tbody#summaryTbody tr.even td {
-    background-color: #f9f9f9;
+    background-color: #e6ffe6;
 }
 
 /*******************************************************************************
@@ -224,11 +229,11 @@ table#sourceTable pre {
 }
 
 .g {
-  background-color: #bfb;
+  background-color: #bfffbf;
 }
 
 .r {
-  background-color: #fbb;
+  background-color: #ffbfbf;
 }
 
 /*******************************************************************************
@@ -239,9 +244,6 @@ div.TabControl {
   border-width: 0px;
   margin: 0px;
   padding: 0px;
-}
-
-div.TabControl div.Tabs {
 }
 
 div.TabControl div.Tabs div {
@@ -267,7 +269,8 @@ div.TabControl div.Tabs div.selected {
 }
 
 div.TabControl div.Tabs div.disabled {
-  color: #aaa;
+  /* windows system color GrayText */
+  color: #808080;
   cursor: default; 
 }
 
