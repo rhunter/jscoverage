@@ -17,44 +17,52 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-if (window.opener) {
-  /*
-  Presumably we are in inverted mode.
-  */
-  if (('_$jscoverage' in window.opener.top) && ('_$jscoverage' in window)) {
+/**
+Initializes the _$jscoverage object in a window.  This should be the first
+function called in the page.
+@param  w  this should always be the global window object
+*/
+function init(w) {
+  if (w.opener) {
     /*
-    Presumably the opener has already set our _$jscoverage to point to the
-    opener's _$jscoverage.  We don't have to do anything.
+    Presumably we are in inverted mode.
     */
-  }
-  else if ('_$jscoverage' in window.opener.top) {
-    /*
-    Presumably the opener has already run its tests.
-    */
-    window._$jscoverage = window.opener.top._$jscoverage;
-  }
-  else if ('_$jscoverage' in window) {
-    /*
-    Presumably the opener has not run its tests yet.  Not sure why there is a
-    _$jscoverage object here already; we'll assume whoever put it here knew
-    what they were doing, and we'll us it.
-    */
-    window.opener.top._$jscoverage = window._$jscoverage;
+    if (w.opener.top._$jscoverage && w._$jscoverage) {
+      /*
+      Presumably the opener has already set our _$jscoverage to point to the
+      opener's _$jscoverage.  We don't have to do anything.
+      */
+    }
+    else if (w.opener.top._$jscoverage) {
+      /*
+      Presumably the opener has already run its tests.
+      */
+      w._$jscoverage = w.opener.top._$jscoverage;
+    }
+    else if (w._$jscoverage) {
+      /*
+      Presumably the opener has not run its tests yet.  Not sure why there is a
+      _$jscoverage object here already; we'll assume whoever put it here knew
+      what they were doing, and we'll us it.
+      */
+      w.opener.top._$jscoverage = w._$jscoverage;
+    }
+    else {
+      w.opener.top._$jscoverage = w._$jscoverage = {};
+    }
   }
   else {
-    window.opener.top._$jscoverage = window._$jscoverage = {};
-  }
-}
-else {
-  /*
-  No opener.  This is what happens when jscoverage.html is opened in a web
-  browser.
-  */
-  if (!('_$jscoverage' in window)) {
-    window._$jscoverage = {};
+    /*
+    No opener.  This is what happens when jscoverage.html is opened in a web
+    browser.
+    */
+    if (! w._$jscoverage) {
+      w._$jscoverage = {};
+    }
   }
 }
 
+init(window);
 var gCurrentFile = null;
 var gCurrentLine = null;
 var gCurrentSource = null;
@@ -126,20 +134,22 @@ function beginLengthyOperation() {
 Removes the progress bar and busy cursor.
 */
 function endLengthyOperation() {
-  gInLengthyOperation = false;
-
   var progressBar = document.getElementById('progressBar');
-  progressBar.style.visibility = 'hidden';
-  var progressLabel = document.getElementById('progressLabel');
-  progressLabel.style.visibility = 'hidden';
-  progressLabel.innerHTML = '';
-  var body = document.getElementsByTagName('body').item(0);
-  body.style.cursor = '';
-  var tabs = document.getElementById('tabs').getElementsByTagName('div');
-  var i;
-  for (i = 0; i < tabs.length; i++) {
-    tabs.item(i).style.cursor = '';
-  }
+  ProgressBar.setPercentage(progressBar, 100);
+  setTimeout(function() {
+    gInLengthyOperation = false;
+    progressBar.style.visibility = 'hidden';
+    var progressLabel = document.getElementById('progressLabel');
+    progressLabel.style.visibility = 'hidden';
+    progressLabel.innerHTML = '';
+    var body = document.getElementsByTagName('body').item(0);
+    body.style.cursor = '';
+    var tabs = document.getElementById('tabs').getElementsByTagName('div');
+    var i;
+    for (i = 0; i < tabs.length; i++) {
+      tabs.item(i).style.cursor = '';
+    }
+  }, 50);
 }
 
 /**
@@ -177,6 +187,12 @@ function setSize() {
   sourceDiv.style.height = (viewportHeight - findPos(sourceDiv) - 21) + 'px';
 }
 
+/**
+Returns the boolean value of a string.  Values 'false', 'f', 'no', 'n', 'off',
+and '0' (upper or lower case) are false.
+@param  s  the string
+@return  a boolean value
+*/
 function getBooleanValue(s) {
   s = s.toLowerCase();
   if (s === 'false' || s === 'f' || s === 'no' || s === 'n' || s === 'off' || s === '0') {
@@ -185,27 +201,29 @@ function getBooleanValue(s) {
   return true;
 }
 
-function body_load() {
-  if (window.opener) {
-    var tabs = document.getElementById('tabs');
-    var browserTab = document.getElementById('browserTab');
-    tabs.removeChild(browserTab);
-    var tabPages = document.getElementById('tabPages');
-    var browserTabPage = tabPages.getElementsByTagName('div').item(0);
-    tabPages.removeChild(browserTabPage);
-  }
+/**
+Removes the "Browser" tab from the tab control.
+*/
+function removeBrowserTab() {
+  var tabs = document.getElementById('tabs');
+  var browserTab = document.getElementById('browserTab');
+  tabs.removeChild(browserTab);
+  var tabPages = document.getElementById('tabPages');
+  var browserTabPage = tabPages.getElementsByTagName('div').item(0);
+  tabPages.removeChild(browserTabPage);
+}
 
-  var progressBar = document.getElementById('progressBar');
-  ProgressBar.init(progressBar);
-
-  initTabControl();
-
-  setSize();
-
-  // check if a URL was passed in the query string
-  var queryString, parameters, parameter, i, index, url, name, value;
-  if (location.search.length > 0) {
-    queryString = location.search.substring(1);
+/**
+Initializes the contents of the tabs.  This sets the initial values of the
+input field and iframe in the "Browser" tab and the checkbox in the "Summary"
+tab.
+@param  queryString  this should always be location.search
+*/
+function initTabContents(queryString) {
+  var parameters, parameter, i, index, url, name, value;
+  if (queryString.length > 0) {
+    // chop off the question mark
+    queryString = queryString.substring(1);
     parameters = queryString.split(/&|;/);
     for (i = 0; i < parameters.length; i++) {
       parameter = parameters[i];
@@ -241,6 +259,19 @@ function body_load() {
   if (window.opener) {
     recalculateSummaryTab();
   }
+}
+
+function body_load() {
+  if (window.opener) {
+    removeBrowserTab();
+  }
+
+  var progressBar = document.getElementById('progressBar');
+  ProgressBar.init(progressBar);
+
+  initTabControl();
+
+  initTabContents(location.search);
 }
 
 function body_resize() {

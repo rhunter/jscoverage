@@ -17,33 +17,72 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+function initCoverageData() {
+  var file = 'scriptaculous-data.js';
+  window._$jscoverage[file] = [];
+  window._$jscoverage[file][100] = 0;
+  window._$jscoverage[file][200] = 1;
+}
+
 new Test.Unit.Runner({
-  setup: function() {
-    with (this) {
-      if (! window._$jscoverage) {
-        window._$jscoverage = {};
-      }
-      var file = 'scriptaculous-data.js';
-      window._$jscoverage[file] = [];
-      window._$jscoverage[file][100] = 0;
-      window._$jscoverage[file][200] = 1;
-
-      // re-init tab control
-      var tabs = document.getElementById('tabs');
-      tabs = tabs.getElementsByTagName('div');
-      tabs.item(2).className = 'disabled';
-      tabs.item(2).onclick = null;
-    }
+  test_init1: function() {
+    var opener_$jscoverage = {};
+    var window_$jscoverage = {};
+    var w = {};
+    w.opener = {};
+    w.opener.top = {};
+    w.opener.top._$jscoverage = opener_$jscoverage;
+    w._$jscoverage = window_$jscoverage;
+    init(w);
+    this.assertIdentical(opener_$jscoverage, w.opener.top._$jscoverage);
+    this.assertIdentical(window_$jscoverage, w._$jscoverage);
   },
 
-  teardown: function() {
-    with (this) {
-      var file = 'scriptaculous-data.js';
-      delete window._$jscoverage[file];
-    }
+  test_init2: function() {
+    var opener_$jscoverage = {};
+    var w = {};
+    w.opener = {};
+    w.opener.top = {};
+    w.opener.top._$jscoverage = opener_$jscoverage;
+    init(w);
+    this.assertIdentical(opener_$jscoverage, w.opener.top._$jscoverage);
+    this.assertIdentical(opener_$jscoverage, w._$jscoverage);
   },
 
-  testFindPos: function() {
+  test_init3: function() {
+    var window_$jscoverage = {};
+    var w = {};
+    w.opener = {};
+    w.opener.top = {};
+    w._$jscoverage = window_$jscoverage;
+    init(w);
+    this.assertIdentical(window_$jscoverage, w.opener.top._$jscoverage);
+    this.assertIdentical(window_$jscoverage, w._$jscoverage);
+  },
+
+  test_init4: function() {
+    var w = {};
+    w.opener = {};
+    w.opener.top = {};
+    init(w);
+    this.assert(w.opener.top._$jscoverage === w._$jscoverage);
+  },
+
+  test_init5: function() {
+    var window_$jscoverage = {};
+    var w = {};
+    w._$jscoverage = window_$jscoverage;
+    init(w);
+    this.assertIdentical(window_$jscoverage, w._$jscoverage);
+  },
+
+  test_init6: function() {
+    var w = {};
+    init(w);
+    this.assert(w._$jscoverage);
+  },
+
+  test_findPos: function() {
     with (this) {
       var body = document.getElementById('body');
       body.style.marginTop = '5px';
@@ -64,13 +103,15 @@ new Test.Unit.Runner({
     }
   },
 
-  testLengthyOperation: function() {
+  test_lengthyOperation: function() {
     with (this) {
       var body = document.getElementById('body');
       beginLengthyOperation();
       assertEqual('wait', body.style.cursor);
       endLengthyOperation();
-      assertEqual('', body.style.cursor);
+      wait(500, function() {
+        this.assertEqual('', body.style.cursor);
+      });
     }
   },
 
@@ -110,8 +151,27 @@ new Test.Unit.Runner({
     }
   },
 
-  test_body_load: function() {
-    
+  test_removeBrowserTab: function() {
+    removeBrowserTab();
+    var browserTab = document.getElementById('browserTab');
+    this.assertNull(browserTab);
+  },
+
+  test_initTabContents_empty: function() {
+    initTabContents('');
+    this.assert(! gMissing);
+  },
+
+  test_initTabContents_url: function() {
+    initTabContents('?scriptaculous-data.html');
+    this.assert(/scriptaculous-data.html$/, frames[0].location);
+    this.assert(! gMissing);
+  },
+
+  test_initTabContents_urlAndMissing: function() {
+    initTabContents("?url=scriptaculous-data.html&missing=1");
+    this.assert(/scriptaculous-data.html$/, frames[0].location);
+    this.assert(gMissing);
   },
 
   test_updateBrowser: function() {
@@ -120,7 +180,7 @@ new Test.Unit.Runner({
       input.value = 'scriptaculous-data.html';
       assertEqual('scriptaculous-data.html', input.value);
       updateBrowser();
-      wait(1000, function() {
+      wait(500, function() {
         with (this) {
           assertEqual(input.value, frames[0].location);
         }
@@ -135,7 +195,7 @@ new Test.Unit.Runner({
       // assertEqual(url, frames[0].location);
       updateInput();
       var input = document.getElementById("location");
-      wait(1000, function() {
+      wait(500, function() {
         with (this) {
           assertEqual(frames[0].location, input.value);
         }
@@ -231,7 +291,21 @@ new Test.Unit.Runner({
       removeMissingColumn();
     }
   },
-  
+
+  test_recalculateSummaryTab_empty: function() {
+    var coverage = {};
+    coverage['foo.js'] = [];
+    coverage['bar.js'] = [];
+    coverage['baz.js'] = [];
+
+    recalculateSummaryTab(coverage);
+
+    var summaryTotals = document.getElementById('summaryTotals');
+    var cells = summaryTotals.getElementsByTagName('td');
+    var span = cells.item(3).getElementsByTagName('span').item(0);
+    this.assertIdentical('0%', span.innerHTML);
+  },
+
   test_missingColumn: function() {
     this.assert(! gMissing, "gMissing should be false");
 
@@ -248,6 +322,28 @@ new Test.Unit.Runner({
     this.assertIdentical(4, cells.length);
   },
 
+  test_checkbox_click: function() {
+    var checkbox = document.getElementById('checkbox');
+    checkbox.click();
+    this.wait(500, function() {
+      var headerRow = document.getElementById('headerRow');
+      var headers = headerRow.getElementsByTagName('th');
+      this.assertIdentical(5, headers.length);
+      this.assert(gMissing, 'gMissing should be true');
+      checkbox.click();
+      this.wait(500, function() {
+        var headers = headerRow.getElementsByTagName('th');
+        this.assertIdentical(4, headers.length);
+        this.assert(! gMissing, 'gMissing should be false');
+      });
+    });
+  },
+
+  test_checkbox_click_lengthy: function() {
+    gInLengthyOperation = true;
+    this.assert(! checkbox_click());
+  },
+
   test_makeTable: function() {
     with (this) {
       gCurrentFile = 'foo.js';
@@ -257,7 +353,7 @@ new Test.Unit.Runner({
       gCurrentSource = 'foo\nbar\n';
       gCurrentLines = ['foo', 'bar'];
       makeTable();
-      wait(1000, function() {
+      wait(500, function() {
         var sourceDiv = document.getElementById('sourceDiv');
         var cells = sourceDiv.getElementsByTagName('td');
         assertIdentical('1', cells.item(0).innerHTML);
@@ -277,21 +373,17 @@ new Test.Unit.Runner({
   },
 
   test_scrollToLine: function() {
-    with (this) {
-      initTabControl();
-      setSize();
-      get('scriptaculous-data.js');
-      wait(1000, function() {
-        with (this) {
-          gCurrentLine = 100;
-          scrollToLine();
-          var sourceDiv = document.getElementById('sourceDiv');
-          var cell = document.getElementById('line-100');
-          var offset = findPos(cell) - findPos(sourceDiv);
-          assertIdentical(offset, sourceDiv.scrollTop);
-        }
-      });
-    }
+    initCoverageData();
+    var file = 'scriptaculous-data.js';
+    get(file);
+    this.wait(1000, function() {
+      gCurrentLine = 100;
+      scrollToLine();
+      var sourceDiv = document.getElementById('sourceDiv');
+      var cell = document.getElementById('line-100');
+      var offset = findPos(cell) - findPos(sourceDiv);
+      this.assertIdentical(offset, sourceDiv.scrollTop);
+    });
   },
 
   test_throbber: function() {
@@ -320,22 +412,27 @@ new Test.Unit.Runner({
   },
 
   test_get: function() {
-    with (this) {
-      var file = 'scriptaculous-data.js';
+    initCoverageData();
+    var file = 'scriptaculous-data.js';
+    get(file);
+    this.wait(1000, function() {
+      this.assertIdentical(file, gCurrentFile);
+      var fileDiv = document.getElementById('fileDiv');
+      this.assertIdentical(file, fileDiv.innerHTML);
+      var throbberImg = document.getElementById('throbberImg');
+      this.assertNotIdentical('visible', throbberImg.style.visibility);
       get(file);
-      wait(1000, function() {
-        with (this) {
-          assertIdentical(file, gCurrentFile);
-          var fileDiv = document.getElementById('fileDiv');
-          assertIdentical(file, fileDiv.innerHTML);
-          assertNotIdentical('visible', document.getElementById('throbberImg').style.visibility);
-        }
+      this.wait(500, function() {
+        this.assertIdentical(file, gCurrentFile);
+        this.assertIdentical(file, fileDiv.innerHTML);
+        this.assertNotIdentical('visible', throbberImg.style.visibility);
       });
-    }
+    });
   },
 
   test_getLine: function() {
     with (this) {
+      initCoverageData();
       var file = 'scriptaculous-data.js';
       get(file, 100);
       wait(1000, function() {
@@ -354,8 +451,9 @@ new Test.Unit.Runner({
   },
 
   test_recalculateSourceTab: function() {
+    initCoverageData();
     get('scriptaculous-data.js');
-    this.wait(500, function() {
+    this.wait(1000, function() {
       recalculateSourceTab();
       this.wait(500, function() {
         var sourceDiv = document.getElementById('sourceDiv');
@@ -399,5 +497,38 @@ new Test.Unit.Runner({
         assertEqual(i, tabIndexOf(tabs.item(i)));
       }
     }
+  },
+
+  test_tab_click: function() {
+    var aboutTab = document.getElementById('aboutTab');
+    var e = {target: aboutTab};
+    tab_click(e);
+    this.wait(500, function() {
+      this.assertIdentical('selected', aboutTab.className);
+    });
+  },
+
+  setup: function() {
+    var headingDiv = document.getElementById('headingDiv');
+    this.headingDivClone = headingDiv.cloneNode(true);
+    var tabControl = document.getElementById('tabControl');
+    this.tabControlClone = tabControl.cloneNode(true);
+
+    init(window);
+    gCurrentFile = null;
+    gCurrentLine = null;
+    gCurrentSource = null;
+    gCurrentLines = null;
+    gMissing = null;
+    gInLengthyOperation = false;
+    body_load();
+  },
+
+  teardown: function() {
+    // restore old DOM
+    var headingDiv = document.getElementById('headingDiv');
+    headingDiv.parentNode.replaceChild(this.headingDivClone, headingDiv);
+    var tabControl = document.getElementById('tabControl');
+    tabControl.parentNode.replaceChild(this.tabControlClone, tabControl);
   }
 });
