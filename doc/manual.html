@@ -265,6 +265,11 @@ attach it to a button:
 </pre>
 
 <p>
+Note that you <em>must</em> use a <code>window.open</code> call; simply making a
+link to <code>jscoverage.html</code> is not sufficient.
+</p>
+
+<p>
 An example is located in the <code>doc/example-inverted</code> directory.
 You can instrument the code and launch the <code>index.html</code> page:
 </p>
@@ -359,7 +364,7 @@ those which try to access the top-level frame (<code>window.top</code>, <code>ta
 
 <address>
   Copyright &copy; 2007 siliconforks.com<br>
-  Last updated July 8, 2007<br>
+  Last updated August 20, 2007<br>
   <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
 </address>
 
