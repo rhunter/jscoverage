@@ -36,8 +36,8 @@ You can extract and compile the code with the following commands:
 </p>
 
 <pre>
-tar jxvf jscoverage-0.1.tar.bz2
-cd jscoverage-0.1
+tar jxvf jscoverage-0.3.tar.bz2
+cd jscoverage-0.3/
 ./configure
 make
 </pre>
@@ -222,19 +222,25 @@ Once you have executed the JavaScript code, you are instructed to click on the
 <img src="screenshot4.png" alt="Screenshot">
 
 <p>
-From the "Summary" tab, you can click the links to get a detailed view of a JavaScript source file.
+You can click the checkbox to show a list of statements missed during execution.
 </p>
 
 <img src="screenshot5.png" alt="Screenshot">
 
+<p>
+You can click one of the links to get a detailed view of a JavaScript source file.
+</p>
+
+<img src="screenshot6.png" alt="Screenshot">
+
 <h2>Inverted mode</h2>
 
 <p>
-In some circumstances it may be difficult to execute your code within the
+In some situations it may be difficult to execute your code within the
 JSCoverage "Browser" tab. For example, the code may assume that it is running in
 the top-level browser window, generating errors if it is executed from within a
 frame. JSCoverage has an alternative mode of operation, called <dfn>inverted
-mode</dfn>, which may be useful in this situation.
+mode</dfn>, which may be useful in this case.
 </p>
 
 <p>
@@ -304,13 +310,13 @@ jscoverage --exclude=<var>PATH</var> <var>SOURCE-DIRECTORY</var> <var>DESTINATIO
 </pre>
 copies <var>SOURCE-DIRECTORY</var> to <var>DESTINATION-DIRECTORY</var>
 recursively, but does not copy <var>SOURCE-DIRECTORY</var>/<var>PATH</var>.
-<var>PATH</var> must be a complete path relative to <var>SOURCE-DIRECTORY</var>
+<var>PATH</var> must be a complete path relative to <var>SOURCE-DIRECTORY</var>.
 <var>PATH</var> can be a file or a directory (in which case the directory and
 its entire contents are skipped). This option may be given multiple times.
 <dt><code>--no-instrument=<var>PATH</var></code>
 <dd>The command
 <pre>
-jscoverage --exclude=<var>PATH</var> <var>SOURCE-DIRECTORY</var> <var>DESTINATION-DIRECTORY</var>
+jscoverage --no-instrument=<var>PATH</var> <var>SOURCE-DIRECTORY</var> <var>DESTINATION-DIRECTORY</var>
 </pre>
 copies <var>SOURCE-DIRECTORY</var> to <var>DESTINATION-DIRECTORY</var>
 recursively, but does not instrument any JavaScript code in
@@ -341,8 +347,7 @@ tab.  <var>BOOLEAN</var> can be
 <code>true</code>, <code>t</code>, <code>yes</code>, <code>y</code> <code>on</code>, <code>1</code>
 (to display the "Missing" column), or
 <code>false</code>, <code>f</code>, <code>no</code>, <code>n</code>, <code>off</code>, <code>0</code>
-(to hide the "Missing" column)
-(By default, the "Missing" column is not displayed.)
+(to hide the "Missing" column).  By default, the "Missing" column is not displayed.
 </dl>
 
 <h2>Caveats</h2>

@@ -13,35 +13,6 @@
       <div id="jscoverage-main" class="yui-b">
         <h2><abbr title="Frequently Asked Questions">FAQ</abbr></h2>
 
-        <h3>Can JSCoverage be used with <a href="http://www.jsunit.net/">JsUnit</a>?</h3>
-
-        <p>
-        It is necessary to run JSCoverage in <dfn>inverted mode</dfn>.  You will have to
-        modify JsUnit to launch JSCoverage.
-        </p>
-
-        <p>
-        See the directory <code>doc/example-jsunit</code> for an example. It
-        contains a copy of JsUnit version 2.2alpha11, with the file
-        <code>jsunit/app/main-data.html</code> slightly modified to add a button
-        which launches JSCoverage.  It also contains a simple unit test file <code>test.html</code>.  You
-        can instrument this example as follows:
-        </p>
-
-<pre>
-jscoverage --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
-</pre>
-
-       <p>
-       You can then run the <code>test.html</code> file in JsUnit's <code>jsunit/testRunner.html</code>.
-       The simplest way to do this is probably to copy the contents of <code>doc/instrumented-jsunit</code>
-       to the root of a web server and then access the URL
-       </p>
-
-<pre>
-http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;autorun=true
-</pre>
-
         <h3>I'm trying to load my code with the URL
         <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
         and I'm getting all kinds of JavaScript errors.</h3>
@@ -73,7 +44,7 @@ http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;
         </p>
 
         <p>
-        See the discussion <a href="http://groups.google.com/group/Google-Web-Toolkit/browse_thread/thread/631908bd63241136/783c307480f95d8c">here</a> for more information.
+        See <a href="http://groups.google.com/group/Google-Web-Toolkit/browse_thread/thread/631908bd63241136/783c307480f95d8c">this discussion</a> for more information.
         </p>
 
         <h3>JSCoverage hangs sometimes when rendering the coverage report.</h3>
@@ -82,6 +53,40 @@ http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;
         With Internet Explorer 6 (I think I see a pattern here), garbage collection can cause performance problems.
         (More information <a href="http://ajaxian.com/archives/garbage-collection-in-ie6">here</a>.)
         </p>
+
+        <h3>Can JSCoverage be used with <a href="http://www.jsunit.net/">JsUnit</a>?</h3>
+
+        <p>
+        It is necessary to run JSCoverage in <dfn>inverted mode</dfn>.  You will have to
+        modify JsUnit to launch JSCoverage.
+        </p>
+
+        <p>
+        See the directory <code>doc/example-jsunit</code> for an example. It
+        contains a copy of JsUnit version 2.2alpha11, with the file
+        <code>jsunit/app/main-data.html</code> slightly modified to add a button
+        which launches JSCoverage.  It also contains a simple unit test file <code>test.html</code>.  You
+        can instrument this example as follows:
+        </p>
+
+<pre>
+jscoverage --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
+</pre>
+
+       <p>
+       You can then run the <code>test.html</code> file in JsUnit's <code>jsunit/testRunner.html</code>.
+       The simplest way to do this is probably to copy the contents of <code>doc/instrumented-jsunit</code>
+       to the root of a web server and then access the URL
+       </p>
+
+<pre>
+http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;autorun=true
+</pre>
+
+      <p>
+      After the test suite has been run, click on the "Coverage report" button
+      to get a coverage report.
+      </p>
 
       </div>
     </div> 
