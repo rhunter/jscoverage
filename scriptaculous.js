@@ -56,7 +56,6 @@ new Test.Unit.Runner({
     w.opener.top = {};
     w._$jscoverage = window_$jscoverage;
     init(w);
-    this.assertIdentical(window_$jscoverage, w.opener.top._$jscoverage);
     this.assertIdentical(window_$jscoverage, w._$jscoverage);
   },
 
@@ -65,7 +64,7 @@ new Test.Unit.Runner({
     w.opener = {};
     w.opener.top = {};
     init(w);
-    this.assert(w.opener.top._$jscoverage === w._$jscoverage);
+    this.assert(w._$jscoverage);
   },
 
   test_init5: function() {

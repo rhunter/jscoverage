@@ -23,52 +23,30 @@ function called in the page.
 @param  w  this should always be the global window object
 */
 function init(w) {
-  if (w.opener) {
-    /*
-    Presumably we are in inverted mode.
-    */
-    if (w.opener.top._$jscoverage && w._$jscoverage) {
-      /*
-      Presumably the opener has already set our _$jscoverage to point to the
-      opener's _$jscoverage.  We don't have to do anything.
-      */
-    }
-    else if (w.opener.top._$jscoverage) {
-      /*
-      Presumably the opener has already run its tests.
-      */
+  if (w.opener && w.opener.top._$jscoverage) {
+    // we are in inverted mode
+    gInvertedMode = true;
+    if (! w._$jscoverage) {
       w._$jscoverage = w.opener.top._$jscoverage;
-    }
-    else if (w._$jscoverage) {
-      /*
-      Presumably the opener has not run its tests yet.  Not sure why there is a
-      _$jscoverage object here already; we'll assume whoever put it here knew
-      what they were doing, and we'll us it.
-      */
-      w.opener.top._$jscoverage = w._$jscoverage;
-    }
-    else {
-      w.opener.top._$jscoverage = w._$jscoverage = {};
     }
   }
   else {
-    /*
-    No opener.  This is what happens when jscoverage.html is opened in a web
-    browser.
-    */
+    // we are not in inverted mode
+    gInvertedMode = false;
     if (! w._$jscoverage) {
       w._$jscoverage = {};
     }
   }
 }
 
-init(window);
 var gCurrentFile = null;
 var gCurrentLine = null;
 var gCurrentSource = null;
 var gCurrentLines = null;
 var gMissing = null;
 var gInLengthyOperation = false;
+var gInvertedMode = false;
+init(window);
 
 // http://www.quirksmode.org/js/findpos.html
 function findPos(obj) {
@@ -256,13 +234,13 @@ function initTabContents(queryString) {
     frames[0].location = url;
   }
 
-  if (window.opener) {
+  if (gInvertedMode) {
     recalculateSummaryTab();
   }
 }
 
 function body_load() {
-  if (window.opener) {
+  if (gInvertedMode) {
     removeBrowserTab();
   }
 
