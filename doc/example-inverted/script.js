@@ -16,5 +16,5 @@ function go(element) {
   div.className = 'black';
   div = document.getElementById("result");
   div.innerHTML = "<p>" + message + "</p>";
-  div.innerHTML += '<p>If you are running the instrumented version of this program, you can click the "Summary" tab to view a coverage report.</p>';
+  div.innerHTML += '<p>If you are running the instrumented version of this program, you can click the "Coverage report" button to view a coverage report.</p>';
 }
