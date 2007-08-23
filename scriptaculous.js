@@ -181,7 +181,8 @@ new Test.Unit.Runner({
       updateBrowser();
       wait(500, function() {
         with (this) {
-          assertEqual(input.value, frames[0].location);
+          assertMatch(/scriptaculous-data.html$/, input.value);
+          assertMatch(/scriptaculous-data.html$/, frames[0].location);
         }
       });
     }
