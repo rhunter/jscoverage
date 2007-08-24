@@ -10,7 +10,7 @@ rm -fr $distdir
 mkdir $distdir
 
 # copy all files in SVN
-for file in $(svn ls -R -r HEAD)
+for file in $(svn status -qv | sed 's/.* //' | sort)
 do
   if [ -f "$file" ]
   then
