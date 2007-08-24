@@ -7,7 +7,7 @@ rm -fr Makefile Makefile.in \
        .deps \
        resources.c \
        jscoverage generate-resources \
-       doc/instrumented \
+       doc/instrumented doc/instrumented-inverted doc/instrumented-jsunit \
        tests/Makefile tests/Makefile.in tests/.deps
 
 find . -name core -exec rm {} \;
