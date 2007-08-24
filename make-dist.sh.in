@@ -10,7 +10,6 @@ rm -fr $distdir
 mkdir $distdir
 
 # copy all files in SVN
-svn ls -R > FILES.tmp
 for file in $(svn ls -R)
 do
   if [ -f "$file" ]
