@@ -435,7 +435,7 @@ new Test.Unit.Runner({
       initCoverageData();
       var file = 'scriptaculous-data.js';
       get(file, 100);
-      wait(1000, function() {
+      wait(1500, function() {
         with (this) {
           assertIdentical(file, gCurrentFile);
           var fileDiv = document.getElementById('fileDiv');
@@ -503,7 +503,7 @@ new Test.Unit.Runner({
     var aboutTab = document.getElementById('aboutTab');
     var e = {target: aboutTab};
     tab_click(e);
-    this.wait(500, function() {
+    this.wait(1000, function() {
       this.assertIdentical('selected', aboutTab.className);
     });
   },
