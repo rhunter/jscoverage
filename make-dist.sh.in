@@ -23,6 +23,7 @@ done
 cp -a --parents Makefile.in aclocal.m4 configure depcomp install-sh missing $distdir
 cp -a --parents tests/Makefile.in $distdir
 cp -a --parents doc/instrumented $distdir
+cp -a --parents doc/instrumented-inverted $distdir
 
 # remove unnecessary files
 rm $distdir/TIMESTAMP
