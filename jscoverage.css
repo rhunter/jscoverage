@@ -212,7 +212,7 @@ the table already has font-size small, this would make the font-size within the
 <pre> x-small.  So we don't rely on the default.
 */
 table#sourceTable pre {
-  font-size: small;
+  font-size: medium;
 }
 
 table#sourceTable td {
