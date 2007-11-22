@@ -32,8 +32,6 @@ void jscoverage_init(void);
 
 void jscoverage_cleanup(void);
 
-void jscoverage_instrument_js(const char * id, FILE * input, FILE * output);
-
-void jscoverage_instrument_html(const char * id, FILE * input, FILE * output);
+void jscoverage_instrument_js(const char * id, FILE * input, FILE * output, const char * temporary_file_name);
 
 #endif

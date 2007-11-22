@@ -162,14 +162,18 @@ static void instrument_file(const char * source_file, const char * destination_f
       copy_file(source_file, destination_file);
       break;
     case FILE_TYPE_JS:
-      highlight_file(source_file, destination_file, id);
       {
         FILE * input = xfopen(source_file, "r");
         FILE * output = xfopen(destination_file, "w");
-        jscoverage_instrument_js(id, input, output);
+        const char * suffix = ".jscoverage.js";
+        char temporary_file_name[strlen(destination_file) + strlen(suffix) + 1];
+        strcpy(temporary_file_name, destination_file);
+        strcat(temporary_file_name, suffix);
+        jscoverage_instrument_js(id, input, output, temporary_file_name);
         fclose(input);
         fclose(output);
       }
+      highlight_file(source_file, destination_file, id);
       break;
     }
   }

@@ -794,7 +794,7 @@ static void instrument_statement(JSParseNode * node, FILE * f, int indent) {
   output_statement(node, f, indent);
 }
 
-static void instrument_js_stream(const char * id, int line, FILE * input, FILE * output) {
+static void instrument_js_stream(const char * id, int line, FILE * input, FILE * output, const char * temporary_file_name) {
   file_id = id;
 
   /* scan the javascript */
@@ -818,7 +818,7 @@ static void instrument_js_stream(const char * id, int line, FILE * input, FILE *
   Create a temporary file - we can't write directly to the output because we
   need to know the line number info first.
   */
-  FILE * temporary = tmpfile();
+  FILE * temporary = fopen(temporary_file_name, "w+");
   if (temporary == NULL) {
     fatal("cannot create temporary file for script: %s", file_id);
   }
@@ -849,6 +849,6 @@ static void instrument_js_stream(const char * id, int line, FILE * input, FILE *
   file_id = NULL;
 }
 
-void jscoverage_instrument_js(const char * id, FILE * input, FILE * output) {
-  instrument_js_stream(id, 0, input, output);
+void jscoverage_instrument_js(const char * id, FILE * input, FILE * output, const char * temporary_file_name) {
+  instrument_js_stream(id, 0, input, output, temporary_file_name);
 }
