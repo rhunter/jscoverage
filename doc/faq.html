@@ -13,6 +13,27 @@
       <div id="jscoverage-main" class="yui-b">
         <h2><abbr title="Frequently Asked Questions">FAQ</abbr></h2>
 
+        <h3>Can I use JSCoverage to measure code coverage for a page on <code>http://<var>example.com</var>/</code>?</h3>
+
+        <p>
+        In order to measure the code coverage of a page on <code>http://example.com/</code>,
+        you must run <code>jscoverage</code> to create a <code>jscoverage.html</code> file on the
+        <code>example.com</code> server.  You cannot use <code>http://example.org/jscoverage.html</code>
+        to measure the code coverage of a page located on <code>http://example.com/</code>.
+        </p>
+
+        <p>
+        The fundamental reason for this limitation is the
+        <a href="http://www.mozilla.org/projects/security/components/same-origin.html">Same-Origin Policy</a>
+        for untrusted JavaScript.
+        </p>
+
+        <p>
+        (In fact, the current version of JSCoverage is slightly more restrictive
+        than this: it requires that the JavaScript being measured reside under the
+        same <strong>directory</strong> as the <code>jscoverage.html</code> file.)
+        </p>
+
         <h3>I'm trying to load my code with the URL
         <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
         and I'm getting all kinds of JavaScript errors.</h3>
