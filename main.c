@@ -100,7 +100,6 @@ int main(int argc, char ** argv) {
 
   jscoverage_init();
   jscoverage_instrument(source, destination, verbose, exclude, num_exclude, no_instrument, num_no_instrument);
-  jscoverage_copy_resources(destination);
   jscoverage_cleanup();
 
   free(source);

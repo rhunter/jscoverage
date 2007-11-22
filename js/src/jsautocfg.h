@@ -37,9 +37,9 @@
 #define JS_ALIGN_OF_SHORT   2L
 #define JS_ALIGN_OF_INT     4L
 #define JS_ALIGN_OF_LONG    4L
-#define JS_ALIGN_OF_INT64   4L
+#define JS_ALIGN_OF_INT64   8L
 #define JS_ALIGN_OF_FLOAT   4L
-#define JS_ALIGN_OF_DOUBLE  4L
+#define JS_ALIGN_OF_DOUBLE  8L
 #define JS_ALIGN_OF_POINTER 4L
 #define JS_ALIGN_OF_WORD    4L
 
