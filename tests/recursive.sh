@@ -29,7 +29,7 @@ cp recursive/script.js EXPECTED/script.js.jscoverage.js
 cp recursive/1/1.js EXPECTED/1/1.js.jscoverage.js
 cp recursive/1/2/2.js EXPECTED/1/2/2.js.jscoverage.js
 find EXPECTED -depth -name .svn -exec rm -fr {} \;
-cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js ../sh_*.css ../sh_*.js EXPECTED
+cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
 
 $VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR
 test -d DIR
