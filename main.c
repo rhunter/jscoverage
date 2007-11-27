@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
 #include "instrument.h"
 #include "instrument-js.h"
 #include "resource-manager.h"
