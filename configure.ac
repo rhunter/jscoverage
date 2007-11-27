@@ -17,7 +17,7 @@
 
 AC_PREREQ(2.61)
 AC_INIT([jscoverage], [0.3.1])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([main.c])
 AC_PROG_CC
 AC_PROG_CC_C99

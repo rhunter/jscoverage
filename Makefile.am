@@ -51,3 +51,6 @@ example-inverted: jscoverage
 
 example-jsunit: jscoverage
 	$(srcdir)/jscoverage --exclude=.svn --no-instrument=jsunit doc/example-jsunit doc/instrumented-jsunit
+
+# override default install target so as not to recursively install subpackages
+install: install-am
