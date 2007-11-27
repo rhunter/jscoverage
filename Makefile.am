@@ -30,7 +30,8 @@ jscoverage_SOURCES = instrument.c instrument.h \
                      resource-manager.c resource-manager.h \
                      util.c util.h \
                      $(resources)
-jscoverage_LDADD = js/.libs/libjs.a -lm
+jscoverage_LDFLAGS = -static
+jscoverage_LDADD = js/libjs.la -lm
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c
