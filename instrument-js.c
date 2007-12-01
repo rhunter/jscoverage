@@ -385,13 +385,20 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     the dot syntax.
     */
     instrument_expression(node->pn_expr, f);
-    /*
-    fputc('.', f);
-    print_string_atom(node->pn_atom, f);
-    */
-    fputc('[', f);
-    print_quoted_string_atom(node->pn_atom, f);
-    fputc(']', f);
+    assert(ATOM_IS_STRING(node->pn_atom));
+    {
+      JSString * s = ATOM_TO_STRING(node->pn_atom);
+      /* XXX - semantics changed in 1.7 */
+      if (! ATOM_KEYWORD(node->pn_atom) && js_IsIdentifier(s)) {
+        fputc('.', f);
+        print_string_atom(node->pn_atom, f);
+      }
+      else {
+        fputc('[', f);
+        print_quoted_string_atom(node->pn_atom, f);
+        fputc(']', f);
+      }
+    }
     break;
   case TOK_LB:
     instrument_expression(node->pn_left, f);

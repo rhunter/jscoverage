@@ -44,7 +44,7 @@ for (i in x) {
   x();
 }
 _$jscoverage['javascript-for.js'][20]++;
-for (i["value"] in x) {
+for (i.value in x) {
   _$jscoverage['javascript-for.js'][21]++;
   x();
 }

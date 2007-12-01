@@ -8,10 +8,13 @@ if (! _$jscoverage['javascript-dot.js']) {
   _$jscoverage['javascript-dot.js'][1] = 0;
   _$jscoverage['javascript-dot.js'][2] = 0;
   _$jscoverage['javascript-dot.js'][3] = 0;
+  _$jscoverage['javascript-dot.js'][4] = 0;
 }
 _$jscoverage['javascript-dot.js'][1]++;
-x["y"] = y["x"];
+x.y = y.x;
 _$jscoverage['javascript-dot.js'][2]++;
-x["y"] = y["x"];
+x.y = y.x;
 _$jscoverage['javascript-dot.js'][3]++;
 x[y] = y[x];
+_$jscoverage['javascript-dot.js'][4]++;
+x["2y"] = y["var"];
