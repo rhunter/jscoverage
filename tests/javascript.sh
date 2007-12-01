@@ -24,13 +24,11 @@ export PATH=.:..:$PATH
 
 rm -fr DIR
 $VALGRIND jscoverage javascript DIR
-for i in javascript/*.expected.js
+for i in javascript/*.js
 do
-  EXPECTED=$i
-  ACTUAL=$EXPECTED
-  ACTUAL=${ACTUAL%%.expected.js}
-  ACTUAL=${ACTUAL##javascript/}
-  ACTUAL=DIR/${ACTUAL}.js
+  FILE=${i##javascript/}
+  EXPECTED=javascript.expected/${FILE}
+  ACTUAL=DIR/${FILE}
   diff -u -r --strip-trailing-cr $EXPECTED $ACTUAL
 done
 
