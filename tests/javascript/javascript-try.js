@@ -1,30 +1,32 @@
+function f() {}
+
 try {
-  x();
+  f();
 }
 catch (e) {
-  x();
+  f();
 }
 
 try {
-  x();
+  f();
 }
 catch (e if e instanceof E) {
-  x();
+  f();
 }
 
 try {
-  x();
+  f();
 }
 finally {
-  x();
+  f();
 }
 
 try {
-  x();
+  f();
 }
 catch (e) {
-  x();
+  f();
 }
 finally {
-  x();
+  f();
 }

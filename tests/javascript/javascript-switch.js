@@ -1,12 +1,12 @@
 switch (x) {
 case x:
-  x();
+  x = 0;
   break;
 case y:
-  x();
-  y();
+  x = 0;
+  y = 0;
   break;
 default:
-  x();
+  x = 0;
   break;
 }

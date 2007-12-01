@@ -18,19 +18,19 @@ _$jscoverage['javascript-switch.js'][1]++;
 switch (x) {
 case x:
   _$jscoverage['javascript-switch.js'][3]++;
-  x();
+  x = 0;
   _$jscoverage['javascript-switch.js'][4]++;
   break;
 case y:
   _$jscoverage['javascript-switch.js'][6]++;
-  x();
+  x = 0;
   _$jscoverage['javascript-switch.js'][7]++;
-  y();
+  y = 0;
   _$jscoverage['javascript-switch.js'][8]++;
   break;
 default:
   _$jscoverage['javascript-switch.js'][10]++;
-  x();
+  x = 0;
   _$jscoverage['javascript-switch.js'][11]++;
   break;
 }

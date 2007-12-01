@@ -1,3 +1,5 @@
+var a = 1, b = 1, c = 1, d = 1;
+
 /* TOK_OR */
 x = a || b || c;
 x = a || b || c || d;

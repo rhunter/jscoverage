@@ -1,6 +1,9 @@
+function f() {}
+var x = {};
+
 with (x) {
-  x();
+  f();
 }
 
 with (x)
-  x();
+  f();

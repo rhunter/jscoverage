@@ -10,7 +10,7 @@ for (i = 0; i < x; i++) {
   x();
 }
 
-for (var i = 0; i < x; i++) {
+for (var j = 0; j < x; j++) {
   x();
 }
 

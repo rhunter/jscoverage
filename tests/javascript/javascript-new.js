@@ -1,3 +1,4 @@
+function X() {}
 x = new X();
-x = new X(a);
-x = new X(a, b);
+x = new X(1);
+x = new X(1, 2);

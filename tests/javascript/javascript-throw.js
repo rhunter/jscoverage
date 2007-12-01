@@ -1,1 +1,6 @@
-throw x;
+try {
+  throw "x";
+}
+catch (e) {
+  ;
+}

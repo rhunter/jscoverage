@@ -7,16 +7,23 @@ if (! _$jscoverage['javascript-with.js']) {
   _$jscoverage['javascript-with.js'] = [];
   _$jscoverage['javascript-with.js'][1] = 0;
   _$jscoverage['javascript-with.js'][2] = 0;
+  _$jscoverage['javascript-with.js'][4] = 0;
   _$jscoverage['javascript-with.js'][5] = 0;
-  _$jscoverage['javascript-with.js'][6] = 0;
+  _$jscoverage['javascript-with.js'][8] = 0;
+  _$jscoverage['javascript-with.js'][9] = 0;
 }
 _$jscoverage['javascript-with.js'][1]++;
-with (x) {
-  _$jscoverage['javascript-with.js'][2]++;
-  x();
+function f() {
 }
-_$jscoverage['javascript-with.js'][5]++;
+_$jscoverage['javascript-with.js'][2]++;
+var x = {};
+_$jscoverage['javascript-with.js'][4]++;
 with (x) {
-  _$jscoverage['javascript-with.js'][6]++;
-  x();
+  _$jscoverage['javascript-with.js'][5]++;
+  f();
+}
+_$jscoverage['javascript-with.js'][8]++;
+with (x) {
+  _$jscoverage['javascript-with.js'][9]++;
+  f();
 }

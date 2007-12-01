@@ -6,6 +6,15 @@ var _$jscoverage = top._$jscoverage;
 if (! _$jscoverage['javascript-throw.js']) {
   _$jscoverage['javascript-throw.js'] = [];
   _$jscoverage['javascript-throw.js'][1] = 0;
+  _$jscoverage['javascript-throw.js'][2] = 0;
+  _$jscoverage['javascript-throw.js'][5] = 0;
 }
 _$jscoverage['javascript-throw.js'][1]++;
-throw x;
+try {
+  _$jscoverage['javascript-throw.js'][2]++;
+  throw "x";
+}
+catch (e) {
+  _$jscoverage['javascript-throw.js'][5]++;
+  ;
+}

@@ -1,28 +1,30 @@
+var x = 0;
+
 if (x)
-  x();
+  x = 0;
 
 if (x) {
-  x();
+  x = 0;
 }
 
 if (x)
-  x();
+  x = 0;
 else
-  x();
+  x = 0;
 
 if (x) {
-  x();
+  x = 0;
 }
 else {
-  x();
+  x = 0;
 }
 
 if (x) {
-  x();
+  x = 0;
 }
 else if (x) {
-  x();
+  x = 0;
 }
 else {
-  x();
+  x = 0;
 }

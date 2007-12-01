@@ -8,10 +8,14 @@ if (! _$jscoverage['javascript-new.js']) {
   _$jscoverage['javascript-new.js'][1] = 0;
   _$jscoverage['javascript-new.js'][2] = 0;
   _$jscoverage['javascript-new.js'][3] = 0;
+  _$jscoverage['javascript-new.js'][4] = 0;
 }
 _$jscoverage['javascript-new.js'][1]++;
-x = new X();
+function X() {
+}
 _$jscoverage['javascript-new.js'][2]++;
-x = new X(a);
+x = new X();
 _$jscoverage['javascript-new.js'][3]++;
-x = new X(a, b);
+x = new X(1);
+_$jscoverage['javascript-new.js'][4]++;
+x = new X(1, 2);

@@ -9,4 +9,4 @@ if (! _$jscoverage['javascript-colon.js']) {
 }
 _$jscoverage['javascript-colon.js'][1]++;
 x:
-var y;
+y = 0;

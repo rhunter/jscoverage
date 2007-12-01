@@ -1,8 +1,10 @@
+var x;
+
 do {
-  x();
+  x = false;
 }
 while (x);
 
 do
-  x();
+  x = false;
 while (x);

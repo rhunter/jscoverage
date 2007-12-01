@@ -34,7 +34,7 @@ for (i = 0; i < x; i++) {
   x();
 }
 _$jscoverage['javascript-for.js'][13]++;
-for (var i = 0; i < x; i++) {
+for (var j = 0; j < x; j++) {
   _$jscoverage['javascript-for.js'][14]++;
   x();
 }

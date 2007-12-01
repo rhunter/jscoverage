@@ -1,3 +1,4 @@
+var x = {};
 if ('a' in x) {
-  y();
+  x = null;
 }
