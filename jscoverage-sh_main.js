@@ -1,6 +1,6 @@
 /*
 SHJS - Syntax Highlighting in JavaScript
-Copyright (C) 2007 gnombat@users.sourceforge.net
+Copyright (C) 2007, 2008 gnombat@users.sourceforge.net
 License: http://shjs.sourceforge.net/doc/license.html
 */
 
