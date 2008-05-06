@@ -845,6 +845,7 @@ static void instrument_js_stream(const char * id, int line, FILE * input, FILE *
     }
   }
   fprintf(output, "}\n");
+  free(lines);
   lines = NULL;
 
   /* copy the temporary to the output */
