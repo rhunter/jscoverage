@@ -165,11 +165,21 @@ static void instrument_file(const char * source_file, const char * destination_f
       {
         FILE * input = xfopen(source_file, "r");
         FILE * output = xfopen(destination_file, "w");
-        const char * suffix = ".jscoverage.js";
-        char temporary_file_name[strlen(destination_file) + strlen(suffix) + 1];
-        strcpy(temporary_file_name, destination_file);
-        strcat(temporary_file_name, suffix);
-        jscoverage_instrument_js(id, input, output, temporary_file_name);
+
+        Stream * input_stream = Stream_new(0);
+        Stream * output_stream = Stream_new(0);
+
+        Stream_write_file_contents(input_stream, input);
+
+        jscoverage_instrument_js(id, input_stream, output_stream);
+
+        if (fwrite(output_stream->data, 1, output_stream->length, output) != output_stream->length) {
+          fatal("cannot write to file: %s", destination_file);
+        }
+
+        Stream_delete(input_stream);
+        Stream_delete(output_stream);
+
         fclose(input);
         fclose(output);
       }

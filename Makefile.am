@@ -28,6 +28,7 @@ jscoverage_SOURCES = instrument.c instrument.h \
                      instrument-js.c instrument-js.h \
                      main.c \
                      resource-manager.c resource-manager.h \
+                     stream.c stream.h \
                      util.c util.h \
                      $(resources)
 jscoverage_LDFLAGS = -static

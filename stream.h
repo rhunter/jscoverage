@@ -1,6 +1,6 @@
 /*
-    instrument-js.h - JavaScript instrumentation routines
-    Copyright (C) 2007, 2008 siliconforks.com
+    stream.h - `Stream' object
+    Copyright (C) 2008 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,21 +17,30 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef INSTRUMENT_JS_H_
-#define INSTRUMENT_JS_H_
+#ifndef STREAM_H_
+#define STREAM_H_
 
-#include "stream.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-enum FileType {
-  FILE_TYPE_JS,
-  FILE_TYPE_HTML,
-  FILE_TYPE_UNKNOWN,
-};
+typedef struct Stream {
+  void * data;
+  size_t length;
+  size_t capacity;
+} Stream;
 
-void jscoverage_init(void);
+Stream * Stream_new(size_t capacity);
 
-void jscoverage_cleanup(void);
+void Stream_write(Stream * stream, const void * p, size_t size);
 
-void jscoverage_instrument_js(const char * id, Stream * input, Stream * output);
+void Stream_write_string(Stream * stream, const char * s);
 
-#endif
+void Stream_write_char(Stream * stream, char c);
+
+void Stream_printf(Stream * stream, const char * format, ...) __attribute__((format(printf, 2, 3)));
+
+void Stream_write_file_contents(Stream * stream, FILE * f);
+
+void Stream_delete(Stream * stream);
+
+#endif /* STREAM_H_ */

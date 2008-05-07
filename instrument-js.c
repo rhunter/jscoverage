@@ -71,26 +71,26 @@ void jscoverage_cleanup(void) {
   JS_DestroyRuntime(runtime);
 }
 
-static void print_string(JSString * s, FILE * f) {
+static void print_string(JSString * s, Stream * f) {
   for (int i = 0; i < s->length; i++) {
     char c = s->chars[i];
-    fputc(c, f);
+    Stream_write_char(f, c);
   }
 }
 
-static void print_string_atom(JSAtom * atom, FILE * f) {
+static void print_string_atom(JSAtom * atom, Stream * f) {
   assert(ATOM_IS_STRING(atom));
   JSString * s = ATOM_TO_STRING(atom);
   print_string(s, f);
 }
 
-static void print_string_jsval(jsval value, FILE * f) {
+static void print_string_jsval(jsval value, Stream * f) {
   assert(JSVAL_IS_STRING(value));
   JSString * s = JSVAL_TO_STRING(value);
   print_string(s, f);
 }
 
-static void print_quoted_string_atom(JSAtom * atom, FILE * f) {
+static void print_quoted_string_atom(JSAtom * atom, Stream * f) {
   assert(ATOM_IS_STRING(atom));
   JSString * s = ATOM_TO_STRING(atom);
   JSString * quoted = js_QuoteString(context, s, '"');
@@ -142,10 +142,10 @@ static const char * get_op(uint8 op) {
   }
 }
 
-static void instrument_expression(JSParseNode * node, FILE * f);
-static void instrument_statement(JSParseNode * node, FILE * f, int indent);
+static void instrument_expression(JSParseNode * node, Stream * f);
+static void instrument_statement(JSParseNode * node, Stream * f, int indent);
 
-static void instrument_function(JSParseNode * node, FILE * f, int indent) {
+static void instrument_function(JSParseNode * node, Stream * f, int indent) {
     assert(node->pn_arity == PN_FUNC);
     assert(ATOM_IS_OBJECT(node->pn_funAtom));
     JSObject * object = ATOM_TO_OBJECT(node->pn_funAtom);
@@ -153,17 +153,17 @@ static void instrument_function(JSParseNode * node, FILE * f, int indent) {
     JSFunction * function = (JSFunction *) JS_GetPrivate(context, object);
     assert(function);
     assert(object == function->object);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "function");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "function");
 
     /* function name */
     if (function->atom) {
-      fputc(' ', f);
+      Stream_write_char(f, ' ');
       print_string_atom(function->atom, f);
     }
 
     /* function parameters */
-    fprintf(f, "(");
+    Stream_write_string(f, "(");
     JSAtom ** params = xmalloc(function->nargs * sizeof(JSAtom *));
     for (int i = 0; i < function->nargs; i++) {
       /* initialize to NULL for sanity check */
@@ -182,31 +182,31 @@ static void instrument_function(JSParseNode * node, FILE * f, int indent) {
     for (int i = 0; i < function->nargs; i++) {
       assert(params[i] != NULL);
       if (i > 0) {
-        fprintf(f, ", ");
+        Stream_write_string(f, ", ");
       }
       if (ATOM_IS_STRING(params[i])) {
         print_string_atom(params[i], f);
       }
     }
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     free(params);
 
     /* function body */
     instrument_statement(node->pn_body, f, indent + 2);
 
-    fprintf(f, "}\n");
+    Stream_write_string(f, "}\n");
 }
 
-static void instrument_function_call(JSParseNode * node, FILE * f) {
+static void instrument_function_call(JSParseNode * node, Stream * f) {
   instrument_expression(node->pn_head, f);
-  fputc('(', f);
+  Stream_write_char(f, '(');
   for (struct JSParseNode * p = node->pn_head->pn_next; p != NULL; p = p->pn_next) {
     if (p != node->pn_head->pn_next) {
-      fprintf(f, ", ");
+      Stream_write_string(f, ", ");
     }
     instrument_expression(p, f);
   }
-  fputc(')', f);
+  Stream_write_char(f, ')');
 }
 
 /*
@@ -222,7 +222,7 @@ There seem to be some undocumented expressions:
 TOK_INSTANCEOF  binary
 TOK_IN          binary
 */
-static void instrument_expression(JSParseNode * node, FILE * f) {
+static void instrument_expression(JSParseNode * node, Stream * f) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
     instrument_function(node, f, 0);
@@ -230,14 +230,14 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
   case TOK_COMMA:
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p != node->pn_head) {
-        fprintf(f, ", ");
+        Stream_write_string(f, ", ");
       }
       instrument_expression(p, f);
     }
     break;
   case TOK_ASSIGN:
     instrument_expression(node->pn_left, f);
-    fputc(' ', f);
+    Stream_write_char(f, ' ');
     switch (node->pn_op) {
     case JSOP_ADD:
     case JSOP_SUB:
@@ -250,30 +250,30 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     case JSOP_BITOR:
     case JSOP_BITXOR:
     case JSOP_DIV:
-      fprintf(f, "%s", get_op(node->pn_op));
+      Stream_printf(f, "%s", get_op(node->pn_op));
       break;
     default:
       /* do nothing - it must be a simple assignment */
       break;
     }
-    fprintf(f, "= ");
+    Stream_write_string(f, "= ");
     instrument_expression(node->pn_right, f);
     break;
   case TOK_HOOK:
     instrument_expression(node->pn_kid1, f);
-    fprintf(f, "? ");
+    Stream_write_string(f, "? ");
     instrument_expression(node->pn_kid2, f);
-    fprintf(f, ": ");
+    Stream_write_string(f, ": ");
     instrument_expression(node->pn_kid3, f);
     break;
   case TOK_OR:
     instrument_expression(node->pn_left, f);
-    fprintf(f, " || ");
+    Stream_write_string(f, " || ");
     instrument_expression(node->pn_right, f);
     break;
   case TOK_AND:
     instrument_expression(node->pn_left, f);
-    fprintf(f, " && ");
+    Stream_write_string(f, " && ");
     instrument_expression(node->pn_right, f);
     break;
   case TOK_BITOR:
@@ -289,13 +289,13 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     switch (node->pn_arity) {
     case PN_BINARY:
       instrument_expression(node->pn_left, f);
-      fprintf(f, " %s ", get_op(node->pn_op));
+      Stream_printf(f, " %s ", get_op(node->pn_op));
       instrument_expression(node->pn_right, f);
       break;
     case PN_LIST:
       for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
         if (p != node->pn_head) {
-          fprintf(f, " %s ", get_op(node->pn_op));
+          Stream_printf(f, " %s ", get_op(node->pn_op));
         }
         instrument_expression(p, f);
       }
@@ -307,27 +307,27 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
   case TOK_UNARYOP:
     switch (node->pn_op) {
     case JSOP_NEG:
-      fputc('-', f);
+      Stream_write_char(f, '-');
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_POS:
-      fputc('+', f);
+      Stream_write_char(f, '+');
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_NOT:
-      fputc('!', f);
+      Stream_write_char(f, '!');
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_BITNOT:
-      fputc('~', f);
+      Stream_write_char(f, '~');
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_TYPEOF:
-      fprintf(f, "typeof ");
+      Stream_write_string(f, "typeof ");
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_VOID:
-      fprintf(f, "void ");
+      Stream_write_string(f, "void ");
       instrument_expression(node->pn_kid, f);
       break;
     default:
@@ -344,26 +344,26 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     case JSOP_INCNAME:
     case JSOP_INCPROP:
     case JSOP_INCELEM:
-      fprintf(f, "++");
+      Stream_write_string(f, "++");
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_DECNAME:
     case JSOP_DECPROP:
     case JSOP_DECELEM:
-      fprintf(f, "--");
+      Stream_write_string(f, "--");
       instrument_expression(node->pn_kid, f);
       break;
     case JSOP_NAMEINC:
     case JSOP_PROPINC:
     case JSOP_ELEMINC:
       instrument_expression(node->pn_kid, f);
-      fprintf(f, "++");
+      Stream_write_string(f, "++");
       break;
     case JSOP_NAMEDEC:
     case JSOP_PROPDEC:
     case JSOP_ELEMDEC:
       instrument_expression(node->pn_kid, f);
-      fprintf(f, "--");
+      Stream_write_string(f, "--");
       break;
     default:
       abort();
@@ -371,11 +371,11 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     }
     break;
   case TOK_NEW:
-    fprintf(f, "new ");
+    Stream_write_string(f, "new ");
     instrument_function_call(node, f);
     break;
   case TOK_DELETE:
-    fprintf(f, "delete ");
+    Stream_write_string(f, "delete ");
     instrument_expression(node->pn_kid, f);
     break;
   case TOK_DOT:
@@ -390,30 +390,30 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
       JSString * s = ATOM_TO_STRING(node->pn_atom);
       /* XXX - semantics changed in 1.7 */
       if (! ATOM_KEYWORD(node->pn_atom) && js_IsIdentifier(s)) {
-        fputc('.', f);
+        Stream_write_char(f, '.');
         print_string_atom(node->pn_atom, f);
       }
       else {
-        fputc('[', f);
+        Stream_write_char(f, '[');
         print_quoted_string_atom(node->pn_atom, f);
-        fputc(']', f);
+        Stream_write_char(f, ']');
       }
     }
     break;
   case TOK_LB:
     instrument_expression(node->pn_left, f);
-    fputc('[', f);
+    Stream_write_char(f, '[');
     instrument_expression(node->pn_right, f);
-    fputc(']', f);
+    Stream_write_char(f, ']');
     break;
   case TOK_LP:
     instrument_function_call(node, f);
     break;
   case TOK_RB:
-    fputc('[', f);
+    Stream_write_char(f, '[');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p != node->pn_head) {
-        fprintf(f, ", ");
+        Stream_write_string(f, ", ");
       }
       /* TOK_COMMA is a special case: a hole in the array */
       if (p->pn_type != TOK_COMMA) {
@@ -421,27 +421,27 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
       }
     }
     if (node->pn_extra == PNX_ENDCOMMA) {
-      fputc(',', f);
+      Stream_write_char(f, ',');
     }
-    fputc(']', f);
+    Stream_write_char(f, ']');
     break;
   case TOK_RC:
-    fputc('{', f);
+    Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       assert(p->pn_type == TOK_COLON);
       if (p != node->pn_head) {
-        fprintf(f, ", ");
+        Stream_write_string(f, ", ");
       }
       instrument_expression(p->pn_left, f);
-      fprintf(f, ": ");
+      Stream_write_string(f, ": ");
       instrument_expression(p->pn_right, f);
     }
-    fputc('}', f);
+    Stream_write_char(f, '}');
     break;
   case TOK_RP:
-    fputc('(', f);
+    Stream_write_char(f, '(');
     instrument_expression(node->pn_kid, f);
-    fputc(')', f);
+    Stream_write_char(f, ')');
     break;
   case TOK_NAME:
     print_string_atom(node->pn_atom, f);
@@ -477,25 +477,25 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     To keep the output simple, special-case zero.
     */
     if (node->pn_dval == 0.0) {
-      fprintf(f, "0");
+      Stream_write_string(f, "0");
     }
     else {
-      fprintf(f, "%.15g", node->pn_dval);
+      Stream_printf(f, "%.15g", node->pn_dval);
     }
     break;
   case TOK_PRIMARY:
     switch (node->pn_op) {
     case JSOP_TRUE:
-      fprintf(f, "true");
+      Stream_write_string(f, "true");
       break;
     case JSOP_FALSE:
-      fprintf(f, "false");
+      Stream_write_string(f, "false");
       break;
     case JSOP_NULL:
-      fprintf(f, "null");
+      Stream_write_string(f, "null");
       break;
     case JSOP_THIS:
-      fprintf(f, "this");
+      Stream_write_string(f, "this");
       break;
     /* jsscan.h mentions `super' ??? */
     default:
@@ -504,12 +504,12 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
     break;
   case TOK_INSTANCEOF:
     instrument_expression(node->pn_left, f);
-    fprintf(f, " instanceof ");
+    Stream_write_string(f, " instanceof ");
     instrument_expression(node->pn_right, f);
     break;
   case TOK_IN:
     instrument_expression(node->pn_left, f);
-    fprintf(f, " in ");
+    Stream_write_string(f, " in ");
     instrument_expression(node->pn_right, f);
     break;
   default:
@@ -517,25 +517,25 @@ static void instrument_expression(JSParseNode * node, FILE * f) {
   }
 }
 
-static void instrument_var_statement(JSParseNode * node, FILE * f, int indent) {
+static void instrument_var_statement(JSParseNode * node, Stream * f, int indent) {
   assert(node->pn_arity == PN_LIST);
-  fprintf(f, "%*s", indent, "");
-  fprintf(f, "var ");
+  Stream_printf(f, "%*s", indent, "");
+  Stream_write_string(f, "var ");
   for (struct JSParseNode * p = node->pn_u.list.head; p != NULL; p = p->pn_next) {
     assert(p->pn_type == TOK_NAME);
     assert(p->pn_arity == PN_NAME);
     if (p != node->pn_head) {
-      fprintf(f, ", ");
+      Stream_write_string(f, ", ");
     }
     print_string_atom(p->pn_atom, f);
     if (p->pn_expr != NULL) {
-      fprintf(f, " = ");
+      Stream_write_string(f, " = ");
       instrument_expression(p->pn_expr, f);
     }
   }
 }
 
-static void output_statement(JSParseNode * node, FILE * f, int indent) {
+static void output_statement(JSParseNode * node, Stream * f, int indent) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
     instrument_function(node, f, indent);
@@ -543,49 +543,49 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
   case TOK_LC:
     assert(node->pn_arity == PN_LIST);
 /*
-    fprintf(f, "{\n");
+    Stream_write_string(f, "{\n");
 */
     for (struct JSParseNode * p = node->pn_u.list.head; p != NULL; p = p->pn_next) {
       instrument_statement(p, f, indent);
     }
 /*
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "}\n");
 */
     break;
   case TOK_IF:
     assert(node->pn_arity == PN_TERNARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "if (");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "if (");
     instrument_expression(node->pn_kid1, f);
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_kid2, f, indent + 2);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "}\n");
     if (node->pn_kid3) {
-      fprintf(f, "%*s", indent, "");
-      fprintf(f, "else {\n");
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "else {\n");
       instrument_statement(node->pn_kid3, f, indent + 2);
-      fprintf(f, "%*s", indent, "");
-      fprintf(f, "}\n");
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "}\n");
     }
     break;
   case TOK_SWITCH:
     assert(node->pn_arity == PN_BINARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "switch (");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "switch (");
     instrument_expression(node->pn_left, f);
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     for (struct JSParseNode * p = node->pn_right->pn_head; p != NULL; p = p->pn_next) {
-      fprintf(f, "%*s", indent, "");
+      Stream_printf(f, "%*s", indent, "");
       switch (p->pn_type) {
       case TOK_CASE:
-        fprintf(f, "case ");
+        Stream_write_string(f, "case ");
         instrument_expression(p->pn_left, f);
-        fprintf(f, ":\n");
+        Stream_write_string(f, ":\n");
         break;
       case TOK_DEFAULT:
-        fprintf(f, "default:\n");
+        Stream_write_string(f, "default:\n");
         break;
       default:
         abort();
@@ -593,8 +593,8 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
       }
       instrument_statement(p->pn_right, f, indent + 2);
     }
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "}\n");
     break;
   case TOK_CASE:
   case TOK_DEFAULT:
@@ -602,28 +602,28 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
     break;
   case TOK_WHILE:
     assert(node->pn_arity == PN_BINARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "while (");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "while (");
     instrument_expression(node->pn_left, f);
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_right, f, indent + 2);
-    fprintf(f, "}\n");
+    Stream_write_string(f, "}\n");
     break;
   case TOK_DO:
     assert(node->pn_arity == PN_BINARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "do {\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "do {\n");
     instrument_statement(node->pn_left, f, indent + 2);
-    fprintf(f, "}\n");
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "while (");
+    Stream_write_string(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "while (");
     instrument_expression(node->pn_right, f);
-    fprintf(f, ");\n");
+    Stream_write_string(f, ");\n");
     break;
   case TOK_FOR:
     assert(node->pn_arity == PN_BINARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "for (");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "for (");
     switch (node->pn_left->pn_type) {
     case TOK_IN:
       /* for/in */
@@ -646,7 +646,7 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
         break;
 */
       }
-      fprintf(f, " in ");
+      Stream_write_string(f, " in ");
       instrument_expression(node->pn_left->pn_right, f);
       break;
     case TOK_RESERVED:
@@ -660,14 +660,14 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
           instrument_expression(node->pn_left->pn_kid1, f);
         }
       }
-      fprintf(f, ";");
+      Stream_write_string(f, ";");
       if (node->pn_left->pn_kid2) {
-        fputc(' ', f);
+        Stream_write_char(f, ' ');
         instrument_expression(node->pn_left->pn_kid2, f);
       }
-      fprintf(f, ";");
+      Stream_write_string(f, ";");
       if (node->pn_left->pn_kid3) {
-        fputc(' ', f);
+        Stream_write_char(f, ' ');
         instrument_expression(node->pn_left->pn_kid3, f);
       }
       break;
@@ -675,46 +675,46 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
       abort();
       break;
     }
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_right, f, indent + 2);
-    fprintf(f, "}\n");
+    Stream_write_string(f, "}\n");
     break;
   case TOK_THROW:
     assert(node->pn_arity == PN_UNARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "throw ");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "throw ");
     instrument_expression(node->pn_u.unary.kid, f);
-    fprintf(f, ";\n");
+    Stream_write_string(f, ";\n");
     break;
   case TOK_TRY:
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "try {\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "try {\n");
     instrument_statement(node->pn_kid1, f, indent + 2);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "}\n");
     {
       for (JSParseNode * catch = node->pn_kid2; catch != NULL; catch = catch->pn_kid2) {
         assert(catch->pn_type == TOK_CATCH);
-        fprintf(f, "%*s", indent, "");
-        fprintf(f, "catch (");
+        Stream_printf(f, "%*s", indent, "");
+        Stream_write_string(f, "catch (");
         assert(catch->pn_kid1->pn_arity == PN_NAME);
         print_string_atom(catch->pn_kid1->pn_atom, f);
         if (catch->pn_kid1->pn_expr) {
-          fprintf(f, " if ");
+          Stream_write_string(f, " if ");
           instrument_expression(catch->pn_kid1->pn_expr, f);
         }
-        fprintf(f, ") {\n");
+        Stream_write_string(f, ") {\n");
         instrument_statement(catch->pn_kid3, f, indent + 2);
-        fprintf(f, "%*s", indent, "");
-        fprintf(f, "}\n");
+        Stream_printf(f, "%*s", indent, "");
+        Stream_write_string(f, "}\n");
       }
     }
     if (node->pn_kid3) {
-      fprintf(f, "%*s", indent, "");
-      fprintf(f, "finally {\n");
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "finally {\n");
       instrument_statement(node->pn_kid3, f, indent + 2);
-      fprintf(f, "%*s", indent, "");
-      fprintf(f, "}\n");
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "}\n");
     }
     break;
   case TOK_CATCH:
@@ -723,46 +723,46 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
   case TOK_BREAK:
   case TOK_CONTINUE:
     assert(node->pn_arity == PN_NAME || node->pn_arity == PN_NULLARY);
-    fprintf(f, "%*s", indent, "");
-    fputs(node->pn_type == TOK_BREAK? "break": "continue", f);
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, node->pn_type == TOK_BREAK? "break": "continue");
     JSAtom * atom = node->pn_u.name.atom;
     if (atom != NULL) {
-      fputc(' ', f);
+      Stream_write_char(f, ' ');
       print_string_atom(node->pn_atom, f);
     }
-    fprintf(f, ";\n");
+    Stream_write_string(f, ";\n");
     break;
   case TOK_WITH:
     assert(node->pn_arity == PN_BINARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "with (");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "with (");
     instrument_expression(node->pn_left, f);
-    fprintf(f, ") {\n");
+    Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_right, f, indent + 2);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "}\n");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "}\n");
     break;
   case TOK_VAR:
     instrument_var_statement(node, f, indent);
-    fprintf(f, ";\n");
+    Stream_write_string(f, ";\n");
     break;
   case TOK_RETURN:
     assert(node->pn_arity == PN_UNARY);
-    fprintf(f, "%*s", indent, "");
-    fprintf(f, "return");
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "return");
     if (node->pn_kid != NULL) {
-      fprintf(f, " ");
+      Stream_write_char(f, ' ');
       instrument_expression(node->pn_kid, f);
     }
-    fprintf(f, ";\n");
+    Stream_write_string(f, ";\n");
     break;
   case TOK_SEMI:
     assert(node->pn_arity == PN_UNARY);
-    fprintf(f, "%*s", indent, "");
+    Stream_printf(f, "%*s", indent, "");
     if (node->pn_kid != NULL) {
       instrument_expression(node->pn_kid, f);
     }
-    fprintf(f, ";\n");
+    Stream_write_string(f, ";\n");
     break;
   case TOK_COLON:
     assert(node->pn_arity == PN_NAME);
@@ -770,9 +770,9 @@ static void output_statement(JSParseNode * node, FILE * f, int indent) {
     This one is tricky: can't output instrumentation between the label and the
     statement it's supposed to label ...
     */
-    fprintf(f, "%*s", indent < 2? 0: indent - 2, "");
+    Stream_printf(f, "%*s", indent < 2? 0: indent - 2, "");
     print_string_atom(node->pn_atom, f);
-    fprintf(f, ":\n");
+    Stream_write_string(f, ":\n");
     /*
     ... use output_statement instead of instrument_statement.
     */
@@ -788,24 +788,29 @@ See <Statements> in jsparse.h.
 TOK_FUNCTION is handled as a statement and as an expression.
 TOK_EXPORT, TOK_IMPORT are not handled.
 */
-static void instrument_statement(JSParseNode * node, FILE * f, int indent) {
+static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
   if (node->pn_type != TOK_LC) {
     int line = node->pn_pos.begin.lineno;
     /* the root node has line number 0 */
     if (line != 0) {
-      fprintf(f, "%*s", indent, "");
-      fprintf(f, "_$jscoverage['%s'][%d]++;\n", file_id, line);
+      Stream_printf(f, "%*s", indent, "");
+      Stream_printf(f, "_$jscoverage['%s'][%d]++;\n", file_id, line);
       lines[line - 1] = 1;
     }
   }
   output_statement(node, f, indent);
 }
 
-static void instrument_js_stream(const char * id, int line, FILE * input, FILE * output, const char * temporary_file_name) {
+void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) {
   file_id = id;
 
   /* scan the javascript */
-  JSTokenStream * token_stream = js_NewFileTokenStream(context, NULL, input);
+  size_t input_length = input->length;
+  jschar * base = js_InflateString(context, input->data, &input_length);
+  if (base == NULL) {
+    fatal("out of memory");
+  }
+  JSTokenStream * token_stream = js_NewTokenStream(context, base, input_length, NULL, 1, NULL);
   if (token_stream == NULL) {
     fatal("cannot create token stream from file: %s", file_id);
   }
@@ -822,41 +827,36 @@ static void instrument_js_stream(const char * id, int line, FILE * input, FILE *
   }
 
   /*
-  Create a temporary file - we can't write directly to the output because we
-  need to know the line number info first.
+  An instrumented JavaScript file has 3 sections:
+  1. initialization
+  2. instrumented source code
+  3. original source code (TODO)
   */
-  FILE * temporary = fopen(temporary_file_name, "w+");
-  if (temporary == NULL) {
-    fatal("cannot create temporary file for script: %s", file_id);
-  }
 
-  /* write instrumented javascript to the temporary */
-  instrument_statement(node, temporary, 0);
+  Stream * instrumented = Stream_new(0);
+  instrument_statement(node, instrumented, 0);
 
   /* write line number info to the output */
-  fprintf(output, "/* automatically generated by JSCoverage - do not edit */\n");
-  fprintf(output, "if (! top._$jscoverage) {\n  top._$jscoverage = {};\n}\n");
-  fprintf(output, "var _$jscoverage = top._$jscoverage;\n");
-  fprintf(output, "if (! _$jscoverage['%s']) {\n", file_id);
-  fprintf(output, "  _$jscoverage['%s'] = [];\n", file_id);
+  Stream_write_string(output, "/* automatically generated by JSCoverage - do not edit */\n");
+  Stream_write_string(output, "if (! top._$jscoverage) {\n  top._$jscoverage = {};\n}\n");
+  Stream_write_string(output, "var _$jscoverage = top._$jscoverage;\n");
+  Stream_printf(output, "if (! _$jscoverage['%s']) {\n", file_id);
+  Stream_printf(output, "  _$jscoverage['%s'] = [];\n", file_id);
   for (int i = 0; i < num_lines; i++) {
     if (lines[i]) {
-      fprintf(output, "  _$jscoverage['%s'][%d] = 0;\n", file_id, i + 1);
+      Stream_printf(output, "  _$jscoverage['%s'][%d] = 0;\n", file_id, i + 1);
     }
   }
-  fprintf(output, "}\n");
+  Stream_write_string(output, "}\n");
   free(lines);
   lines = NULL;
 
-  /* copy the temporary to the output */
-  fseek(temporary, 0, SEEK_SET);
-  copy_stream(temporary, output);
+  /* copy the instrumented source code to the output */
+  Stream_write(output, instrumented->data, instrumented->length);
 
-  fclose(temporary);
+  Stream_delete(instrumented);
+
+  JS_free(context, base);
 
   file_id = NULL;
-}
-
-void jscoverage_instrument_js(const char * id, FILE * input, FILE * output, const char * temporary_file_name) {
-  instrument_js_stream(id, 0, input, output, temporary_file_name);
 }
