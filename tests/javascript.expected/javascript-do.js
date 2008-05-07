@@ -25,3 +25,14 @@ do {
   x = false;
 }
 while (x);
+
+// var x;
+// 
+// do {
+//   x = false;
+// }
+// while (x);
+// 
+// do
+//   x = false;
+// while (x);

@@ -12,3 +12,6 @@ _$jscoverage['javascript-hook.js'][1]++;
 var x = 1;
 _$jscoverage['javascript-hook.js'][2]++;
 var y = x === 1? "x": "y";
+
+// var x = 1;
+// var y = x === 1? "x": "y";

@@ -27,3 +27,13 @@ with (x) {
   _$jscoverage['javascript-with.js'][9]++;
   f();
 }
+
+// function f() {}
+// var x = {};
+// 
+// with (x) {
+//   f();
+// }
+// 
+// with (x)
+//   f();

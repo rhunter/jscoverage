@@ -15,3 +15,7 @@ _$jscoverage['javascript-number.js'][2]++;
 y = 2;
 _$jscoverage['javascript-number.js'][3]++;
 z = 10.5;
+
+// x = 1;
+// y = 2;
+// z = 10.5;

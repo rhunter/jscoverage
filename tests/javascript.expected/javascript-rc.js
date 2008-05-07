@@ -12,3 +12,11 @@ _$jscoverage['javascript-rc.js'][1]++;
 x = {x: y};
 _$jscoverage['javascript-rc.js'][4]++;
 x = {x: y, y: x};
+
+// x = {
+//   x: y
+// };
+// x = {
+//   x: y,
+//   y: x
+// };

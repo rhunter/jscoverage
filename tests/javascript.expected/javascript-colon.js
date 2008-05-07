@@ -10,3 +10,6 @@ if (! _$jscoverage['javascript-colon.js']) {
 _$jscoverage['javascript-colon.js'][1]++;
 x:
 y = 0;
+
+// x:
+//   y = 0;

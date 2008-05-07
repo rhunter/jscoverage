@@ -18,3 +18,10 @@ catch (e) {
   _$jscoverage['javascript-throw.js'][5]++;
   ;
 }
+
+// try {
+//   throw "x";
+// }
+// catch (e) {
+//   ;
+// }

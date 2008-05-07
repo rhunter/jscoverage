@@ -18,3 +18,8 @@ _$jscoverage['javascript-primary.js'][3]++;
 x = null;
 _$jscoverage['javascript-primary.js'][4]++;
 x = this;
+
+// x = true;
+// x = false;
+// x = null;
+// x = this;

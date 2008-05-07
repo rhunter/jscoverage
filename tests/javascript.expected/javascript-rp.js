@@ -9,3 +9,5 @@ if (! _$jscoverage['javascript-rp.js']) {
 }
 _$jscoverage['javascript-rp.js'][1]++;
 x = a + (b - c);
+
+// x = a + (b - c);

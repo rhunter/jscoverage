@@ -12,3 +12,6 @@ _$jscoverage['javascript-dec.js'][1]++;
 x--;
 _$jscoverage['javascript-dec.js'][2]++;
 --x;
+
+// x--;
+// --x;

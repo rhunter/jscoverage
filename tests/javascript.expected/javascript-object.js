@@ -9,3 +9,5 @@ if (! _$jscoverage['javascript-object.js']) {
 }
 _$jscoverage['javascript-object.js'][1]++;
 x = /x\(\)\\\//i;
+
+// x = /x\(\)\\\//i;

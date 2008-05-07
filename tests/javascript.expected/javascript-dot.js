@@ -18,3 +18,8 @@ _$jscoverage['javascript-dot.js'][3]++;
 x[y] = y[x];
 _$jscoverage['javascript-dot.js'][4]++;
 x["2y"] = y["var"];
+
+// x.y = y.x;
+// x["y"] = y["x"];
+// x[y] = y[x];
+// x['2y'] = y['var'];

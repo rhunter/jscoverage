@@ -48,3 +48,18 @@ _$jscoverage['javascript-assign.js'][13]++;
 x ^= y;
 _$jscoverage['javascript-assign.js'][14]++;
 x /= y;
+
+// var x = 1;
+// var y = 1;
+// x = y;
+// x += y;
+// x -= y;
+// x *= y;
+// x %= y;
+// x <<= y;
+// x >>= y;
+// x >>>= y;
+// x &= y;
+// x |= y;
+// x ^= y;
+// x /= y;

@@ -9,3 +9,5 @@ if (! _$jscoverage['1/1.js']) {
 }
 _$jscoverage['1/1.js'][1]++;
 alert("This is 1");
+
+// alert("This is 1");

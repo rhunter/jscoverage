@@ -9,3 +9,5 @@ if (! _$jscoverage['javascript-comma.js']) {
 }
 _$jscoverage['javascript-comma.js'][1]++;
 x = y, y = x;
+
+// x = y, y = x;

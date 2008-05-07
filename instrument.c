@@ -54,82 +54,6 @@ static enum FileType get_file_type(const char * file) {
   }
 }
 
-static void highlight_file(const char * source_file, const char * destination_file, const char * relative_path) {
-  int depth = 0;
-  for (const char * p = relative_path; *p != '\0'; p++) {
-    if (*p == '/' || *p == '\\') {
-      depth++;
-    }
-  }
-
-  enum FileType file_type = get_file_type(relative_path);
-  const char * suffix = ".jscoverage.html";
-  char * highlighted_file = xmalloc(strlen(destination_file) + strlen(suffix) + 1);
-  strcpy(highlighted_file, destination_file);
-  strcat(highlighted_file, suffix);
-
-  FILE * input = xfopen(source_file, "r");
-  FILE * output = xfopen(highlighted_file, "w");
-
-  free(highlighted_file);
-
-  char * relative_path_to_ancestor = xmalloc(depth * 3 + 1);
-  for (int i = 0; i < depth; i++) {
-    strcpy(relative_path_to_ancestor + i * 3, "../");
-  }
-  relative_path_to_ancestor[depth * 3] = '\0';
-
-  fprintf(output, "<html><head><title>%s</title>\n", relative_path);
-  fprintf(output, "<link rel=\"stylesheet\" type='text/css' href='%sjscoverage.css'>\n", relative_path_to_ancestor);
-  fprintf(output, "<link rel=\"stylesheet\" type='text/css' href='%sjscoverage-sh_nedit.css'>\n", relative_path_to_ancestor);
-  fprintf(output, "<script src=\"%sjscoverage.js\"></script>\n", relative_path_to_ancestor);
-  fprintf(output, "<script src=\"%sjscoverage-sh_main.js\"></script>\n", relative_path_to_ancestor);
-  fprintf(output, "<script src=\"%sjscoverage-sh_javascript.js\"></script>\n", relative_path_to_ancestor);
-  fprintf(output, "<script>\n");
-  fprintf(output, "var gCurrentFile = \"%s\";\n", relative_path);
-  fprintf(output, "</script>\n");
-  fprintf(output, "</head><body onload=\"source_load();\">\n");
-  fprintf(output, "<h1>%s</h1>\n", relative_path);
-  fprintf(output, "<pre id=\"sourceDiv\" class='sh_%s'>", file_type == FILE_TYPE_JS? "javascript": "html");
-  free(relative_path_to_ancestor);
-
-  int c;
-  int atLineStart = 1;
-  int line = 1;
-  while ((c = fgetc(input)) != EOF) {
-    if (atLineStart) {
-      atLineStart = 0;
-    }
-
-    if (c == '<') {
-      fprintf(output, "&lt;");
-    }
-    else if (c == '>') {
-      fprintf(output, "&gt;");
-    }
-    else if (c == '&') {
-      fprintf(output, "&amp;");
-    }
-    else {
-      if (c == '\n') {
-        line++;
-        atLineStart = 1;
-      }
-      fputc(c, output);
-    }
-  }
-  fprintf(output, "</pre></body></html>\n");
-
-  fclose(output);
-  fclose(input);
-
-  suffix = ".jscoverage.js";
-  char original_file[strlen(destination_file) + strlen(suffix) + 1];
-  strcpy(original_file, destination_file);
-  strcat(original_file, suffix);
-  copy_file(source_file, original_file);
-}
-
 static void check_same_file(const char * file1, const char * file2) {
   if (is_same_file(file1, file2)) {
     fatal("source and destination are the same");
@@ -183,7 +107,6 @@ static void instrument_file(const char * source_file, const char * destination_f
         fclose(input);
         fclose(output);
       }
-      highlight_file(source_file, destination_file, id);
       break;
     }
   }

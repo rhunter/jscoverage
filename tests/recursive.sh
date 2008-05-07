@@ -25,9 +25,6 @@ export PATH=.:..:$PATH
 rm -fr DIR
 rm -fr EXPECTED
 cp -r recursive.expected EXPECTED
-cp recursive/script.js EXPECTED/script.js.jscoverage.js
-cp recursive/1/1.js EXPECTED/1/1.js.jscoverage.js
-cp recursive/1/2/2.js EXPECTED/1/2/2.js.jscoverage.js
 find EXPECTED -name .svn | xargs rm -fr
 cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
 

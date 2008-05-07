@@ -853,6 +853,40 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
 
   /* copy the instrumented source code to the output */
   Stream_write(output, instrumented->data, instrumented->length);
+  Stream_write_char(output, '\n');
+
+  /* copy the original source to the output */
+  size_t i = 0;
+  while (i < input_length) {
+    Stream_write_string(output, "// ");
+    size_t line_start = i;
+    while (i < input_length && base[i] != '\r' && base[i] != '\n') {
+      i++;
+    }
+
+    size_t line_end = i;
+    if (i < input_length) {
+      if (base[i] == '\r') {
+        line_end = i;
+        i++;
+        if (i < input_length && base[i] == '\n') {
+          i++;
+        }
+      }
+      else if (base[i] == '\n') {
+        line_end = i;
+        i++;
+      }
+      else {
+        abort();
+      }
+    }
+
+    char * line = js_DeflateString(context, base + line_start, line_end - line_start);
+    Stream_write_string(output, line);
+    Stream_write_char(output, '\n');
+    JS_free(context, line);
+  }
 
   Stream_delete(instrumented);
 

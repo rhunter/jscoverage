@@ -662,6 +662,23 @@ function httpError(file) {
   endLengthyOperation();
 }
 
+function getOriginalSource(instrumentedSource) {
+  var index = instrumentedSource.search(/^\/\/ /m);
+  if (index === -1) {
+    throw "FIXME";
+  }
+  var lines = instrumentedSource.substr(index).split('\n');
+  var numLines = lines.length;
+  var i, line;
+  for (i = 0; i < lines.length; i++) {
+    line = lines[i];
+    if (line !== '') {
+      lines[i] = line.substr(3);
+    }
+  }
+  return lines.join('\n');
+}
+
 /**
 Loads the given file (and optional line) in the source tab.
 */
@@ -696,11 +713,12 @@ function get(file, line) {
       else {
         request = new XMLHttpRequest();
       }
-      request.open("GET", file + ".jscoverage.js", true);
+      request.open("GET", file, true);
       request.onreadystatechange = function(event) {
         if (request.readyState === 4) {
           if (request.status === 0 || request.status === 200) {
             var response = request.responseText;
+            response = getOriginalSource(response);
             // opera returns status zero even if there is a missing file???
             if (response === '') {
               httpError(file);

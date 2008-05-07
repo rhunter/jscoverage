@@ -16,3 +16,10 @@ if ("a" < "b" && "a" > "b") {
   _$jscoverage['script.js'][5]++;
   alert("?");
 }
+
+// alert("hello");
+// 
+// // test formatting &lt; &gt; &amp;
+// if ('a' < 'b' && 'a' > 'b') {
+//   alert("?");
+// }

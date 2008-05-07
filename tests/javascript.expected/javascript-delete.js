@@ -9,3 +9,5 @@ if (! _$jscoverage['javascript-delete.js']) {
 }
 _$jscoverage['javascript-delete.js'][1]++;
 delete x;
+
+// delete x;

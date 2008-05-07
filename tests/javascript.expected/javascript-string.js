@@ -30,3 +30,12 @@ _$jscoverage['javascript-string.js'][7]++;
 x = "\b\t\n\v\f\r\"'\\";
 _$jscoverage['javascript-string.js'][8]++;
 x = new RegExp("x\\(\\)\\\\\\/");
+
+// x = "";
+// x = '';
+// x = "x";
+// x = 'x';
+// x = "\"";
+// x = '\'';
+// x = "\b\t\n\v\f\r\"\'\\";
+// x = new RegExp('x\\(\\)\\\\\\/');

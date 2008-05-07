@@ -24,3 +24,10 @@ _$jscoverage['javascript-unaryop.js'][5]++;
 x = typeof x;
 _$jscoverage['javascript-unaryop.js'][6]++;
 x = void x;
+
+// x = -x;
+// x = +x;
+// x = !x;
+// x = ~x;
+// x = typeof x;
+// x = void x;

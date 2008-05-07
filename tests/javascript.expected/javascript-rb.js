@@ -21,3 +21,9 @@ _$jscoverage['javascript-rb.js'][4]++;
 x = [x, y,];
 _$jscoverage['javascript-rb.js'][5]++;
 x = [x, , y];
+
+// x = [];
+// x = [x];
+// x = [x, y];
+// x = [x, y,];
+// x = [x,, y];

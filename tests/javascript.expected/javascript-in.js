@@ -16,3 +16,8 @@ if ("a" in x) {
   _$jscoverage['javascript-in.js'][3]++;
   x = null;
 }
+
+// var x = {};
+// if ('a' in x) {
+//   x = null;
+// }

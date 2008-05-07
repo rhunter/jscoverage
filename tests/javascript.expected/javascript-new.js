@@ -19,3 +19,8 @@ _$jscoverage['javascript-new.js'][3]++;
 x = new X(1);
 _$jscoverage['javascript-new.js'][4]++;
 x = new X(1, 2);
+
+// function X() {}
+// x = new X();
+// x = new X(1);
+// x = new X(1, 2);

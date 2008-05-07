@@ -12,3 +12,6 @@ _$jscoverage['javascript-inc.js'][1]++;
 x++;
 _$jscoverage['javascript-inc.js'][2]++;
 ++x;
+
+// x++;
+// ++x;

@@ -6,3 +6,4 @@ var _$jscoverage = top._$jscoverage;
 if (! _$jscoverage['javascript-empty.js']) {
   _$jscoverage['javascript-empty.js'] = [];
 }
+

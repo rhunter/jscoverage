@@ -9,3 +9,5 @@ if (! _$jscoverage['1/2/2.js']) {
 }
 _$jscoverage['1/2/2.js'][1]++;
 alert("This is 2");
+
+// alert("This is 2");

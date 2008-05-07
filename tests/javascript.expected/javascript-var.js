@@ -12,3 +12,6 @@ _$jscoverage['javascript-var.js'][1]++;
 var x;
 _$jscoverage['javascript-var.js'][2]++;
 var y = x, z = x;
+
+// var x;
+// var y = x, z = x;
