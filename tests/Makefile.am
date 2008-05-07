@@ -15,13 +15,13 @@
 #     with this program; if not, write to the Free Software Foundation, Inc.,
 #     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-AM_CFLAGS = -Wall -I..
-
-noinst_PROGRAMS = recursive-dir-list mkdirs
+noinst_PROGRAMS = recursive-dir-list mkdirs streams
 
 recursive_dir_list_SOURCES = recursive-dir-list.c ../util.c
 
 mkdirs_SOURCES = mkdirs.c ../util.c
+
+streams_SOURCES = streams.c ../stream.c ../util.c
 
 TESTS = fatal.sh \
         help.sh \
@@ -34,4 +34,5 @@ TESTS = fatal.sh \
         same-directory.sh \
         version.sh \
         mkdirs.sh \
-        recursive-dir-list.sh
+        recursive-dir-list.sh \
+        streams.sh
