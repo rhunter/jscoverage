@@ -53,6 +53,14 @@ void * xmalloc(size_t size) {
   return result;
 }
 
+void * xrealloc(void * p, size_t size) {
+  void * result = realloc(p, size);
+  if (result == NULL) {
+    fatal("out of memory");
+  }
+  return result;
+}
+
 char * xstrdup(const char * s) {
   char * result = strdup(s);
   if (result == NULL) {
