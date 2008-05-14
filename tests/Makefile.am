@@ -15,11 +15,13 @@
 #     with this program; if not, write to the Free Software Foundation, Inc.,
 #     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-noinst_PROGRAMS = recursive-dir-list mkdirs streams
+noinst_PROGRAMS = asprintf mkdirs recursive-dir-list streams
 
-recursive_dir_list_SOURCES = recursive-dir-list.c ../util.c
+asprintf_SOURCES = asprintf.c ../util.c
 
 mkdirs_SOURCES = mkdirs.c ../util.c
+
+recursive_dir_list_SOURCES = recursive-dir-list.c ../util.c
 
 streams_SOURCES = streams.c ../stream.c ../util.c
 
@@ -33,6 +35,7 @@ TESTS = fatal.sh \
         recursive-no-instrument.sh \
         same-directory.sh \
         version.sh \
+        asprintf.sh \
         mkdirs.sh \
         recursive-dir-list.sh \
         streams.sh
