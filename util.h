@@ -20,6 +20,11 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <config.h>
+
+#ifndef HAVE_VASPRINTF
+#include <stdarg.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -77,5 +82,14 @@ struct DirListEntry {
 struct DirListEntry * make_recursive_dir_list(const char * directory);
 
 void free_dir_list(struct DirListEntry * list);
+
+#ifndef HAVE_VASPRINTF
+int vasprintf(char ** s, const char * template, va_list a);
+#endif
+
+#ifndef HAVE_ASPRINTF
+int asprintf(char ** s, const char * template, ...)
+  __attribute__((__format__(printf, 2, 3)));
+#endif
 
 #endif

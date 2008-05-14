@@ -19,10 +19,22 @@ AC_PREREQ(2.61)
 AC_INIT([jscoverage], [0.3.1])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([main.c])
+AC_CONFIG_HEADERS([config.h])
+
+# Checks for programs.
 AC_PROG_CC
 AC_PROG_CC_C99
 AC_PROG_LIBTOOL
-AC_CONFIG_HEADERS([config.h])
+
+# Checks for libraries.
+
+# Checks for header files.
+
+# Checks for typedefs, structures, and compiler characteristics.
+
+# Checks for library functions.
+AC_CHECK_FUNCS([vasprintf asprintf])
+
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([js])
 AC_OUTPUT

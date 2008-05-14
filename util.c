@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -346,3 +347,68 @@ void free_dir_list(struct DirListEntry * list) {
     list = next;
   }
 }
+
+#ifndef HAVE_VASPRINTF
+int vasprintf(char ** s, const char * template, va_list a) {
+  int size = 100;
+  *s = malloc(size);
+  if (*s == NULL) {
+    return -1;
+  }
+
+  va_list copy;
+  va_copy(copy, a);
+  int result = vsnprintf(*s, size, template, copy);
+  if (result >= size) {
+    /* TODO: check for overflow? */
+    int new_size = result;
+    if (new_size == INT_MAX) {
+      free(*s);
+      return - 1;
+    }
+    new_size++;
+    char * new_s = realloc(*s, new_size);
+    if (new_s == NULL) {
+      free(*s);
+      return -1;
+    }
+    *s = new_s;
+    size = new_size;
+    va_copy(copy, a);
+    result = vsnprintf(*s, size, template, copy);
+    assert(result == size - 1);
+  }
+  else if (result == -1) {
+    while (result == -1) {
+      if (size > INT_MAX / 2) {
+        free(*s);
+        return - 1;
+      }
+      int new_size = 2 * size;
+      char * new_s = realloc(*s, new_size);
+      if (new_s == NULL) {
+        free(*s);
+        return -1;
+      }
+      *s = new_s;
+      size = new_size;
+      va_copy(copy, a);
+      result = vsnprintf(*s, size, template, copy);
+    }
+    assert(result <= size - 1);
+  }
+
+  return result;
+}
+#endif
+
+#ifndef HAVE_ASPRINTF
+int asprintf(char ** s, const char * template, ...) {
+  va_list a;
+  va_start(a, template);
+  int result = vasprintf(s, template, a);
+  va_end(a);
+  return result;
+}
+#endif
+
