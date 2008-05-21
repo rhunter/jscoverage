@@ -59,7 +59,7 @@ void Stream_write(Stream * stream, const void * p, size_t size) {
   }
 
   if (new_capacity != stream->capacity) {
-    stream->data = xrealloc(stream->data, stream->capacity);
+    stream->data = xrealloc(stream->data, new_capacity);
     stream->capacity = new_capacity;
   }
 
