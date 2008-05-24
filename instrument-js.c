@@ -72,7 +72,7 @@ void jscoverage_cleanup(void) {
 }
 
 static void print_string(JSString * s, Stream * f) {
-  for (int i = 0; i < s->length; i++) {
+  for (size_t i = 0; i < s->length; i++) {
     char c = s->chars[i];
     Stream_write_char(f, c);
   }
