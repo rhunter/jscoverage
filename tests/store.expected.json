@@ -1,0 +1,14 @@
+{
+  "@PREFIX@script.js":{
+    "coverage":[null,1,null,null,1,0],
+    "source":"alert(\"hello\");\n\n// test formatting &lt; &gt; &amp;\nif ('a' < 'b' && 'a' > 'b') {\n  alert(\"?\");\n}\n"
+  },
+  "@PREFIX@1/1.js":{
+    "coverage":[null,1],
+    "source":"alert(\"This is 1\");\n"
+  },
+  "@PREFIX@1/2/2.js":{
+    "coverage":[null,1],
+    "source":"alert(\"This is 2\");\n"
+  }
+}

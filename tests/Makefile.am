@@ -15,9 +15,36 @@
 #     with this program; if not, write to the Free Software Foundation, Inc.,
 #     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-noinst_PROGRAMS = asprintf mkdirs recursive-dir-list streams
+noinst_PROGRAMS = asprintf \
+                  gethostbyname \
+                  http-client-bad-body \
+                  http-client-bad-url \
+                  http-client-close-after-request \
+                  http-server-bad-body \
+                  http-server-bad-headers \
+                  http-server-chunked \
+                  http-server-close-immediately \
+                  json \
+                  mkdirs \
+                  recursive-dir-list \
+                  streams
 
 asprintf_SOURCES = asprintf.c ../util.c
+
+gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
+
+http_client_bad_body_SOURCES = http-client-bad-body.c ../http-url.c ../stream.c ../util.c
+
+http_client_bad_url_SOURCES = http-client-bad-url.c ../util.c
+
+http_server_bad_headers_SOURCES = http-server-bad-headers.c ../stream.c ../util.c
+
+http_server_chunked_SOURCES = http-server-chunked.c ../stream.c ../util.c
+
+json_SOURCES = json.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
+json_CPPFLAGS = -I../js/src
+json_LDFLAGS = -static
+json_LDADD = ../js/libjs.la -lm
 
 mkdirs_SOURCES = mkdirs.c ../util.c
 
@@ -31,6 +58,7 @@ TESTS = fatal.sh \
         javascript.sh \
         no-arguments.sh \
         recursive.sh \
+        recursive-crlf.sh \
         recursive-fatal.sh \
         recursive-no-instrument.sh \
         same-directory.sh \
@@ -38,4 +66,39 @@ TESTS = fatal.sh \
         asprintf.sh \
         mkdirs.sh \
         recursive-dir-list.sh \
-        streams.sh
+        streams.sh \
+        chunked.sh \
+        gethostbyname.sh \
+        json.sh \
+        proxy.sh \
+        proxy-bad-request-body.sh \
+        proxy-bad-response-body.sh \
+        proxy-bad-response-body-javascript.sh \
+        proxy-bad-response-headers.sh \
+        proxy-no-server.sh \
+        proxy-url.sh \
+        server.sh \
+        server-close-after-request.sh \
+        server-content-types.sh \
+        server-directory-listing.sh \
+        server-directory-redirect.sh \
+        server-error.sh \
+        server-help.sh \
+        server-ip-address.sh \
+        server-shutdown.sh \
+        server-shutdown-bad-method.sh \
+        server-special-file.sh \
+        server-unreadable-directory.sh \
+        server-unreadable-file.sh \
+        server-version.sh \
+        server-verbose.sh \
+        store.sh \
+        store-bad-json.sh \
+        store-bad-request-body.sh \
+        store-bad-response-headers.sh \
+        store-escaped-characters.sh \
+        store-server-closes-immediately.sh \
+        store-server-bad-body.sh \
+        store-source-not-found.sh \
+        store-unreadable-json.sh \
+        store-unwritable-json.sh
