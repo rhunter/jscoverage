@@ -17,6 +17,10 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#define _GNU_SOURCE
+
+#include <config.h>
+
 #include "util.h"
 
 #include <assert.h>
@@ -24,6 +28,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <strings.h>
 
@@ -46,6 +51,23 @@ void fatal(const char * format, ...) {
   exit(EXIT_FAILURE);
 }
 
+size_t addst(size_t x, size_t y) {
+  if (SIZE_MAX - x < y) {
+    fatal("integer overflow");
+  }
+  return x + y;
+}
+
+size_t mulst(size_t x, size_t y) {
+  if (x == 0 || y == 0) {
+    return 0;
+  }
+  if (SIZE_MAX / x < y) {
+    fatal("integer overflow");
+  }
+  return x * y;
+}
+
 void * xmalloc(size_t size) {
   void * result = malloc(size);
   if (result == NULL) {
@@ -65,6 +87,25 @@ void * xrealloc(void * p, size_t size) {
 char * xstrdup(const char * s) {
   char * result = strdup(s);
   if (result == NULL) {
+    fatal("out of memory");
+  }
+  return result;
+}
+
+char * xstrndup(const char * s, size_t size) {
+  char * result = strndup(s, size);
+  if (result == NULL) {
+    fatal("out of memory");
+  }
+  return result;
+}
+
+int xasprintf(char ** s, const char * template, ...) {
+  va_list a;
+  va_start(a, template);
+  int result = vasprintf(s, template, a);
+  va_end(a);
+  if (result < 0) {
     fatal("out of memory");
   }
   return result;
@@ -158,10 +199,37 @@ void xchdir(const char * directory) {
   }
 }
 
+bool str_starts_with(const char * string, const char * prefix) {
+  const char * string_ptr = string;
+  const char * prefix_ptr = prefix;
+  while (*string_ptr != '\0' && *prefix_ptr != '\0') {
+    if (*string_ptr != *prefix_ptr) {
+      return false;
+    }
+    string_ptr++;
+    prefix_ptr++;
+  }
+  if (*string_ptr == '\0' && *prefix_ptr != '\0') {
+    return false;
+  }
+  return true;
+}
+
+bool str_ends_with(const char * string, const char * suffix) {
+  size_t string_length = strlen(string);
+  size_t suffix_length = strlen(suffix);
+  if (string_length < suffix_length) {
+    return false;
+  }
+  return strcmp(string + string_length - suffix_length, suffix) == 0;
+}
+
 char * make_path(const char * parent, const char * relative_path) {
   size_t parent_length = strlen(parent);
   size_t relative_path_length = strlen(relative_path);
-  char * result = xmalloc(parent_length + relative_path_length + 2);
+  size_t result_length = addst(parent_length, relative_path_length);
+  result_length = addst(result_length, 2);
+  char * result = xmalloc(result_length);
   strcpy(result, parent);
   result[parent_length] = '/';
   strcpy(result + parent_length + 1, relative_path);
@@ -288,18 +356,19 @@ void copy_file(const char * source_file, const char * destination_file) {
   fclose(destination);
 }
 
-int directory_is_empty(const char * directory) {
+bool directory_is_empty(const char * directory) {
+  bool result = true;
   DIR * dir = xopendir(directory);
-  int num_entries = 0;
   struct dirent * e;
   while ((e = readdir(dir)) != NULL) {
     if (strcmp(e->d_name, ".") != 0 &&
         strcmp(e->d_name, "..") != 0) {
-      num_entries++;
+      result = false;
+      break;
     }
   }
   closedir(dir);
-  return num_entries == 0;
+  return result;
 }
 
 static struct DirListEntry * recursive_dir_list(const char * root, const char * directory_wrt_root, struct DirListEntry * head) {
@@ -348,6 +417,12 @@ void free_dir_list(struct DirListEntry * list) {
   }
 }
 
+#ifndef HAVE_CLOSESOCKET
+int closesocket(int s) {
+  return close(s);
+}
+#endif
+
 #ifndef HAVE_VASPRINTF
 int vasprintf(char ** s, const char * template, va_list a) {
   int size = 100;
@@ -360,11 +435,10 @@ int vasprintf(char ** s, const char * template, va_list a) {
   va_copy(copy, a);
   int result = vsnprintf(*s, size, template, copy);
   if (result >= size) {
-    /* TODO: check for overflow? */
     int new_size = result;
     if (new_size == INT_MAX) {
       free(*s);
-      return - 1;
+      return -1;
     }
     new_size++;
     char * new_s = realloc(*s, new_size);
@@ -380,11 +454,17 @@ int vasprintf(char ** s, const char * template, va_list a) {
   }
   else if (result == -1) {
     while (result == -1) {
-      if (size > INT_MAX / 2) {
+      if (size == INT_MAX) {
         free(*s);
-        return - 1;
+        return -1;
       }
-      int new_size = 2 * size;
+      int new_size;
+      if (size > INT_MAX / 2) {
+        new_size = INT_MAX;
+      }
+      else {
+        new_size = 2 * size;
+      }
       char * new_s = realloc(*s, new_size);
       if (new_s == NULL) {
         free(*s);
@@ -411,4 +491,3 @@ int asprintf(char ** s, const char * template, ...) {
   return result;
 }
 #endif
-

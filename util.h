@@ -20,11 +20,10 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <config.h>
-
 #ifndef HAVE_VASPRINTF
 #include <stdarg.h>
 #endif
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -36,11 +35,21 @@ void fatal(const char * format, ...)
   __attribute__((__noreturn__))
   __attribute__((__format__(printf, 1, 2)));
 
+size_t addst(size_t x, size_t y);
+
+size_t mulst(size_t x, size_t y);
+
 void * xmalloc(size_t size);
+
+#define xnew(type, count) ((type *) xmalloc(mulst((count), sizeof(type))))
 
 void * xrealloc(void * p, size_t size);
 
 char * xstrdup(const char * s);
+
+char * xstrndup(const char * s, size_t size);
+
+int xasprintf(char ** s, const char * template, ...) __attribute__((__format__(printf, 2, 3)));
 
 char * xgetcwd(void);
 
@@ -55,6 +64,10 @@ void xmkdir(const char * directory);
 void mkdir_if_necessary(const char * directory);
 
 void mkdirs(const char * path);
+
+bool str_starts_with(const char * string, const char * prefix);
+
+bool str_ends_with(const char * string, const char * suffix);
 
 char * make_path(const char * parent, const char * relative_path);
 
@@ -72,7 +85,7 @@ void copy_stream(FILE * source, FILE * destination);
 
 void copy_file(const char * source_file, const char * destination_file);
 
-int directory_is_empty(const char * directory);
+bool directory_is_empty(const char * directory);
 
 struct DirListEntry {
   char * name;
@@ -83,13 +96,16 @@ struct DirListEntry * make_recursive_dir_list(const char * directory);
 
 void free_dir_list(struct DirListEntry * list);
 
+#ifndef HAVE_CLOSESOCKET
+int closesocket(int s);
+#endif
+
 #ifndef HAVE_VASPRINTF
 int vasprintf(char ** s, const char * template, va_list a);
 #endif
 
 #ifndef HAVE_ASPRINTF
-int asprintf(char ** s, const char * template, ...)
-  __attribute__((__format__(printf, 2, 3)));
+int asprintf(char ** s, const char * template, ...) __attribute__((__format__(printf, 2, 3)));
 #endif
 
 #endif
