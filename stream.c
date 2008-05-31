@@ -19,6 +19,8 @@
 
 #define _GNU_SOURCE
 
+#include <config.h>
+
 #include "stream.h"
 
 #include <stdarg.h>
@@ -102,4 +104,8 @@ void Stream_write_file_contents(Stream * stream, FILE * f) {
 void Stream_delete(Stream * stream) {
   free(stream->data);
   free(stream);
+}
+
+void Stream_reset(Stream * stream) {
+  stream->length = 0;
 }

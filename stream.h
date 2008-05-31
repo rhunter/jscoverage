@@ -21,10 +21,11 @@
 #define STREAM_H_
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 typedef struct Stream {
-  void * data;
+  uint8_t * data;
   size_t length;
   size_t capacity;
 } Stream;
@@ -40,6 +41,8 @@ void Stream_write_char(Stream * stream, char c);
 void Stream_printf(Stream * stream, const char * format, ...) __attribute__((format(printf, 2, 3)));
 
 void Stream_write_file_contents(Stream * stream, FILE * f);
+
+void Stream_reset(Stream * stream);
 
 void Stream_delete(Stream * stream);
 
