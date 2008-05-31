@@ -27,6 +27,15 @@
 #include "util.h"
 
 int xgethostbyname(const char * host, struct in_addr * a) {
+#ifdef __CYGWIN__
+  /* cygwin's gethostbyname is thread-safe */
+  struct hostent * p = gethostbyname(host);
+  if (p == NULL || p->h_addrtype != AF_INET) {
+    return -1;
+  }
+  *a = *((struct in_addr *) p->h_addr);
+  return 0;
+#else
   struct hostent h;
   struct hostent * p;
   char * buffer;
@@ -47,4 +56,5 @@ int xgethostbyname(const char * host, struct in_addr * a) {
   *a = *((struct in_addr *) p->h_addr);
   free(buffer);
   return 0;
+#endif
 }
