@@ -9,19 +9,31 @@
 <h1>JSCoverage user manual</h1>
 
 <p>
-JSCoverage is a tool used to measure code coverage in JavaScript
-programs.
+JSCoverage is a tool used to measure code coverage in JavaScript programs.
 </p>
 
 <p>
-JSCoverage has two components:
+JSCoverage works by adding instrumentation to JavaScript code before it is
+executed in a web browser.  JSCoverage provides several alternative ways of doing
+this:
 </p>
 
-<ol>
-<li>An executable program which is used to add instrumentation to JavaScript code.
-<li>A web application which is used to execute instrumented code and generate a
-code coverage report.
-</ol>
+<ul>
+<li>The simplest method is to use the <code>jscoverage</code> program to generate
+instrumented JavaScript files.
+</li>
+<li>Alternatively, you can use the <code>jscoverage-server</code> program, a simple web server that instruments
+JavaScript code as it is served.
+</li>
+<li>Finally, <code>jscoverage-server</code> can be run with the <code>--proxy</code> option to
+act as a proxy server which instruments any JavaScript code proxied through it.
+</li>
+</ul>
+
+<p>
+The <code>jscoverage-server</code> program (with or without the <code>--proxy</code>
+option) has the advantage of being able to store coverage reports to the filesystem.
+</p>
 
 <h2>Installing JSCoverage</h2>
 
@@ -36,15 +48,17 @@ You can extract and compile the code with the following commands:
 </p>
 
 <pre>
-tar jxvf jscoverage-0.3.1.tar.bz2
-cd jscoverage-0.3.1/
+tar jxvf jscoverage-0.4.tar.bz2
+cd jscoverage-0.4/
 ./configure
 make
 </pre>
 
 <p>
-This will create the <code>jscoverage</code> executable (<code>jscoverage.exe</code> on Windows).
-You can install the executable in <code>/usr/local</code> with the command:
+This will create the <code>jscoverage</code> and <code>jscoverage-server</code>
+executables (<code>jscoverage.exe</code> and <code>jscoverage-server.exe</code>
+on Windows). You can install the executables in <code>/usr/local</code> with the
+command:
 </p>
 
 <pre>
@@ -52,22 +66,22 @@ make install
 </pre>
 
 <p>
-Alternatively, since the program consists of only the single self-contained
-<code>jscoverage</code> executable, you may simply copy it to a suitable location
-in your <code>PATH</code>.
+Alternatively, you may simply copy the <code>jscoverage</code> executable and/or
+the <code>jscoverage-server</code> executable to a suitable location in your
+<code>PATH</code>.
 </p>
 
-<h2>Using JSCoverage</h2>
+<h2>Using the <code>jscoverage</code> program</h2>
 
 <p>
-Using JSCoverage requires three steps:
+Using the <code>jscoverage</code> program requires the following steps:
 </p>
 
 <h3>1. Instrumenting code</h3>
 
 <p>
-The first step is to add instrumentation to your JavaScript code.  This is the function of the
-<code>jscoverage</code> executable.  You must provide two arguments:
+The first step is to add instrumentation to your JavaScript code.  You do this by
+executing <code>jscoverage</code> with two arguments:
 </p>
 
 <pre>
@@ -118,7 +132,7 @@ In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html
 which is used to execute the instrumented code.
 </p>
 
-<h3>2. Running instrumented code in the web application</h3>
+<h3>2. Executing the instrumented code in a web browser</h3>
 
 <p>
 Open <code>jscoverage.html</code> in your web browser.
@@ -147,7 +161,7 @@ from outside <code><var>DESTINATION-DIRECTORY</var>/</code>, or from a foreign w
 server, will give unexpected results.
 </p>
 
-<h3>3. Generating the coverage report</h3>
+<h3>3. Generating a coverage report</h3>
 
 <p>
 Once the JavaScript code in the page in the "Browser" tab has been executed, click on
@@ -187,7 +201,7 @@ This will create the directory <code>doc/instrumented</code> and
 place an instrumented copy of the code from <code>doc/example</code> in <code>doc/instrumented</code>.
 </p>
 
-<h3>2. Executing instrumented code</h3>
+<h3>2. Executing the instrumented code in a web browser</h3>
 
 <p>
 You can load the file <code>doc/instrumented/jscoverage.html</code> in your web browser and type
@@ -216,7 +230,7 @@ you have to select one of the radio buttons to execute the code.
 
 <img src="screenshot3.png" alt="Screenshot">
 
-<h3>3. Generating the coverage report</h3>
+<h3>3. Generating a coverage report</h3>
 
 <p>
 Once you have executed the JavaScript code, you are instructed to click on the
@@ -294,7 +308,7 @@ From this page, you select one of the radio buttons and then click the "Coverage
 report" button to launch the JSCoverage report.
 </p>
 
-<h2>Command line options</h2>
+<h2><code>jscoverage</code> command line options</h2>
 
 <p>
 The <code>jscoverage</code> program accepts the following options:
@@ -354,6 +368,138 @@ tab.  <var>BOOLEAN</var> can be
 (to hide the "Missing" column).  By default, the "Missing" column is not displayed.
 </dl>
 
+<h2>Using the <code>jscoverage-server</code> program</h2>
+
+<p>
+The <code>jscoverage-server</code> program is a simple web server which will
+serve files from the current directory. You can use
+<code>jscoverage-server</code> to serve <code>doc/example</code>:
+</p>
+
+<pre>
+  cd doc/example
+  jscoverage-server --verbose
+</pre>
+
+<p>
+By default, the server runs on port 8080.  URLs are mapped to files in the
+<code>doc/example</code> directory: e.g., the URL
+<code>http://127.0.0.1:8080/index.html</code> can be used to request
+<code>doc/example/index.html</code>.  In addition, the special URL
+<code>http://127.0.0.1:8080/jscoverage.html</code> provides the JSCoverage web
+interface.  Note that it is not necessary that a file named
+<code>jscoverage.html</code> exist; the JSCoverage web
+interface is built into the server, and it will automatically be served when the special
+<code>/jscoverage.html</code> URL is requested.
+</p>
+
+<p>
+You can use the <code>/jscoverage.html</code> URL in the same way as the
+<code>jscoverage.html</code> file generated by the <code>jscoverage</code>
+program. For example, you can visit the URL
+<code>http://127.0.0.1:8080/jscoverage.html?index.html</code> to execute the
+JavaScript associated with the <code>index.html</code> page.  The
+<code>jscoverage-server</code> program automatically instruments all served
+JavaScript code, so that code coverage data will be gathered as the code is
+executed in your browser.
+</p>
+
+<p>
+The web interface is slightly different from that generated by the
+<code>jscoverage</code> program: it has a new tab named "Store".
+To store coverage data, click the "Store" tab.
+</p>
+
+<img src="screenshot7.png" alt="Screenshot">
+
+<p>
+When you click the "Store" button, the coverage data will be saved to a directory named <code>jscoverage-report/</code>.
+You can view this stored report at any time by opening the file <code>jscoverage-report/jscoverage.html</code> in
+your web browser - you don't need the <code>jscoverage-server</code> running to see it.
+</p>
+
+<p>
+If you use the "Store" tab again to store coverage data, the new data will be merged with
+the previous data in the <code>jscoverage-report/</code> directory.  This can be useful,
+for instance, if you wish to run a set of tests in different browsers and generate an
+aggregate report which combines the data for all of them.
+</p>
+
+<p>
+You can also store data programmatically from your tests by adding the following to your
+JavaScript code:
+</p>
+
+<pre>
+if (top.jscoverage_report) {
+  top.jscoverage_report();
+}
+</pre>
+
+<p>
+You can stop the server by running another instance of <code>jscoverage-server</code> with the
+<code>--shutdown</code> option:
+</p>
+
+<pre>
+  jscoverage-server --shutdown
+</pre>
+
+<h2>Using <code>jscoverage-server --proxy</code></h2>
+
+<p>
+To use <code>jscoverage-server</code> as a proxy server, use the <code>--proxy</code> option:
+</p>
+
+<pre>
+  jscoverage-server --verbose --proxy
+</pre>
+
+<p>
+Configure your browser to use an HTTP proxy with address 127.0.0.1 and port 8080.
+You can then generate code coverage data for a web page on the server <code>example.com</code>
+by accessing the JSCoverage web interface at the special URL <code>http://example.com/jscoverage.html</code>.  
+Note that this URL is not provided by the <code>example.com</code> server; it is automatically generated
+by the proxy server whenever a URL with path <code>/jscoverage.html</code> is requested.
+</p>
+
+<h2><code>jscoverage-server</code> command line options</h2>
+
+<dl>
+<dt><code>-h</code>, <code>--help</code>
+<dd>Display a brief help message.
+<dt><code>-V</code>, <code>--version</code>
+<dd>Display the version of the program.
+<dt><code>-v</code>, <code>--verbose</code>
+<dd>Explain what is being done.
+<dt><code>--document-root=<var>PATH</var></code>
+<dd>Serve web content from the directory given by <var>PATH</var>.  The default is
+the current directory.  This option may not be given with the <code>--proxy</code> option.
+<dt><code>--ip-address=<var>ADDRESS</var></code>
+<dd>Run the server on the IP address given by <var>ADDRESS</var>.  The default is <code>127.0.0.1</code>.  Specify
+<code>0.0.0.0</code> to use any address.
+<dt><code>--no-instrument=<var>URL</var></code>
+<dd>Do not instrument JavaScript code from <var>URL</var>.  If you are running <code>jscoverage-server</code>
+with the <code>--proxy</code> option, <var>URL</var> should be a full URL.  For example:
+<pre>
+jscoverage-server --proxy --no-instrument=http://example.com/scripts/
+</pre>
+Without <code>--proxy</code>, <var>URL</var> should be only the path portion of a URL:
+<pre>
+jscoverage-server --no-instrument=/scripts/
+</pre>
+This option may be given multiple times.
+<dt><code>--port=<var>PORT</var></code>
+<dd>Run the server on the port given by <var>PORT</var>.  The default is port 8080.
+<dt><code>--proxy</code>
+<dd>Run as a proxy server.
+<dt><code>--report-dir=<var>PATH</var></code>
+<dd>Use the directory given by <var>PATH</var> for storing coverage reports.  The default is
+<code>jscoverage-report/</code> in the current directory.
+<dt><code>--shutdown</code>
+<dd>Stop a running instance of the server.
+</dl>
+
 <h2>Caveats</h2>
 
 <ul>
@@ -372,8 +518,8 @@ those which try to access the top-level frame (<code>window.top</code>, <code>ta
 </ul>
 
 <address>
-  Copyright &copy; 2007 siliconforks.com<br>
-  Last updated November 22, 2007<br>
+  Copyright &copy; 2007, 2008 siliconforks.com<br>
+  Last updated May 21, 2008<br>
   <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
 </address>
 
