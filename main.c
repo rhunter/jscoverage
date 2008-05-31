@@ -37,10 +37,10 @@ int main(int argc, char ** argv) {
   char * source = NULL;
   char * destination = NULL;
 
-  char ** no_instrument = xmalloc((argc - 1) * sizeof(char *));
+  char ** no_instrument = xnew(char *, argc - 1);
   int num_no_instrument = 0;
 
-  char ** exclude = xmalloc((argc - 1) * sizeof(char *));
+  char ** exclude = xnew(char *, argc - 1);
   int num_exclude = 0;
 
   for (int i = 1; i < argc; i++) {
