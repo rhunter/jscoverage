@@ -38,5 +38,39 @@ int main(void) {
   assert(memcmp(stream->data, "abc 123\n", 8) == 0);
   Stream_delete(stream);
 
+  stream = Stream_new(10);
+  size_t length = 0;
+  for (int i = 0; i < 100; i++) {
+    Stream_printf(stream, "%s %d\n", "abc", i);
+    if (i < 10) {
+      length += 6;
+    }
+    else {
+      length += 7;
+    }
+  }
+  assert(stream->length == length);
+  length = 0;
+  for (int i = 0; i < 100; i++) {
+    char buffer[8];
+    int result = sprintf(buffer, "%s %d\n", "abc", i);
+    assert(memcmp(stream->data + length, buffer, result) == 0);
+    length += result;
+  }
+  assert(stream->length == length);
+  Stream_delete(stream);
+
+  stream = Stream_new(10);
+  char buffer[100];
+  for (int i = 0; i < 100; i++) {
+    buffer[i] = 'x';
+  }
+  Stream_write(stream, buffer, 100);
+  assert(stream->length == 100);
+  for (int i = 0; i < 100; i++) {
+    assert(stream->data[i] == 'x');
+  }
+  Stream_delete(stream);
+
   exit(EXIT_SUCCESS);
 }
