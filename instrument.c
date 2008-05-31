@@ -17,6 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include "instrument.h"
 
 #include <assert.h>
@@ -203,14 +205,4 @@ void jscoverage_instrument(const char * source,
     free(d);
   }
   free_dir_list(list);
-}
-
-void jscoverage_copy_resources(const char * destination_directory) {
-  copy_resource("jscoverage.html", destination_directory);
-  copy_resource("jscoverage.css", destination_directory);
-  copy_resource("jscoverage.js", destination_directory);
-  copy_resource("jscoverage-throbber.gif", destination_directory);
-  copy_resource("jscoverage-sh_main.js", destination_directory);
-  copy_resource("jscoverage-sh_javascript.js", destination_directory);
-  copy_resource("jscoverage-sh_nedit.css", destination_directory);
 }

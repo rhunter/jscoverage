@@ -33,7 +33,7 @@ new Test.Unit.Runner({
     w.opener.top = {};
     w.opener.top._$jscoverage = opener_$jscoverage;
     w._$jscoverage = window_$jscoverage;
-    init(w);
+    jscoverage_init(w);
     this.assertIdentical(opener_$jscoverage, w.opener.top._$jscoverage);
     this.assertIdentical(window_$jscoverage, w._$jscoverage);
   },
@@ -44,7 +44,7 @@ new Test.Unit.Runner({
     w.opener = {};
     w.opener.top = {};
     w.opener.top._$jscoverage = opener_$jscoverage;
-    init(w);
+    jscoverage_init(w);
     this.assertIdentical(opener_$jscoverage, w.opener.top._$jscoverage);
     this.assertIdentical(opener_$jscoverage, w._$jscoverage);
   },
@@ -55,7 +55,7 @@ new Test.Unit.Runner({
     w.opener = {};
     w.opener.top = {};
     w._$jscoverage = window_$jscoverage;
-    init(w);
+    jscoverage_init(w);
     this.assertIdentical(window_$jscoverage, w._$jscoverage);
   },
 
@@ -63,7 +63,7 @@ new Test.Unit.Runner({
     var w = {};
     w.opener = {};
     w.opener.top = {};
-    init(w);
+    jscoverage_init(w);
     this.assert(w._$jscoverage);
   },
 
@@ -71,13 +71,13 @@ new Test.Unit.Runner({
     var window_$jscoverage = {};
     var w = {};
     w._$jscoverage = window_$jscoverage;
-    init(w);
+    jscoverage_init(w);
     this.assertIdentical(window_$jscoverage, w._$jscoverage);
   },
 
   test_init6: function() {
     var w = {};
-    init(w);
+    jscoverage_init(w);
     this.assert(w._$jscoverage);
   },
 
@@ -94,7 +94,7 @@ new Test.Unit.Runner({
       body.insertBefore(div3, body.firstChild);
       body.insertBefore(div2, div3);
       body.insertBefore(div1, div2);
-      var pos = findPos(div3);
+      var pos = jscoverage_findPos(div3);
       assertEqual(35, pos);
       body.removeChild(body.firstChild);
       body.removeChild(body.firstChild);
@@ -105,9 +105,9 @@ new Test.Unit.Runner({
   test_lengthyOperation: function() {
     with (this) {
       var body = document.getElementById('body');
-      beginLengthyOperation();
+      jscoverage_beginLengthyOperation();
       assertEqual('wait', body.style.cursor);
-      endLengthyOperation();
+      jscoverage_endLengthyOperation();
       wait(500, function() {
         this.assertEqual('', body.style.cursor);
       });
@@ -117,60 +117,63 @@ new Test.Unit.Runner({
   test_setSize: function() {
     with (this) {
       // hide the extra tab stuff
-      initTabControl();
-      setSize();
+      jscoverage_initTabControl();
+      jscoverage_setSize();
       var body = document.getElementById('body');
       var tabPages = document.getElementById('tabPages');
-      assertEqual(getViewportHeight() - findPos(tabPages) - 12, tabPages.clientHeight);
+      assertEqual(jscoverage_getViewportHeight() - jscoverage_findPos(tabPages) - 12, tabPages.clientHeight);
     }
   },
 
   test_getBooleanValue: function() {
     with (this) {
-      assert(getBooleanValue('t'));
-      assert(getBooleanValue('T'));
-      assert(getBooleanValue('true'));
-      assert(getBooleanValue('TRUE'));
-      assert(getBooleanValue('y'));
-      assert(getBooleanValue('Y'));
-      assert(getBooleanValue('yes'));
-      assert(getBooleanValue('YES'));
-      assert(getBooleanValue('on'));
-      assert(getBooleanValue('ON'));
-      assert(!getBooleanValue('f'));
-      assert(!getBooleanValue('F'));
-      assert(!getBooleanValue('false'));
-      assert(!getBooleanValue('FALSE'));
-      assert(!getBooleanValue('n'));
-      assert(!getBooleanValue('N'));
-      assert(!getBooleanValue('no'));
-      assert(!getBooleanValue('NO'));
-      assert(!getBooleanValue('off'));
-      assert(!getBooleanValue('OFF'));
+      assert(jscoverage_getBooleanValue('t'));
+      assert(jscoverage_getBooleanValue('T'));
+      assert(jscoverage_getBooleanValue('true'));
+      assert(jscoverage_getBooleanValue('TRUE'));
+      assert(jscoverage_getBooleanValue('y'));
+      assert(jscoverage_getBooleanValue('Y'));
+      assert(jscoverage_getBooleanValue('yes'));
+      assert(jscoverage_getBooleanValue('YES'));
+      assert(jscoverage_getBooleanValue('on'));
+      assert(jscoverage_getBooleanValue('ON'));
+      assert(!jscoverage_getBooleanValue('f'));
+      assert(!jscoverage_getBooleanValue('F'));
+      assert(!jscoverage_getBooleanValue('false'));
+      assert(!jscoverage_getBooleanValue('FALSE'));
+      assert(!jscoverage_getBooleanValue('n'));
+      assert(!jscoverage_getBooleanValue('N'));
+      assert(!jscoverage_getBooleanValue('no'));
+      assert(!jscoverage_getBooleanValue('NO'));
+      assert(!jscoverage_getBooleanValue('off'));
+      assert(!jscoverage_getBooleanValue('OFF'));
     }
   },
 
   test_removeBrowserTab: function() {
-    removeBrowserTab();
+    jscoverage_removeTab('browser');
     var browserTab = document.getElementById('browserTab');
     this.assertNull(browserTab);
   },
 
   test_initTabContents_empty: function() {
-    initTabContents('');
-    this.assert(! gMissing);
+    jscoverage_initTabContents('');
+    var checkbox = document.getElementById('checkbox');
+    this.assert(! checkbox.checked);
   },
 
   test_initTabContents_url: function() {
-    initTabContents('?scriptaculous-data.html');
+    jscoverage_initTabContents('?scriptaculous-data.html');
     this.assert(/scriptaculous-data.html$/, frames[0].location);
-    this.assert(! gMissing);
+    var checkbox = document.getElementById('checkbox');
+    this.assert(! checkbox.checked);
   },
 
   test_initTabContents_urlAndMissing: function() {
-    initTabContents("?url=scriptaculous-data.html&missing=1");
+    jscoverage_initTabContents("?url=scriptaculous-data.html&missing=1");
     this.assert(/scriptaculous-data.html$/, frames[0].location);
-    this.assert(gMissing);
+    var checkbox = document.getElementById('checkbox');
+    this.assert(checkbox.checked);
   },
 
   test_updateBrowser: function() {
@@ -178,7 +181,7 @@ new Test.Unit.Runner({
       var input = document.getElementById("location");
       input.value = 'scriptaculous-data.html';
       assertEqual('scriptaculous-data.html', input.value);
-      updateBrowser();
+      jscoverage_updateBrowser();
       wait(500, function() {
         with (this) {
           assertMatch(/scriptaculous-data.html$/, input.value);
@@ -193,9 +196,8 @@ new Test.Unit.Runner({
       var url = 'scriptaculous-data.html';
       frames[0].location = url;
       // assertEqual(url, frames[0].location);
-      updateInput();
       var input = document.getElementById("location");
-      wait(500, function() {
+      wait(1000, function() {
         with (this) {
           assertEqual(frames[0].location, input.value);
         }
@@ -205,10 +207,10 @@ new Test.Unit.Runner({
 
   test_createLink: function() {
     with (this) {
-      var link = createLink('foo.js');
-      assertEqual("javascript:get('foo.js');", link.getAttribute('href'));
-      link = createLink('foo.js', 42);
-      assertEqual("javascript:get('foo.js', 42);", link.getAttribute('href'));
+      var link = jscoverage_createLink('foo.js');
+      assertEqual("javascript:jscoverage_get('foo.js');", link.getAttribute('href'));
+      link = jscoverage_createLink('foo.js', 42);
+      assertEqual("javascript:jscoverage_get('foo.js', 42);", link.getAttribute('href'));
     }
   },
 
@@ -223,12 +225,13 @@ new Test.Unit.Runner({
       coverage['bar.js'][2] = 10;
       coverage['baz.js'] = [];  // empty file
 
-      gMissing = true;
-      appendMissingColumn();
+      var checkbox = document.getElementById('checkbox');
+      checkbox.checked = true;
+      jscoverage_appendMissingColumn();
 
-      assert(gMissing, "gMissing should be true");
+      assert(checkbox.checked);
 
-      recalculateSummaryTab(coverage);
+      jscoverage_recalculateSummaryTab(coverage);
       var summaryTable = document.getElementById('summaryTable');
       var rows = summaryTable.getElementsByTagName('tr');
       assertEqual(5, rows.length);
@@ -287,8 +290,8 @@ new Test.Unit.Runner({
       assertEqual(0, links.length);
 
       // restore gMissing
-      gMissing = false;
-      removeMissingColumn();
+      checkbox.checked = false;
+      jscoverage_removeMissingColumn();
     }
   },
 
@@ -298,7 +301,7 @@ new Test.Unit.Runner({
     coverage['bar.js'] = [];
     coverage['baz.js'] = [];
 
-    recalculateSummaryTab(coverage);
+    jscoverage_recalculateSummaryTab(coverage);
 
     var summaryTotals = document.getElementById('summaryTotals');
     var cells = summaryTotals.getElementsByTagName('td');
@@ -307,17 +310,18 @@ new Test.Unit.Runner({
   },
 
   test_missingColumn: function() {
-    this.assert(! gMissing, "gMissing should be false");
+    var checkbox = document.getElementById('checkbox');
+    this.assert(! checkbox.checked);
 
     var headerRow = document.getElementById('headerRow');
     var cells = headerRow.getElementsByTagName('th');
     this.assertIdentical(4, cells.length);
 
-    appendMissingColumn();
+    jscoverage_appendMissingColumn();
     cells = headerRow.getElementsByTagName('th');
     this.assertIdentical(5, cells.length);
 
-    removeMissingColumn();
+    jscoverage_removeMissingColumn();
     cells = headerRow.getElementsByTagName('th');
     this.assertIdentical(4, cells.length);
   },
@@ -329,59 +333,60 @@ new Test.Unit.Runner({
       var headerRow = document.getElementById('headerRow');
       var headers = headerRow.getElementsByTagName('th');
       this.assertIdentical(5, headers.length);
-      this.assert(gMissing, 'gMissing should be true');
+      this.assert(checkbox.checked);
       checkbox.click();
       this.wait(500, function() {
         var headers = headerRow.getElementsByTagName('th');
         this.assertIdentical(4, headers.length);
-        this.assert(! gMissing, 'gMissing should be false');
+        this.assert(! checkbox.checked);
       });
     });
   },
 
   test_checkbox_click_lengthy: function() {
-    gInLengthyOperation = true;
-    this.assert(! checkbox_click());
+    jscoverage_inLengthyOperation = true;
+    this.assert(! jscoverage_checkbox_click());
   },
 
   test_makeTable: function() {
     with (this) {
-      gCurrentFile = 'foo.js';
-      _$jscoverage[gCurrentFile] = [];
-      _$jscoverage[gCurrentFile][1] = 10;
-      _$jscoverage[gCurrentFile][2] = 100;
-      gCurrentSource = 'foo\nbar\n';
-      gCurrentLines = ['foo', 'bar'];
-      makeTable();
-      wait(500, function() {
+      jscoverage_currentFile = 'foo.js';
+      _$jscoverage[jscoverage_currentFile] = [];
+      _$jscoverage[jscoverage_currentFile][1] = 10;
+      _$jscoverage[jscoverage_currentFile][2] = 100;
+      jscoverage_sourceCache['foo.js'] = 'foo\nbar\n';
+      jscoverage_currentLines = ['foo', 'bar'];
+      jscoverage_makeTable();
+      wait(1000, function() {
         var sourceDiv = document.getElementById('sourceDiv');
         var cells = sourceDiv.getElementsByTagName('td');
+        assertIdentical(6, cells.length);
         assertIdentical('1', cells.item(0).innerHTML);
         assertIdentical('10', cells.item(1).innerHTML);
         assertIdentical('2', cells.item(3).innerHTML);
         assertIdentical('100', cells.item(4).innerHTML);
-        delete(_$jscoverage[gCurrentFile]);
+        delete(_$jscoverage[jscoverage_currentFile]);
       });
     }
   },
 
   test_countLines: function() {
-    this.assertIdentical(0, countLines(""));
-    this.assertIdentical(1, countLines("\n"));
-    this.assertIdentical(2, countLines("foo\n\bar\n"));
-    this.assertIdentical(2, countLines("foo\n\bar"));
+    this.assertIdentical(0, jscoverage_countLines(""));
+    this.assertIdentical(1, jscoverage_countLines("\n"));
+    this.assertIdentical(2, jscoverage_countLines("foo\n\bar\n"));
+    this.assertIdentical(2, jscoverage_countLines("foo\n\bar"));
   },
 
   test_scrollToLine: function() {
     initCoverageData();
     var file = 'scriptaculous-data.js';
-    get(file);
+    jscoverage_get(file);
     this.wait(1000, function() {
-      gCurrentLine = 100;
-      scrollToLine();
+      jscoverage_currentLine = 100;
+      jscoverage_scrollToLine();
       var sourceDiv = document.getElementById('sourceDiv');
       var cell = document.getElementById('line-100');
-      var offset = findPos(cell) - findPos(sourceDiv);
+      var offset = jscoverage_findPos(cell) - jscoverage_findPos(sourceDiv);
       this.assertIdentical(offset, sourceDiv.scrollTop);
     });
   },
@@ -389,9 +394,9 @@ new Test.Unit.Runner({
   test_throbber: function() {
     with (this) {
       var throbberImg = document.getElementById('throbberImg');
-      setThrobber();
+      jscoverage_setThrobber();
       assertIdentical('visible', throbberImg.style.visibility);
-      clearThrobber();
+      jscoverage_clearThrobber();
       assertIdentical('hidden', throbberImg.style.visibility);
     }
   },
@@ -399,10 +404,10 @@ new Test.Unit.Runner({
   test_getError: function() {
     with (this) {
       var file = 'missing.js';
-      get(file);
+      jscoverage_get(file);
       wait(1000, function() {
         with (this) {
-          assertIdentical(null, gCurrentFile);
+          assertIdentical(null, jscoverage_currentFile);
           var sourceDiv = document.getElementById('sourceDiv');
           assertIdentical("Error retrieving document missing.js.", sourceDiv.innerHTML);
           assertNotIdentical('visible', document.getElementById('throbberImg').style.visibility);
@@ -414,16 +419,16 @@ new Test.Unit.Runner({
   test_get: function() {
     initCoverageData();
     var file = 'scriptaculous-data.js';
-    get(file);
+    jscoverage_get(file);
     this.wait(1000, function() {
-      this.assertIdentical(file, gCurrentFile);
+      this.assertIdentical(file, jscoverage_currentFile);
       var fileDiv = document.getElementById('fileDiv');
       this.assertIdentical(file, fileDiv.innerHTML);
       var throbberImg = document.getElementById('throbberImg');
       this.assertNotIdentical('visible', throbberImg.style.visibility);
-      get(file);
+      jscoverage_get(file);
       this.wait(500, function() {
-        this.assertIdentical(file, gCurrentFile);
+        this.assertIdentical(file, jscoverage_currentFile);
         this.assertIdentical(file, fileDiv.innerHTML);
         this.assertNotIdentical('visible', throbberImg.style.visibility);
       });
@@ -434,16 +439,16 @@ new Test.Unit.Runner({
     with (this) {
       initCoverageData();
       var file = 'scriptaculous-data.js';
-      get(file, 100);
+      jscoverage_get(file, 100);
       wait(1500, function() {
         with (this) {
-          assertIdentical(file, gCurrentFile);
+          assertIdentical(file, jscoverage_currentFile);
           var fileDiv = document.getElementById('fileDiv');
           assertIdentical(file, fileDiv.innerHTML);
           assertNotIdentical('visible', document.getElementById('throbberImg').style.visibility);
           var sourceDiv = document.getElementById('sourceDiv');
           var cell = document.getElementById('line-100');
-          var offset = findPos(cell) - findPos(sourceDiv);
+          var offset = jscoverage_findPos(cell) - jscoverage_findPos(sourceDiv);
           assertIdentical(offset, sourceDiv.scrollTop);
         }
       });
@@ -452,9 +457,9 @@ new Test.Unit.Runner({
 
   test_recalculateSourceTab: function() {
     initCoverageData();
-    get('scriptaculous-data.js');
+    jscoverage_get('scriptaculous-data.js');
     this.wait(1000, function() {
-      recalculateSourceTab();
+      jscoverage_recalculateSourceTab();
       this.wait(500, function() {
         var sourceDiv = document.getElementById('sourceDiv');
         var cells = sourceDiv.getElementsByTagName('td');
@@ -466,23 +471,23 @@ new Test.Unit.Runner({
 
   test_initTabControl: function() {
     with (this) {
-      initTabControl();
+      jscoverage_initTabControl();
       var tabs = document.getElementById('tabs');
       tabs = tabs.getElementsByTagName('div');
       assertEqual('selected', tabs.item(0).className);
-      assertEqual(tab_click, tabs.item(0).onclick);
+      assertEqual(jscoverage_tab_click, tabs.item(0).onclick);
       assertEqual('', tabs.item(1).className);
-      assertEqual(tab_click, tabs.item(1).onclick);
+      assertEqual(jscoverage_tab_click, tabs.item(1).onclick);
       assertEqual('disabled', tabs.item(2).className);
       assertNull(tabs.item(2).onclick);
       assertEqual('', tabs.item(3).className);
-      assertEqual(tab_click, tabs.item(3).onclick);
+      assertEqual(jscoverage_tab_click, tabs.item(3).onclick);
     }
   },
 
   test_selectTab: function() {
     with (this) {
-      selectTab(3);
+      jscoverage_selectTab(3);
       var tabs = document.getElementById('tabs');
       tabs = tabs.getElementsByTagName('div');
       assertIdentical('selected', tabs.item(3).className);
@@ -494,7 +499,7 @@ new Test.Unit.Runner({
       var tabs = document.getElementById('tabs');
       tabs = tabs.getElementsByTagName('div');
       for (var i = 0; i < tabs.length; i++) {
-        assertEqual(i, tabIndexOf(tabs.item(i)));
+        assertEqual(i, jscoverage_tabIndexOf(tabs.item(i)));
       }
     }
   },
@@ -502,10 +507,16 @@ new Test.Unit.Runner({
   test_tab_click: function() {
     var aboutTab = document.getElementById('aboutTab');
     var e = {target: aboutTab};
-    tab_click(e);
+    jscoverage_tab_click(e);
     this.wait(1000, function() {
       this.assertIdentical('selected', aboutTab.className);
     });
+  },
+
+  test_getOriginalSource: function () {
+    var instrumentedSource = '1\n2\n// 3\n// 4\n5\n6\n';
+    var originalSource = jscoverage_getOriginalSource(instrumentedSource);
+    this.assertEqual('3\n4\n', originalSource);
   },
 
   setup: function() {
@@ -514,14 +525,12 @@ new Test.Unit.Runner({
     var tabControl = document.getElementById('tabControl');
     this.tabControlClone = tabControl.cloneNode(true);
 
-    init(window);
-    gCurrentFile = null;
-    gCurrentLine = null;
-    gCurrentSource = null;
-    gCurrentLines = null;
-    gMissing = null;
-    gInLengthyOperation = false;
-    body_load();
+    jscoverage_init(window);
+    jscoverage_currentFile = null;
+    jscoverage_currentLine = null;
+    jscoverage_currentLines = null;
+    jscoverage_inLengthyOperation = false;
+    jscoverage_body_load();
   },
 
   teardown: function() {

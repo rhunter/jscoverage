@@ -22,34 +22,47 @@ Initializes the _$jscoverage object in a window.  This should be the first
 function called in the page.
 @param  w  this should always be the global window object
 */
-function init(w) {
+function jscoverage_init(w) {
   if (w.opener && w.opener.top._$jscoverage) {
     // we are in inverted mode
-    gInvertedMode = true;
+    jscoverage_isInvertedMode = true;
     if (! w._$jscoverage) {
       w._$jscoverage = w.opener.top._$jscoverage;
     }
   }
   else {
     // we are not in inverted mode
-    gInvertedMode = false;
+    jscoverage_isInvertedMode = false;
     if (! w._$jscoverage) {
       w._$jscoverage = {};
     }
   }
 }
 
-var gCurrentFile = null;
-var gCurrentLine = null;
-var gCurrentSource = null;
-var gCurrentLines = null;
-var gMissing = null;
-var gInLengthyOperation = false;
-var gInvertedMode = false;
-init(window);
+var jscoverage_currentFile = null;
+var jscoverage_currentLine = null;
+var jscoverage_currentLines = null;
+
+var jscoverage_inLengthyOperation = false;
+var jscoverage_sourceCache = {};
+
+/*
+Possible states:
+			isInvertedMode	isServer	isReport	tabs
+normal			false		false		false		Browser
+inverted		true		false		false		
+server, normal		false		true		false		Browser, Store
+server, inverted	true		true		false		Store
+report			false		false		true		
+*/
+var jscoverage_isInvertedMode = false;
+var jscoverage_isServer = false;
+var jscoverage_isReport = false;
+
+jscoverage_init(window);
 
 // http://www.quirksmode.org/js/findpos.html
-function findPos(obj) {
+function jscoverage_findPos(obj) {
   var result = 0;
   do {
     result += obj.offsetTop;
@@ -60,7 +73,7 @@ function findPos(obj) {
 }
 
 // http://www.quirksmode.org/viewport/compatibility.html
-function getViewportHeight() {
+function jscoverage_getViewportHeight() {
   if (self.innerHeight) {
     // all except Explorer
     return self.innerHeight;
@@ -82,8 +95,8 @@ function getViewportHeight() {
 Indicates visually that a lengthy operation has begun.  The progress bar is
 displayed, and the cursor is changed to busy (on browsers which support this).
 */
-function beginLengthyOperation() {
-  gInLengthyOperation = true;
+function jscoverage_beginLengthyOperation() {
+  jscoverage_inLengthyOperation = true;
 
   var progressBar = document.getElementById('progressBar');
   progressBar.style.visibility = 'visible';
@@ -111,11 +124,11 @@ function beginLengthyOperation() {
 /**
 Removes the progress bar and busy cursor.
 */
-function endLengthyOperation() {
+function jscoverage_endLengthyOperation() {
   var progressBar = document.getElementById('progressBar');
   ProgressBar.setPercentage(progressBar, 100);
   setTimeout(function() {
-    gInLengthyOperation = false;
+    jscoverage_inLengthyOperation = false;
     progressBar.style.visibility = 'hidden';
     var progressLabel = document.getElementById('progressLabel');
     progressLabel.style.visibility = 'hidden';
@@ -137,8 +150,8 @@ function must be called:
 2. When the window is resized
 3. When a tab is selected
 */
-function setSize() {
-  var viewportHeight = getViewportHeight();
+function jscoverage_setSize() {
+  var viewportHeight = jscoverage_getViewportHeight();
 
   /*
   border-top-width:     1px
@@ -150,19 +163,19 @@ function setSize() {
                        32px
   */
   var tabPages = document.getElementById('tabPages');
-  tabPages.style.height = (viewportHeight - findPos(tabPages) - 32) + 'px';
+  tabPages.style.height = (viewportHeight - jscoverage_findPos(tabPages) - 32) + 'px';
 
   var browserIframe = document.getElementById('browserIframe');
   // may not exist if we have removed the first tab
   if (browserIframe) {
-    browserIframe.height = viewportHeight - findPos(browserIframe) - 23;
+    browserIframe.height = viewportHeight - jscoverage_findPos(browserIframe) - 23;
   }
 
   var summaryDiv = document.getElementById('summaryDiv');
-  summaryDiv.style.height = (viewportHeight - findPos(summaryDiv) - 21) + 'px';
+  summaryDiv.style.height = (viewportHeight - jscoverage_findPos(summaryDiv) - 21) + 'px';
 
   var sourceDiv = document.getElementById('sourceDiv');
-  sourceDiv.style.height = (viewportHeight - findPos(sourceDiv) - 21) + 'px';
+  sourceDiv.style.height = (viewportHeight - jscoverage_findPos(sourceDiv) - 21) + 'px';
 }
 
 /**
@@ -171,7 +184,7 @@ and '0' (upper or lower case) are false.
 @param  s  the string
 @return  a boolean value
 */
-function getBooleanValue(s) {
+function jscoverage_getBooleanValue(s) {
   s = s.toLowerCase();
   if (s === 'false' || s === 'f' || s === 'no' || s === 'n' || s === 'off' || s === '0') {
     return false;
@@ -179,16 +192,11 @@ function getBooleanValue(s) {
   return true;
 }
 
-/**
-Removes the "Browser" tab from the tab control.
-*/
-function removeBrowserTab() {
-  var tabs = document.getElementById('tabs');
-  var browserTab = document.getElementById('browserTab');
-  tabs.removeChild(browserTab);
-  var tabPages = document.getElementById('tabPages');
-  var browserTabPage = tabPages.getElementsByTagName('div').item(0);
-  tabPages.removeChild(browserTabPage);
+function jscoverage_removeTab(id) {
+  var tab = document.getElementById(id + 'Tab');
+  tab.parentNode.removeChild(tab);
+  var tabPage = document.getElementById(id + 'TabPage');
+  tabPage.parentNode.removeChild(tabPage);
 }
 
 /**
@@ -197,7 +205,8 @@ input field and iframe in the "Browser" tab and the checkbox in the "Summary"
 tab.
 @param  queryString  this should always be location.search
 */
-function initTabContents(queryString) {
+function jscoverage_initTabContents(queryString) {
+  var showMissingColumn = false;
   var parameters, parameter, i, index, url, name, value;
   if (queryString.length > 0) {
     // chop off the question mark
@@ -214,7 +223,7 @@ function initTabContents(queryString) {
         name = parameter.substr(0, index);
         value = parameter.substr(index + 1);
         if (name === 'missing' || name === 'm') {
-          gMissing = getBooleanValue(value);
+          showMissingColumn = jscoverage_getBooleanValue(value);
         }
         else if (name === 'url' || name === 'u') {
           url = value;
@@ -224,9 +233,9 @@ function initTabContents(queryString) {
   }
 
   var checkbox = document.getElementById('checkbox');
-  checkbox.checked = gMissing;
-  if (gMissing) {
-    appendMissingColumn();
+  checkbox.checked = showMissingColumn;
+  if (showMissingColumn) {
+    jscoverage_appendMissingColumn();
   }
 
   // this will automatically propagate to the input field
@@ -234,59 +243,112 @@ function initTabContents(queryString) {
     frames[0].location = url;
   }
 
-  if (gInvertedMode) {
-    recalculateSummaryTab();
+  // if the browser tab is absent, we have to initialize the summary tab
+  if (! document.getElementById('browserTab')) {
+    jscoverage_recalculateSummaryTab();
   }
 }
 
-function body_load() {
-  if (gInvertedMode) {
-    removeBrowserTab();
-  }
-
+function jscoverage_body_load() {
   var progressBar = document.getElementById('progressBar');
   ProgressBar.init(progressBar);
 
-  initTabControl();
+  function reportError(e) {
+    jscoverage_endLengthyOperation();
+    var summaryThrobber = document.getElementById('summaryThrobber');
+    summaryThrobber.style.visibility = 'hidden';
+    var div = document.getElementById('summaryErrorDiv');
+    div.innerHTML = e;
+  }
 
-  initTabContents(location.search);
+  if (jscoverage_isReport) {
+    jscoverage_beginLengthyOperation();
+    var summaryThrobber = document.getElementById('summaryThrobber');
+    summaryThrobber.style.visibility = 'visible';
+    var request = jscoverage_createRequest();
+    try {
+      request.open('GET', 'jscoverage.json', true);
+      request.onreadystatechange = function (event) {
+        if (request.readyState === 4) {
+          try {
+            if (request.status !== 0 && request.status !== 200) {
+              throw request.status;
+            }
+            var response = request.responseText;
+            if (response === '') {
+              throw 404;
+            }
+            var json = eval('(' + response + ')');
+            var file;
+            for (file in json) {
+              var fileCoverage = json[file];
+              jscoverage_sourceCache[file] = fileCoverage.source;
+              _$jscoverage[file] = fileCoverage.coverage;
+            }
+            jscoverage_recalculateSummaryTab();
+            jscoverage_endLengthyOperation();
+          }
+          catch (e) {
+            reportError(e);
+          }
+        }
+      };
+      request.send(null);
+    }
+    catch (e) {
+      reportError(e);
+    }
+
+    jscoverage_removeTab('browser');
+    jscoverage_removeTab('store');
+  }
+  else {
+    if (jscoverage_isInvertedMode) {
+      jscoverage_removeTab('browser');
+    }
+
+    if (! jscoverage_isServer) {
+      jscoverage_removeTab('store');
+    }
+  }
+
+  jscoverage_initTabControl();
+
+  jscoverage_initTabContents(location.search);
 }
 
-function body_resize() {
-  setSize();
+function jscoverage_body_resize() {
+  jscoverage_setSize();
 }
 
 // -----------------------------------------------------------------------------
 // tab 1
 
-function updateBrowser() {
+function jscoverage_updateBrowser() {
   var input = document.getElementById("location");
   frames[0].location = input.value;
 }
 
-function updateInput() {
-  var input = document.getElementById("location");
-  input.value = frames[0].location;
-}
-
-function input_keypress(e) {
+function jscoverage_input_keypress(e) {
   if (e.keyCode === 13) {
-    updateBrowser();
+    jscoverage_updateBrowser();
   }
 }
 
-function button_click() {
-  updateBrowser();
+function jscoverage_button_click() {
+  jscoverage_updateBrowser();
 }
 
-function browser_load() {
-  updateInput();
+function jscoverage_browser_load() {
+  /* update the input box */
+  var input = document.getElementById("location");
+  input.value = frames[0].location;
 }
 
 // -----------------------------------------------------------------------------
 // tab 2
 
-function createLink(file, line) {
+function jscoverage_createLink(file, line) {
   var link = document.createElement("a");
 
   var url;
@@ -294,12 +356,12 @@ function createLink(file, line) {
   var text;
   if (line) {
     url = file + ".jscoverage.html?" + line;
-    call = "get('" + file + "', " + line + ");";
+    call = "jscoverage_get('" + file + "', " + line + ");";
     text = line.toString();
   }
   else {
     url = file + ".jscoverage.html";
-    call = "get('" + file + "');";
+    call = "jscoverage_get('" + file + "');";
     text = file;
   }
 
@@ -309,7 +371,10 @@ function createLink(file, line) {
   return link;
 }
 
-function recalculateSummaryTab(cc) {
+function jscoverage_recalculateSummaryTab(cc) {
+  var checkbox = document.getElementById('checkbox');
+  var showMissingColumn = checkbox.checked;
+
   if (! cc) {
     cc = window._$jscoverage;
   }
@@ -351,7 +416,7 @@ function recalculateSummaryTab(cc) {
 
     var cell = document.createElement("td");
     cell.className = 'leftColumn';
-    var link = createLink(file);
+    var link = jscoverage_createLink(file);
     cell.appendChild(link);
 
     row.appendChild(cell);
@@ -387,13 +452,13 @@ function recalculateSummaryTab(cc) {
     cell.appendChild(pct);
     row.appendChild(cell);
 
-    if (gMissing) {
+    if (showMissingColumn) {
       cell = document.createElement("td");
       for (i = 0; i < missing.length; i++) {
         if (i !== 0) {
           cell.appendChild(document.createTextNode(", "));
         }
-        link = createLink(file, missing[i]);
+        link = jscoverage_createLink(file, missing[i]);
         cell.appendChild(link);
       }
       row.appendChild(cell);
@@ -426,10 +491,10 @@ function recalculateSummaryTab(cc) {
     }
 
   }
-  endLengthyOperation();
+  jscoverage_endLengthyOperation();
 }
 
-function appendMissingColumn() {
+function jscoverage_appendMissingColumn() {
   var headerRow = document.getElementById('headerRow');
   var missingHeader = document.createElement('th');
   missingHeader.id = 'missingHeader';
@@ -441,7 +506,7 @@ function appendMissingColumn() {
   summaryTotals.appendChild(empty);
 }
 
-function removeMissingColumn() {
+function jscoverage_removeMissingColumn() {
   var missingNode;
   missingNode = document.getElementById('missingHeader');
   missingNode.parentNode.removeChild(missingNode);
@@ -449,21 +514,21 @@ function removeMissingColumn() {
   missingNode.parentNode.removeChild(missingNode);
 }
 
-function checkbox_click() {
-  if (gInLengthyOperation) {
+function jscoverage_checkbox_click() {
+  if (jscoverage_inLengthyOperation) {
     return false;
   }
-  beginLengthyOperation();
+  jscoverage_beginLengthyOperation();
+  var checkbox = document.getElementById('checkbox');
+  var showMissingColumn = checkbox.checked;
   setTimeout(function() {
-    var checkbox = document.getElementById('checkbox');
-    gMissing = checkbox.checked;
-    if (gMissing) {
-      appendMissingColumn();
+    if (showMissingColumn) {
+      jscoverage_appendMissingColumn();
     }
     else {
-      removeMissingColumn();
+      jscoverage_removeMissingColumn();
     }
-    recalculateSummaryTab();
+    jscoverage_recalculateSummaryTab();
   }, 100);
   return true;
 }
@@ -471,9 +536,9 @@ function checkbox_click() {
 // -----------------------------------------------------------------------------
 // tab 3
 
-function makeTable() {
-  var coverage = _$jscoverage[gCurrentFile];
-  var lines = gCurrentLines;
+function jscoverage_makeTable() {
+  var coverage = _$jscoverage[jscoverage_currentFile];
+  var lines = jscoverage_currentLines;
   var rows = ['<table id="sourceTable">'];
   var i = 0;
   var progressBar = document.getElementById('progressBar');
@@ -485,8 +550,8 @@ function makeTable() {
   
       var row = '<tr>';
       row += '<td class="numeric">' + lineNumber + '</td>';
-      if (coverage[lineNumber] !== undefined) {
-        var timesExecuted = coverage[lineNumber];
+      var timesExecuted = coverage[lineNumber];
+      if (timesExecuted !== undefined && timesExecuted !== null) {
         if (timesExecuted === 0) {
           row += '<td class="r numeric" id="line-' + lineNumber + '">';
         }
@@ -534,13 +599,13 @@ function makeTable() {
     }
     sourceDiv.innerHTML = tableHTML;
     ProgressBar.setPercentage(progressBar, 100);
-    setTimeout(scrollToLine, 0);
+    setTimeout(jscoverage_scrollToLine, 0);
   }
 
   setTimeout(makeTableRows, 0);
 }
 
-function countLines(text) {
+function jscoverage_countLines(text) {
   var length = text.length;
   var pos = 0;
   var count = 0;
@@ -555,13 +620,13 @@ function countLines(text) {
   return count;
 }
 
-function highlightSource() {
+function jscoverage_highlightSource() {
   var progressLabel = document.getElementById('progressLabel');
   progressLabel.innerHTML = 'Loading source ...';
 
   // set file name
   var fileDiv = document.getElementById('fileDiv');
-  fileDiv.innerHTML = gCurrentFile;
+  fileDiv.innerHTML = jscoverage_currentFile;
 
   // highlight source and break into lines
   var builder = {
@@ -597,7 +662,8 @@ function highlightSource() {
     }
   };
   var progressBar = document.getElementById('progressBar');
-  var numLines = countLines(gCurrentSource);
+  var source = jscoverage_sourceCache[jscoverage_currentFile];
+  var numLines = jscoverage_countLines(source);
   var oldDate = new Date().valueOf();
   var i = 0;
   function updateFunction() {
@@ -612,140 +678,151 @@ function highlightSource() {
       return false;
     }
   }
-  sh_highlightString(gCurrentSource, sh_languages['javascript'], builder, updateFunction, function() {
+  sh_highlightString(source, sh_languages['javascript'], builder, updateFunction, function() {
     builder.close();
-    gCurrentLines = builder.lines;
+    jscoverage_currentLines = builder.lines;
     ProgressBar.setPercentage(progressBar, 100);
     // coverage
-    recalculateSourceTab();
+    jscoverage_recalculateSourceTab();
   });
 }
 
-function scrollToLine() {
-  selectTab('sourceTab');
-  if (! window.gCurrentLine) {
-    endLengthyOperation();
+function jscoverage_scrollToLine() {
+  jscoverage_selectTab('sourceTab');
+  if (! window.jscoverage_currentLine) {
+    jscoverage_endLengthyOperation();
     return;
   }
   var div = document.getElementById('sourceDiv');
-  if (gCurrentLine === 1) {
+  if (jscoverage_currentLine === 1) {
     div.scrollTop = 0;
   }
   else {
-    var cell = document.getElementById('line-' + gCurrentLine);
-    var divOffset = findPos(div);
-    var cellOffset = findPos(cell);
+    var cell = document.getElementById('line-' + jscoverage_currentLine);
+    var divOffset = jscoverage_findPos(div);
+    var cellOffset = jscoverage_findPos(cell);
     div.scrollTop = cellOffset - divOffset;
   }
-  gCurrentLine = 0;
-  endLengthyOperation();
+  jscoverage_currentLine = 0;
+  jscoverage_endLengthyOperation();
 }
 
-function setThrobber() {
+function jscoverage_setThrobber() {
   var throbberImg = document.getElementById('throbberImg');
   throbberImg.style.visibility = 'visible';
 }
 
-function clearThrobber() {
+function jscoverage_clearThrobber() {
   var throbberImg = document.getElementById('throbberImg');
   throbberImg.style.visibility = 'hidden';
 }
 
-function httpError(file) {
-  gCurrentFile = null;
-  clearThrobber();
+function jscoverage_httpError(file) {
+  jscoverage_currentFile = null;
+  jscoverage_clearThrobber();
   var fileDiv = document.getElementById('fileDiv');
   fileDiv.innerHTML = '';
   var sourceDiv = document.getElementById('sourceDiv');
   sourceDiv.innerHTML = "Error retrieving document " + file + ".";
-  selectTab('sourceTab');
-  endLengthyOperation();
+  jscoverage_selectTab('sourceTab');
+  jscoverage_endLengthyOperation();
 }
 
-function getOriginalSource(instrumentedSource) {
-  var index = instrumentedSource.search(/^\/\/ /m);
-  if (index === -1) {
-    throw "FIXME";
+function jscoverage_getOriginalSource(instrumentedSource) {
+  var start = instrumentedSource.search(/^\/\/ /m);
+  if (start === -1) {
+    return '';
   }
-  var lines = instrumentedSource.substr(index).split('\n');
+  var lines = instrumentedSource.substr(start).split('\n');
   var numLines = lines.length;
-  var i, line;
-  for (i = 0; i < lines.length; i++) {
+  for (var i = 0; i < numLines; i++) {
     line = lines[i];
-    if (line !== '') {
-      lines[i] = line.substr(3);
+    if (/^\/\/ /.test(line)) {
+      lines[i] = line.substr(3) + '\n';
+    }
+    else {
+      lines.length = i;
+      break;
     }
   }
-  return lines.join('\n');
+  return lines.join('');
+}
+
+function jscoverage_createRequest() {
+  // Note that the IE7 XMLHttpRequest does not support file URL's.
+  // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
+  // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
+  if (window.ActiveXObject) {
+    return new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  else {
+    return new XMLHttpRequest();
+  }
 }
 
 /**
 Loads the given file (and optional line) in the source tab.
 */
-function get(file, line) {
-  if (gInLengthyOperation) {
+function jscoverage_get(file, line) {
+  if (jscoverage_inLengthyOperation) {
     return;
   }
-  beginLengthyOperation();
-  if (file === gCurrentFile) {
+  jscoverage_beginLengthyOperation();
+  if (file === jscoverage_currentFile) {
     setTimeout(function() {
-      selectTab('sourceTab');
-      gCurrentLine = line;
-      recalculateSourceTab();
+      jscoverage_selectTab('sourceTab');
+      jscoverage_currentLine = line;
+      jscoverage_recalculateSourceTab();
     }, 50);
   }
   else {
-    if (gCurrentFile === null) {
+    if (jscoverage_currentFile === null) {
       var tab = document.getElementById('sourceTab');
       tab.className = '';
-      tab.onclick = tab_click;
+      tab.onclick = jscoverage_tab_click;
     }
+
+    // check the cache
+    if (file in jscoverage_sourceCache) {
+      jscoverage_currentFile = file;
+      jscoverage_currentLine = line || 1;
+      jscoverage_highlightSource();
+      return;
+    }
+
     setTimeout(function() {
-      selectTab('sourceTab');
-      setThrobber();
-      // Note that the IE7 XMLHttpRequest does not support file URL's.
-      // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
-      // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
-      var request;
-      if (window.ActiveXObject) {
-        request = new ActiveXObject("Microsoft.XMLHTTP");
-      }
-      else {
-        request = new XMLHttpRequest();
-      }
-      request.open("GET", file, true);
-      request.onreadystatechange = function(event) {
-        if (request.readyState === 4) {
-          if (request.status === 0 || request.status === 200) {
-            var response = request.responseText;
-            response = getOriginalSource(response);
-            // opera returns status zero even if there is a missing file???
-            if (response === '') {
-              httpError(file);
-            }
-            else {
-              clearThrobber();
-              gCurrentFile = file;
-              gCurrentLine = line || 1;
-              gCurrentSource = response;
-              highlightSource();
-            }
-          }
-          else {
-            httpError(file);
-          }
-        }
-      };
-      if ('onerror' in request) {
-        request.onerror = function(event) {
-          httpError(file);
-        };
-      }
+      jscoverage_selectTab('sourceTab');
+      jscoverage_setThrobber();
+      var request = jscoverage_createRequest();
       try {
+        request.open("GET", file, true);
+        request.onreadystatechange = function(event) {
+          if (request.readyState === 4) {
+            try {
+              if (request.status !== 0 && request.status !== 200) {
+                throw request.status;
+              }
+              var response = request.responseText;
+              // opera returns status zero even if there is a missing file
+              if (response === '') {
+                throw request.status;
+              }
+              var source = jscoverage_getOriginalSource(response);
+              jscoverage_sourceCache[file] = source;
+              jscoverage_clearThrobber();
+              jscoverage_currentFile = file;
+              jscoverage_currentLine = line || 1;
+              jscoverage_highlightSource();
+            }
+            catch (e) {
+              jscoverage_httpError(file);
+            }
+          }
+        };
         request.send(null);
       }
       catch (e) {
-        httpError(file);
+        jscoverage_httpError(file);
       }
     }, 50);
   }
@@ -754,16 +831,16 @@ function get(file, line) {
 /**
 Calculates coverage statistics for the current source file.
 */
-function recalculateSourceTab() {
-  if (! gCurrentFile) {
-    endLengthyOperation();
+function jscoverage_recalculateSourceTab() {
+  if (! jscoverage_currentFile) {
+    jscoverage_endLengthyOperation();
     return;
   }
   var progressLabel = document.getElementById('progressLabel');
   progressLabel.innerHTML = 'Calculating coverage ...';
   var progressBar = document.getElementById('progressBar');
   ProgressBar.setPercentage(progressBar, 0);
-  setTimeout(makeTable, 0);
+  setTimeout(jscoverage_makeTable, 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -773,7 +850,7 @@ function recalculateSourceTab() {
 Initializes the tab control.  This function must be called when the document is
 loaded.
 */
-function initTabControl() {
+function jscoverage_initTabControl() {
   var tabs = document.getElementById('tabs');
   var i;
   var child;
@@ -782,12 +859,12 @@ function initTabControl() {
     child = tabs.childNodes.item(i);
     if (child.nodeType === 1) {
       if (child.className !== 'disabled') {
-        child.onclick = tab_click;
+        child.onclick = jscoverage_tab_click;
       }
       tabNum++;
     }
   }
-  selectTab(0);
+  jscoverage_selectTab(0);
 }
 
 /**
@@ -798,9 +875,9 @@ Selects a tab.
              OR
              the tab element itself
 */
-function selectTab(tab) {
+function jscoverage_selectTab(tab) {
   if (typeof tab !== 'number') {
-    tab = tabIndexOf(tab);
+    tab = jscoverage_tabIndexOf(tab);
   }
   var tabControl = document.getElementById("tabControl");
   var tabs = document.getElementById('tabs');
@@ -825,7 +902,7 @@ function selectTab(tab) {
       tabNum++;
     }
   }
-  setSize();
+  jscoverage_setSize();
 }
 
 /**
@@ -834,7 +911,7 @@ Returns an integer (0, 1, 2, or 3) representing the index of a given tab.
              OR
              the tab element itself
 */
-function tabIndexOf(tab) {
+function jscoverage_tabIndexOf(tab) {
   if (typeof tab === 'string') {
     tab = document.getElementById(tab);
   }
@@ -854,8 +931,8 @@ function tabIndexOf(tab) {
   throw "Tab not found";
 }
 
-function tab_click(e) {
-  if (gInLengthyOperation) {
+function jscoverage_tab_click(e) {
+  if (jscoverage_inLengthyOperation) {
     return;
   }
   var target;
@@ -869,17 +946,17 @@ function tab_click(e) {
   if (target.className === 'selected') {
     return;
   }
-  beginLengthyOperation();
+  jscoverage_beginLengthyOperation();
   setTimeout(function() {
-    selectTab(target);
+    jscoverage_selectTab(target);
     if (target.id === 'summaryTab') {
-      recalculateSummaryTab();
+      jscoverage_recalculateSummaryTab();
     }
     else if (target.id === 'sourceTab') {
-      recalculateSourceTab();
+      jscoverage_recalculateSourceTab();
     }
     else {
-      endLengthyOperation();
+      jscoverage_endLengthyOperation();
     }
   }, 50);
 }
@@ -1028,3 +1105,93 @@ var BrowserDetect = {
 
 };
 BrowserDetect.init();
+
+// -----------------------------------------------------------------------------
+// reports
+
+function jscoverage_quote(s) {
+  return '"' + s.replace(/\cH|\f|\n|\r|\t|\v|"|\\/g, function(s) {
+    switch(s) {
+    case '\b':
+      return '\\b';
+    case '\f':
+      return '\\f';
+    case '\n':
+      return '\\n';
+    case '\r':
+      return '\\r';
+    case '\t':
+      return '\\t';
+    case '\v':
+      return '\\v';
+    case '"':
+      return '\\"';
+    case '\\':
+      return '\\\\';
+    default:
+      throw "error";
+    }
+  }) + '"';
+}
+
+function jscoverage_serializeCoverageToJSON() {
+  var json = [];
+  for (var file in _$jscoverage) {
+    var coverage = _$jscoverage[file];
+    var array = [];
+    var length = coverage.length;
+    for (var line = 0; line < length; line++) {
+      var value = coverage[line];
+      if (value === undefined || value === null) {
+        value = 'null';
+      }
+      array.push(value);
+    }
+    json.push(jscoverage_quote(file) + ':[' + array.join(',') + ']');
+  }
+  return '{' + json.join(',') + '}';
+}
+
+function jscoverage_storeButton_click() {
+  if (jscoverage_inLengthyOperation) {
+    return;
+  }
+
+  jscoverage_beginLengthyOperation();
+  var img = document.getElementById('storeImg');
+  img.style.visibility = 'visible';
+
+  var request = jscoverage_createRequest();
+  request.open('POST', '/jscoverage-store', true);
+  request.onreadystatechange = function (event) {
+    if (request.readyState === 4) {
+      var message;
+      try {
+        if (request.status !== 200 && request.status !== 201 && request.status !== 204) {
+          throw request.status;
+        }
+        message = request.responseText;
+      }
+      catch (e) {
+        if (e.toString().search(/^\d{3}$/) === 0) {
+          message = e + ': ' + request.responseText;
+        }
+        else {
+          message = 'Could not connect to server: ' + e;
+        }
+      }
+
+      jscoverage_endLengthyOperation();
+      var img = document.getElementById('storeImg');
+      img.style.visibility = 'hidden';
+
+      var div = document.getElementById('storeDiv');
+      div.appendChild(document.createElement('br'));
+      div.appendChild(document.createTextNode(message));
+    }
+  };
+  request.setRequestHeader('Content-Type', 'application/json');
+  var json = jscoverage_serializeCoverageToJSON();
+  request.setRequestHeader('Content-Length', json.length.toString());
+  request.send(json);
+}

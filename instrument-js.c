@@ -17,6 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include "instrument-js.h"
 
 #include <assert.h>
@@ -32,6 +34,7 @@
 #include <jsscope.h>
 #include <jsstr.h>
 
+#include "resource-manager.h"
 #include "util.h"
 
 static JSRuntime * runtime = NULL;
@@ -164,7 +167,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent) {
 
     /* function parameters */
     Stream_write_string(f, "(");
-    JSAtom ** params = xmalloc(function->nargs * sizeof(JSAtom *));
+    JSAtom ** params = xnew(JSAtom *, function->nargs);
     for (int i = 0; i < function->nargs; i++) {
       /* initialize to NULL for sanity check */
       params[i] = NULL;
@@ -806,7 +809,7 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
 
   /* scan the javascript */
   size_t input_length = input->length;
-  jschar * base = js_InflateString(context, input->data, &input_length);
+  jschar * base = js_InflateString(context, (char *) input->data, &input_length);
   if (base == NULL) {
     fatal("out of memory");
   }
@@ -830,7 +833,7 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
   An instrumented JavaScript file has 3 sections:
   1. initialization
   2. instrumented source code
-  3. original source code (TODO)
+  3. original source code
   */
 
   Stream * instrumented = Stream_new(0);
@@ -893,4 +896,261 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
   JS_free(context, base);
 
   file_id = NULL;
+}
+
+void jscoverage_copy_resources(const char * destination_directory) {
+  copy_resource("jscoverage.html", destination_directory);
+  copy_resource("jscoverage.css", destination_directory);
+  copy_resource("jscoverage.js", destination_directory);
+  copy_resource("jscoverage-throbber.gif", destination_directory);
+  copy_resource("jscoverage-sh_main.js", destination_directory);
+  copy_resource("jscoverage-sh_javascript.js", destination_directory);
+  copy_resource("jscoverage-sh_nedit.css", destination_directory);
+}
+
+/*
+coverage reports
+*/
+
+struct FileCoverageList {
+  FileCoverage * file_coverage;
+  struct FileCoverageList * next;
+};
+
+struct Coverage {
+  JSHashTable * coverage_table;
+  struct FileCoverageList * coverage_list;
+};
+
+static int compare_strings(const void * p1, const void * p2) {
+  return strcmp(p1, p2) == 0;
+}
+
+Coverage * Coverage_new(void) {
+  Coverage * result = xmalloc(sizeof(Coverage));
+  result->coverage_table = JS_NewHashTable(1024, JS_HashString, compare_strings, NULL, NULL, NULL);
+  if (result->coverage_table == NULL) {
+    fatal("cannot create hash table");
+  }
+  result->coverage_list = NULL;
+  return result;
+}
+
+void Coverage_delete(Coverage * coverage) {
+  JS_HashTableDestroy(coverage->coverage_table);
+  struct FileCoverageList * p = coverage->coverage_list;
+  while (p != NULL) {
+    free(p->file_coverage->lines);
+    free(p->file_coverage->source);
+    free(p->file_coverage->id);
+    free(p->file_coverage);
+    struct FileCoverageList * q = p;
+    p = p->next;
+    free(q);
+  }
+  free(coverage);
+}
+
+struct EnumeratorArg {
+  CoverageForeachFunction f;
+  void * p;
+};
+
+static intN enumerator(JSHashEntry * entry, intN i, void * arg) {
+  struct EnumeratorArg * enumerator_arg = arg;
+  enumerator_arg->f(entry->value, i, enumerator_arg->p);
+  return 0;
+}
+
+void Coverage_foreach_file(Coverage * coverage, CoverageForeachFunction f, void * p) {
+  struct EnumeratorArg enumerator_arg;
+  enumerator_arg.f = f;
+  enumerator_arg.p = p;
+  JS_HashTableEnumerateEntries(coverage->coverage_table, enumerator, &enumerator_arg);
+}
+
+int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t length) {
+  jschar * base = js_InflateString(context, (char *) json, &length);
+  if (base == NULL) {
+    fatal("out of memory");
+  }
+
+  jschar * parenthesized_json = xnew(jschar, addst(length, 2));
+  parenthesized_json[0] = '(';
+  memcpy(parenthesized_json + 1, base, mulst(length, sizeof(jschar)));
+  parenthesized_json[length + 1] = ')';
+
+  JS_free(context, base);
+
+  JSTokenStream * token_stream = js_NewTokenStream(context, parenthesized_json, length + 2, NULL, 1, NULL);
+  if (token_stream == NULL) {
+    fatal("cannot create token stream");
+  }
+
+  JSParseNode * root = js_ParseTokenStream(context, global, token_stream);
+  free(parenthesized_json);
+  if (root == NULL) {
+    return -1;
+  }
+
+  /* root node must be TOK_LC */
+  if (root->pn_type != TOK_LC) {
+    return -1;
+  }
+  JSParseNode * semi = root->pn_u.list.head;
+
+  /* the list must be TOK_SEMI and it must contain only one element */
+  if (semi->pn_type != TOK_SEMI || semi->pn_next != NULL) {
+    return -1;
+  }
+  JSParseNode * parenthesized = semi->pn_kid;
+
+  /* this must be a parenthesized expression */
+  if (parenthesized->pn_type != TOK_RP) {
+    return -1;
+  }
+  JSParseNode * object = parenthesized->pn_kid;
+
+  /* this must be an object literal */
+  if (object->pn_type != TOK_RC) {
+    return -1;
+  }
+
+  for (JSParseNode * p = object->pn_head; p != NULL; p = p->pn_next) {
+    /* every element of this list must be TOK_COLON */
+    if (p->pn_type != TOK_COLON) {
+      return -1;
+    }
+
+    /* the key must be a string representing the file */
+    JSParseNode * key = p->pn_left;
+    if (key->pn_type != TOK_STRING || ! ATOM_IS_STRING(key->pn_atom)) {
+      return -1;
+    }
+    char * id_bytes = JS_GetStringBytes(ATOM_TO_STRING(key->pn_atom));
+
+    /* the value must be an object literal OR an array */
+    JSParseNode * value = p->pn_right;
+    if (! (value->pn_type == TOK_RC || value->pn_type == TOK_RB)) {
+      return -1;
+    }
+
+    JSParseNode * array = NULL;
+    JSParseNode * source = NULL;
+    if (value->pn_type == TOK_RB) {
+      /* an array */
+      array = value;
+    }
+    else if (value->pn_type == TOK_RC) {
+      /* an object literal */
+      if (value->pn_count != 2) {
+        return -1;
+      }
+      for (JSParseNode * element = value->pn_head; element != NULL; element = element->pn_next) {
+        if (element->pn_type != TOK_COLON) {
+          return -1;
+        }
+        JSParseNode * left = element->pn_left;
+        if (left->pn_type != TOK_STRING || ! ATOM_IS_STRING(left->pn_atom)) {
+          return -1;
+        }
+        const char * s = JS_GetStringBytes(ATOM_TO_STRING(left->pn_atom));
+        if (strcmp(s, "coverage") == 0) {
+          array = element->pn_right;
+          if (array->pn_type != TOK_RB) {
+            return -1;
+          }
+        }
+        else if (strcmp(s, "source") == 0) {
+          source = element->pn_right;
+          if (source->pn_type != TOK_STRING || ! ATOM_IS_STRING(source->pn_atom)) {
+            return -1;
+          }
+        }
+        else {
+          return -1;
+        }
+      }
+    }
+    else {
+      return -1;
+    }
+
+    if (array == NULL) {
+      return -1;
+    }
+
+    /* look up the file in the coverage table */
+    FileCoverage * file_coverage = JS_HashTableLookup(coverage->coverage_table, id_bytes);
+    if (file_coverage == NULL) {
+      /* not there: create a new one */
+      char * id = xstrdup(id_bytes);
+      file_coverage = xmalloc(sizeof(FileCoverage));
+      file_coverage->id = id;
+      file_coverage->num_lines = array->pn_count - 1;
+      file_coverage->lines = xnew(int, array->pn_count);
+      if (source == NULL) {
+        file_coverage->source = NULL;
+      }
+      else {
+        file_coverage->source = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(source->pn_atom)));
+      }
+
+      /* set coverage for all lines */
+      uint32 i = 0;
+      for (JSParseNode * element = array->pn_head; element != NULL; element = element->pn_next, i++) {
+        if (element->pn_type == TOK_NUMBER) {
+          file_coverage->lines[i] = (int) element->pn_dval;
+        }
+        else if (element->pn_type == TOK_PRIMARY && element->pn_op == JSOP_NULL) {
+          file_coverage->lines[i] = -1;
+        }
+        else {
+          return -1;
+        }
+      }
+      assert(i == array->pn_count);
+
+      /* add to the hash table */
+      JS_HashTableAdd(coverage->coverage_table, id, file_coverage);
+      struct FileCoverageList * coverage_list = xmalloc(sizeof(struct FileCoverageList));
+      coverage_list->file_coverage = file_coverage;
+      coverage_list->next = coverage->coverage_list;
+      coverage->coverage_list = coverage_list;
+    }
+    else {
+      /* sanity check */
+      assert(strcmp(file_coverage->id, id_bytes) == 0);
+      if (file_coverage->num_lines != array->pn_count - 1) {
+        return -2;
+      }
+
+      /* merge the coverage */
+      uint32 i = 0;
+      for (JSParseNode * element = array->pn_head; element != NULL; element = element->pn_next, i++) {
+        if (element->pn_type == TOK_NUMBER) {
+          if (file_coverage->lines[i] == -1) {
+            return -2;
+          }
+          file_coverage->lines[i] += (int) element->pn_dval;
+        }
+        else if (element->pn_type == TOK_PRIMARY && element->pn_op == JSOP_NULL) {
+          if (file_coverage->lines[i] != -1) {
+            return -2;
+          }
+        }
+        else {
+          return -1;
+        }
+      }
+      assert(i == array->pn_count);
+
+      /* if this JSON file has source, use it */
+      if (file_coverage->source == NULL && source != NULL) {
+        file_coverage->source = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(source->pn_atom)));
+      }
+    }
+  }
+
+  return 0;
 }

@@ -20,8 +20,6 @@
 #ifndef INSTRUMENT_H_
 #define INSTRUMENT_H_
 
-void jscoverage_copy_resources(const char * destination_directory);
-
 void jscoverage_instrument(const char * source,
                            const char * destination,
                            int verbose,

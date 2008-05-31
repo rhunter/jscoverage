@@ -31,9 +31,10 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_TYPES([SOCKET])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([vasprintf asprintf])
+AC_CHECK_FUNCS([strndup vasprintf asprintf closesocket])
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([js])

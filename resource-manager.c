@@ -17,8 +17,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include "resource-manager.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,11 +36,12 @@ const struct Resource * get_resource(const char * name) {
       return &RESOURCES[i];
     }
   }
-  abort();
+  return NULL;
 }
 
 void copy_resource_to_stream(const char * resource, FILE * stream) {
   const struct Resource * r = get_resource(resource);
+  assert(r != NULL);
   if (fwrite(r->data, 1, r->length, stream) != r->length) {
     fatal("cannot write to stream");
   }

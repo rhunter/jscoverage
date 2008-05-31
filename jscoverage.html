@@ -21,14 +21,14 @@
 <html>
 <head>
 <title>JSCoverage</title>
-<link rel="stylesheet" type="text/css" href="jscoverage-sh_nedit.css">
-<link rel="stylesheet" type="text/css" href="jscoverage.css">
+<link rel="stylesheet" href="jscoverage-sh_nedit.css" type="text/css">
+<link rel="stylesheet" href="jscoverage.css" type="text/css">
 <script type="text/javascript" src="jscoverage-sh_main.js"></script>
 <script type="text/javascript" src="jscoverage-sh_javascript.js"></script>
-<script type="text/javascript" src="jscoverage.js"></script>
+<script src="jscoverage.js" type="text/javascript"></script>
 </head>
 
-<body onload="body_load();" onresize="body_resize();">
+<body onload="jscoverage_body_load();" onresize="jscoverage_body_resize();">
 <div id="headingDiv">
 <div id="progressBar" class="ProgressBar"><div class="pctGraph"><div class="covered"></div></div><span class="pct"></span></div>
 <div id="progressLabel"></div>
@@ -38,21 +38,23 @@
 <div id="tabControl" class="TabControl">
   <div id="tabs" class="Tabs">
     <div id="browserTab"><img src="jscoverage-throbber.gif" alt="loading..."> Browser <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div id="summaryTab"><img src="jscoverage-throbber.gif" alt="loading..."> Summary <img src="jscoverage-throbber.gif" alt="loading..."></div>
+    <div id="summaryTab"><img id="summaryThrobber" src="jscoverage-throbber.gif" alt="loading..."> Summary <img src="jscoverage-throbber.gif" alt="loading..."></div>
     <div id="sourceTab" class="disabled"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Source <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div><img src="jscoverage-throbber.gif" alt="loading..."> About <img src="jscoverage-throbber.gif" alt="loading..."></div>
+    <div id="storeTab"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Store <img src="jscoverage-throbber.gif" alt="loading..."></div>
+    <div id="aboutTab"><img src="jscoverage-throbber.gif" alt="loading..."> About <img src="jscoverage-throbber.gif" alt="loading..."></div>
   </div>
   <div id="tabPages" class="TabPages">
-    <div class="TabPage">
+    <div class="TabPage" id="browserTabPage">
       <div id="locationDiv">
-      URL: <input id="location" type="text" size="70" onkeypress="input_keypress(event)">
-      <button onclick="button_click();">Go</button>
+      URL: <input id="location" type="text" size="70" onkeypress="jscoverage_input_keypress(event)">
+      <button onclick="jscoverage_button_click();">Go</button>
       </div>
-      <iframe id="browserIframe" onload="browser_load();"></iframe>
+      <iframe id="browserIframe" onload="jscoverage_browser_load();"></iframe>
     </div>
     <div class="TabPage">
-      <input type="checkbox" id="checkbox" onclick="return checkbox_click();"> <label for="checkbox">Show missing statements column</label>
+      <input type="checkbox" id="checkbox" onclick="return jscoverage_checkbox_click();"> <label for="checkbox">Show missing statements column</label>
       <div id="summaryDiv">
+      <div id="summaryErrorDiv"></div>
       <table id="summaryTable">
       <thead>
       <tr id="headerRow">
@@ -97,6 +99,11 @@
       <div id="fileDiv"></div>
       <div id="sourceDiv"></div>
     </div>
+    <div class="TabPage" id="storeTabPage">
+      <button id="storeButton" onclick="jscoverage_storeButton_click();">Store Report</button>
+      <img id="storeImg" src="jscoverage-throbber.gif" alt="loading...">
+      <div id="storeDiv"></div>
+    </div>
     <div class="TabPage">
       This is version 0.3.1 of JSCoverage, a program that calculates code
       coverage statistics for JavaScript.
@@ -104,7 +111,7 @@
       See <a href="http://siliconforks.com/jscoverage/">http://siliconforks.com/jscoverage/</a> for more information.
       </p>
       <p>
-      Copyright &copy; 2007 siliconforks.com
+      Copyright &copy; 2007, 2008 siliconforks.com
       </p>
     </div>
   </div>

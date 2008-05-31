@@ -19,11 +19,11 @@ SUBDIRS = js
 
 AM_CFLAGS = -Ijs/src -DXP_UNIX
 
-resources = help.txt \
+resources = help.txt jscoverage-server-help.txt \
             jscoverage-sh_main.js jscoverage-sh_javascript.js jscoverage-sh_nedit.css \
-            jscoverage.html jscoverage.css jscoverage.js jscoverage-throbber.gif
+            jscoverage.html jscoverage.css jscoverage.js jscoverage-throbber.gif report.js
 
-bin_PROGRAMS = jscoverage
+bin_PROGRAMS = jscoverage jscoverage-server
 jscoverage_SOURCES = instrument.c instrument.h \
                      instrument-js.c instrument-js.h \
                      main.c \
@@ -33,6 +33,21 @@ jscoverage_SOURCES = instrument.c instrument.h \
                      $(resources)
 jscoverage_LDFLAGS = -static
 jscoverage_LDADD = js/libjs.la -lm
+jscoverage_server_SOURCES = http-connection.c \
+                            http-exchange.c \
+                            http-host.c \
+                            http-message.c \
+                            http-server.c http-server.h \
+                            http-url.c \
+                            instrument-js.c instrument-js.h \
+                            jscoverage-server.c \
+                            resource-manager.c resource-manager.h \
+                            stream.c stream.h \
+                            util.c util.h \
+                            $(resources)
+
+jscoverage_server_LDFLAGS = -static
+jscoverage_server_LDADD = js/libjs.la -lm -lpthread
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

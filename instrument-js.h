@@ -21,6 +21,7 @@
 #define INSTRUMENT_JS_H_
 
 #include "stream.h"
+#include "util.h"
 
 enum FileType {
   FILE_TYPE_JS,
@@ -33,5 +34,28 @@ void jscoverage_init(void);
 void jscoverage_cleanup(void);
 
 void jscoverage_instrument_js(const char * id, Stream * input, Stream * output);
+
+void jscoverage_copy_resources(const char * destination_directory);
+
+typedef struct Coverage Coverage;
+
+typedef struct FileCoverage {
+  char * id;
+
+  int * lines;
+  uint32_t num_lines;
+
+  char * source;
+} FileCoverage;
+
+Coverage * Coverage_new(void);
+
+void Coverage_delete(Coverage * coverage);
+
+typedef void (*CoverageForeachFunction) (const FileCoverage * file_coverage, int i, void * p);
+
+void Coverage_foreach_file(Coverage * coverage, CoverageForeachFunction f, void * p);
+
+int jscoverage_parse_json(Coverage * coverage, const uint8_t * data, size_t length) __attribute__((warn_unused_result));
 
 #endif
