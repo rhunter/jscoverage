@@ -287,6 +287,7 @@ function jscoverage_body_load() {
             }
             jscoverage_recalculateSummaryTab();
             jscoverage_endLengthyOperation();
+            summaryThrobber.style.visibility = 'hidden';
           }
           catch (e) {
             reportError(e);
