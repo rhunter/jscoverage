@@ -26,8 +26,9 @@ rm -fr DIR
 rm -fr EXPECTED
 cp -r recursive.expected EXPECTED
 find EXPECTED -name .svn | xargs rm -fr
-cp recursive/script.js EXPECTED
-cp recursive/1/2/2.js EXPECTED/1/2
+cat recursive/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
+cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
+cat recursive/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
 cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
 
 $VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn --no-instrument 1/2 --no-instrument=script.js recursive DIR

@@ -3,17 +3,17 @@ if (! top._$jscoverage) {
   top._$jscoverage = {};
 }
 var _$jscoverage = top._$jscoverage;
-if (! _$jscoverage['script.js']) {
-  _$jscoverage['script.js'] = [];
-  _$jscoverage['script.js'][1] = 0;
-  _$jscoverage['script.js'][4] = 0;
-  _$jscoverage['script.js'][5] = 0;
+if (! _$jscoverage['@PREFIX@script.js']) {
+  _$jscoverage['@PREFIX@script.js'] = [];
+  _$jscoverage['@PREFIX@script.js'][1] = 0;
+  _$jscoverage['@PREFIX@script.js'][4] = 0;
+  _$jscoverage['@PREFIX@script.js'][5] = 0;
 }
-_$jscoverage['script.js'][1]++;
+_$jscoverage['@PREFIX@script.js'][1]++;
 alert("hello");
-_$jscoverage['script.js'][4]++;
+_$jscoverage['@PREFIX@script.js'][4]++;
 if ("a" < "b" && "a" > "b") {
-  _$jscoverage['script.js'][5]++;
+  _$jscoverage['@PREFIX@script.js'][5]++;
   alert("?");
 }
 

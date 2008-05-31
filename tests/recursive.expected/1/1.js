@@ -3,11 +3,11 @@ if (! top._$jscoverage) {
   top._$jscoverage = {};
 }
 var _$jscoverage = top._$jscoverage;
-if (! _$jscoverage['1/1.js']) {
-  _$jscoverage['1/1.js'] = [];
-  _$jscoverage['1/1.js'][1] = 0;
+if (! _$jscoverage['@PREFIX@1/1.js']) {
+  _$jscoverage['@PREFIX@1/1.js'] = [];
+  _$jscoverage['@PREFIX@1/1.js'][1] = 0;
 }
-_$jscoverage['1/1.js'][1]++;
+_$jscoverage['@PREFIX@1/1.js'][1]++;
 alert("This is 1");
 
 // alert("This is 1");
