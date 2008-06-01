@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "stream.h"
+#include "util.h"
 
 int main(void) {
   int s = socket(PF_INET, SOCK_STREAM, 0);
@@ -84,11 +85,17 @@ int main(void) {
 
     char * method;
     char * url;
-    sscanf(stream->data, "%as %as", &method, &url);
+    char * request_line = stream->data;
+    char * first_space = strchr(request_line, ' ');
+    assert(first_space != NULL);
+    char * second_space = strchr(first_space + 1, ' ');
+    assert(second_space != NULL);
+    method = xstrndup(stream->data, first_space - request_line);
+    url = xstrndup(first_space + 1, second_space - (first_space + 1));
 
     /* send response */
     char * message;
-    if (strcmp(url, "http://127.0.0.1:8000/lower") == 0) {
+    if (strcmp(url, "http://127.0.0.1:8000/lower") == 0 || strcmp(url, "/lower") == 0) {
       message = "HTTP/1.1 200 OK\r\n"
                 "Connection: close\r\n"
                 "Content-type: text/html\r\n"
@@ -174,7 +181,7 @@ int main(void) {
     }
     size_t message_length = strlen(message);
     ssize_t bytes_sent = send(client_socket, message, message_length, 0);
-    assert(bytes_sent == message_length);
+    assert(bytes_sent == (ssize_t) message_length);
 
     close(client_socket);
   }
