@@ -25,8 +25,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include <sys/socket.h>
-
 #include "stream.h"
 #include "util.h"
 
