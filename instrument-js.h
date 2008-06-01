@@ -26,7 +26,7 @@
 enum FileType {
   FILE_TYPE_JS,
   FILE_TYPE_HTML,
-  FILE_TYPE_UNKNOWN,
+  FILE_TYPE_OTHER
 };
 
 void jscoverage_init(void);

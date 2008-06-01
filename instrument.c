@@ -52,7 +52,7 @@ static enum FileType get_file_type(const char * file) {
     return FILE_TYPE_HTML;
   }
   else {
-    return FILE_TYPE_UNKNOWN;
+    return FILE_TYPE_OTHER;
   }
 }
 
@@ -83,7 +83,7 @@ static void instrument_file(const char * source_file, const char * destination_f
   if (instrumenting) {
     enum FileType file_type = get_file_type(source_file);
     switch (file_type) {
-    case FILE_TYPE_UNKNOWN:
+    case FILE_TYPE_OTHER:
     case FILE_TYPE_HTML:
       copy_file(source_file, destination_file);
       break;
