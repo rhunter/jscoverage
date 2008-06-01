@@ -338,26 +338,17 @@ static bool should_instrument_request(HTTPExchange * exchange) {
   return true;
 }
 
-static int merge(Coverage * coverage, const char * path, size_t size) __attribute__((warn_unused_result));
+static int merge(Coverage * coverage, FILE * f) __attribute__((warn_unused_result));
 
-static int merge(Coverage * coverage, const char * path, size_t size) {
-  FILE * f = fopen(path, "r");
-  if (f == NULL) {
-    return -1;
-  }
-  uint8_t * buffer = xmalloc(size);
-  if (fread(buffer, 1, size, f) != size) {
-    fclose(f);
-    free(buffer);
-    return -1;
-  }
-  fclose(f);
+static int merge(Coverage * coverage, FILE * f) {
+  Stream * stream = Stream_new(0);
+  Stream_write_file_contents(stream, f);
 
   pthread_mutex_lock(&javascript_mutex);
-  int result = jscoverage_parse_json(coverage, buffer, size);
+  int result = jscoverage_parse_json(coverage, stream->data, stream->length);
   pthread_mutex_unlock(&javascript_mutex);
 
-  free(buffer);
+  Stream_delete(stream);
   return result;
 }
 
@@ -524,10 +515,13 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
 
     mkdir_if_necessary(report_directory);
     char * path = make_path(report_directory, "jscoverage.json");
-    struct stat buf;
-    if (stat(path, &buf) == 0) {
+    FILE * f = fopen(path, "r");
+    if (f != NULL) {
       /* it exists: merge */
-      result = merge(coverage, path, buf.st_size);
+      result = merge(coverage, f);
+      if (fclose(f) == EOF) {
+        result = 1;
+      }
       if (result != 0) {
         free(path);
         Coverage_delete(coverage);
@@ -547,7 +541,7 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     /* copy other files */
     jscoverage_copy_resources(report_directory);
     path = make_path(report_directory, "jscoverage.js");
-    FILE * f = fopen(path, "ab");
+    f = fopen(path, "ab");
     free(path);
     if (f == NULL) {
       send_response(exchange, 500, "Could not write to file: jscoverage.js\n");
