@@ -30,6 +30,7 @@ AC_PROG_LIBTOOL
 # Checks for libraries.
 
 # Checks for header files.
+AC_CHECK_HEADERS([pthread.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
