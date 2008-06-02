@@ -31,7 +31,7 @@ noinst_PROGRAMS = asprintf \
 
 asprintf_SOURCES = asprintf.c ../util.c
 
-gethostbyname_SOURCES = gethostbyname.c ../http-host.c
+gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
 gethostbyname_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_client_bad_body_SOURCES = http-client-bad-body.c ../http-url.c ../util.c
