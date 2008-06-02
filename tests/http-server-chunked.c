@@ -17,19 +17,25 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include <assert.h>
 #include <string.h>
 
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
+#include "http-server.h"
 #include "stream.h"
 #include "util.h"
 
 int main(void) {
-  int s = socket(PF_INET, SOCK_STREAM, 0);
-  assert(s > 0);
+#ifdef __MINGW32__
+  WSADATA data;
+  if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
+    return 1;
+  }
+#endif
+
+  SOCKET s = socket(PF_INET, SOCK_STREAM, 0);
+  assert(s != INVALID_SOCKET);
 
   int optval = 1;
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char *) &optval, sizeof(optval));
@@ -183,7 +189,7 @@ int main(void) {
     ssize_t bytes_sent = send(client_socket, message, message_length, 0);
     assert(bytes_sent == (ssize_t) message_length);
 
-    close(client_socket);
+    closesocket(client_socket);
   }
   return 0;
 }

@@ -17,20 +17,23 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
+#include "http-server.h"
 #include "util.h"
 
 int main(int argc, char ** argv) {
+#ifdef __MINGW32__
+  WSADATA data;
+  if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
+    return 1;
+  }
+#endif
+
   int result;
 
   if (argc < 3) {
@@ -46,8 +49,8 @@ int main(int argc, char ** argv) {
   a.sin_port = htons(connect_port);
   a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-  int s = socket(PF_INET, SOCK_STREAM, 0);
-  assert(s > 0);
+  SOCKET s = socket(PF_INET, SOCK_STREAM, 0);
+  assert(s != INVALID_SOCKET);
 
   result = connect(s, (struct sockaddr *) &a, sizeof(a));
   assert(result == 0);
@@ -69,6 +72,6 @@ int main(int argc, char ** argv) {
     }
   }
 
-  close(s);
+  closesocket(s);
   return 0;
 }

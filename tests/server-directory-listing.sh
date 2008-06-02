@@ -52,6 +52,6 @@ echo x > 'DIR/1 2.txt'
 sort server-directory-listing.expected -o EXPECTED
 wget -q -O- http://127.0.0.1:8080/ > ACTUAL
 sort ACTUAL -o ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 rm -fr DIR

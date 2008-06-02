@@ -46,22 +46,22 @@ sleep $delay
 
 echo text/html > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/recursive/index.html 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 echo text/plain > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/recursive/unix.txt 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 echo text/plain > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/recursive/windows.txt 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 touch foo
 echo application/octet-stream > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/foo 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 touch foo.bar
 echo application/octet-stream > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/foo.bar 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL

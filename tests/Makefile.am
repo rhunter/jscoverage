@@ -31,15 +31,25 @@ noinst_PROGRAMS = asprintf \
 
 asprintf_SOURCES = asprintf.c ../util.c
 
-gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
+gethostbyname_SOURCES = gethostbyname.c ../http-host.c
+gethostbyname_LDADD = @EXTRA_SOCKET_LIBS@
 
-http_client_bad_body_SOURCES = http-client-bad-body.c ../http-url.c ../stream.c ../util.c
+http_client_bad_body_SOURCES = http-client-bad-body.c ../http-url.c ../util.c
+http_client_bad_body_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_client_bad_url_SOURCES = http-client-bad-url.c ../util.c
+http_client_bad_url_LDADD = @EXTRA_SOCKET_LIBS@
 
-http_server_bad_headers_SOURCES = http-server-bad-headers.c ../stream.c ../util.c
+http_client_close_after_request_LDADD = @EXTRA_SOCKET_LIBS@
+
+http_server_bad_body_LDADD = @EXTRA_SOCKET_LIBS@
+
+http_server_bad_headers_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_chunked_SOURCES = http-server-chunked.c ../stream.c ../util.c
+http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
+
+http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
 json_CPPFLAGS = -I../js/src

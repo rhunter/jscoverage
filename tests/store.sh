@@ -29,7 +29,7 @@ function cleanup() {
   shutdown
   if [ "$origin_server_pid" != "" ]
   then
-    kill $origin_server_pid
+    kill -9 $origin_server_pid
   fi
 }
 
@@ -69,7 +69,7 @@ diff EXPECTED ACTUAL
 shutdown
 
 cd recursive
-python ../POSTServer.py > /dev/null 2> /dev/null &
+perl ../server.pl > /dev/null 2> /dev/null &
 origin_server_pid=$!
 cd ..
 
@@ -112,7 +112,7 @@ cat store.json | sed "s/@PREFIX@//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
 js json-cmp.js store-bad-source-urls.expected.json DIR/jscoverage.json
 sort ERR -o ERR
-diff store-bad-source-urls.expected.err ERR
+diff --strip-trailing-cr store-bad-source-urls.expected.err ERR
 
 shutdown
 
@@ -128,4 +128,4 @@ cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:1\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
 js json-cmp.js store-unreachable-source-urls.expected.json DIR/jscoverage.json
 sort ERR -o ERR
-diff store-unreachable-source-urls.expected.err ERR
+diff --strip-trailing-cr store-unreachable-source-urls.expected.err ERR

@@ -19,7 +19,7 @@
 set -e
 
 function cleanup() {
-  kill $python_server_pid
+  kill -9 $origin_server_pid
 }
 
 trap 'cleanup' 0 1 2 3 15
@@ -33,10 +33,10 @@ else
   delay=2
 fi
 
-python POSTServer.py > OUT 2> ERR &
-python_server_pid=$!
+perl server.pl > OUT 2> ERR &
+origin_server_pid=$!
 
 sleep $delay
 
 $VALGRIND jscoverage-server --port 8000 --shutdown
-cat ERR | cut -d'"' -f2 | diff server-shutdown.expected.err -
+cat ERR | cut -d'"' -f2 | diff --strip-trailing-cr server-shutdown.expected.err -

@@ -110,7 +110,14 @@ shutdown
 
 rm -fr DIR
 mkdir DIR
-$VALGRIND jscoverage-server --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=/1/ &
+case `uname` in
+  MINGW*)
+    $VALGRIND jscoverage-server --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=1/ &
+    ;;
+  *)
+    $VALGRIND jscoverage-server --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=/1/ &
+    ;;
+esac
 server_pid=$!
 server_port=8081
 

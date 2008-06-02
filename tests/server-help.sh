@@ -21,6 +21,6 @@ set -e
 export PATH=.:..:$PATH
 
 jscoverage-server --help > OUT 2> ERR
-diff ../jscoverage-server-help.txt OUT
+diff --strip-trailing-cr ../jscoverage-server-help.txt OUT
 > TMP
 diff TMP ERR

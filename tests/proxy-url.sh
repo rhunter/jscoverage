@@ -23,7 +23,7 @@ function shutdown() {
   wait $proxy_server_pid
   if [ "$origin_server_pid" != "" ]
   then
-    kill $origin_server_pid
+    kill -9 $origin_server_pid
   fi
 }
 
@@ -56,7 +56,7 @@ diff EXPECTED ACTUAL
 ./http-client-bad-url 8080 http://127.0.0.1:xyz/index.html
 
 cd recursive
-python ../POSTServer.py > /dev/null 2> /dev/null &
+perl ../server.pl > /dev/null 2> /dev/null &
 origin_server_pid=$!
 cd ..
 

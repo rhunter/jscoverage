@@ -25,7 +25,7 @@ function shutdown() {
 
 function cleanup() {
   shutdown
-  kill $origin_server_pid
+  kill -9 $origin_server_pid
 }
 
 trap 'cleanup' 0 1 2 3 15
@@ -63,12 +63,12 @@ diff EXPECTED ACTUAL
 
 echo 200 > EXPECTED
 ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/overflow 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 echo 200 > EXPECTED
 ! curl -f -w '%{http_code}\n' -o /dev/null -x 127.0.0.1:8080 http://127.0.0.1:8000/javascript 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 echo 200 > EXPECTED
 ! curl -f -w '%{http_code}\n' -o /dev/null -x 127.0.0.1:8080 http://127.0.0.1:8000/multiple 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL

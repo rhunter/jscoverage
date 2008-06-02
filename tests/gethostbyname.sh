@@ -20,6 +20,6 @@ set -e
 
 echo 127.0.0.1 > EXPECTED
 ./gethostbyname localhost > ACTUAL
-diff EXPECTED ACTUAL
+diff --strip-trailing-cr EXPECTED ACTUAL
 
 ! ./gethostbyname foo

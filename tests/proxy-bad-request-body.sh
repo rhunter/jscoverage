@@ -21,11 +21,16 @@ set -e
 function shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${proxy_server_port}/jscoverage-shutdown" > /dev/null
   wait $proxy_server_pid
-  kill $python_server_pid
+}
+
+function shutdown_perl() {
+  wget -q -O- --post-data= http://127.0.0.1:8000/perl-shutdown > /dev/null
+  wait $origin_server_pid
 }
 
 function cleanup() {
   shutdown
+  shutdown_perl
 }
 
 trap 'cleanup' 0 1 2 3 15
@@ -40,8 +45,8 @@ else
 fi
 
 cd recursive
-python ../POSTServer.py > /dev/null 2> /dev/null &
-python_server_pid=$!
+perl ../server.pl > /dev/null 2> /dev/null &
+origin_server_pid=$!
 cd ..
 
 $VALGRIND jscoverage-server --proxy > OUT 2> ERR &

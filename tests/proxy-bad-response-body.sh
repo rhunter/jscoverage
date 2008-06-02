@@ -21,7 +21,7 @@ set -e
 function shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${proxy_server_port}/jscoverage-shutdown" > /dev/null
   wait $proxy_server_pid
-  kill $origin_server_pid
+  kill -9 $origin_server_pid
 }
 
 function cleanup() {
@@ -50,5 +50,5 @@ sleep $delay
 
 echo 200 > EXPECTED
 ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/index.html 2> /dev/null > ACTUAL
-diff EXPECTED ACTUAL
-diff proxy-bad-response-body.expected.err ERR
+diff --strip-trailing-cr EXPECTED ACTUAL
+diff --strip-trailing-cr proxy-bad-response-body.expected.err ERR

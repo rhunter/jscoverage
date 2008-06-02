@@ -17,16 +17,27 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif
 
 #include "http-server.h"
 
 int main(int argc, char ** argv) {
+#ifdef __MINGW32__
+  WSADATA data;
+  if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
+    return 1;
+  }
+#endif
+
   if (argc < 2) {
     exit(EXIT_FAILURE);
   }

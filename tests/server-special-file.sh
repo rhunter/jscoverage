@@ -18,6 +18,14 @@
 
 set -e
 
+# skip on mingw
+uname=`uname`
+case "$uname" in
+  MINGW*)
+    exit 77
+    ;;
+esac
+
 function shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
   wait $server_pid

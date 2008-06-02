@@ -47,4 +47,4 @@ sleep $delay
 
 wget --post-file=store-source-not-found.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 js json-cmp.js store-source-not-found.expected.json DIR/jscoverage.json
-diff store-source-not-found.expected.err ERR
+diff --strip-trailing-cr store-source-not-found.expected.err ERR

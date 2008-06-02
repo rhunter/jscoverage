@@ -18,11 +18,11 @@
 
 set -e
 
-trap 'rm -fr TMP EXPECTED DIR OUT' 1 2 3 15
+trap 'rm -fr TMP EXPECTED DIR OUT' 0 1 2 3 15
 
 export PATH=.:..:$PATH
 
-rm -fr TMP EXPECTED DIR
+rm -fr TMP EXPECTED DIR OUT
 
 mkdir -p TMP/1/2
 cd recursive
@@ -30,9 +30,9 @@ cp *.html *.js *.css *.png *.txt ../TMP
 cp 1/1.html 1/1.js 1/1.css ../TMP/1
 cp 1/2/2.html 1/2/2.js 1/2/2.css ../TMP/1/2
 cd ..
-cat recursive/script.js | sed 's/$/\r/g' > TMP/script.js
-cat recursive/1/1.js | sed 's/$/\r/g' > TMP/1/1.js
-cat recursive/1/2/2.js | sed 's/$/\r/g' > TMP/1/2/2.js
+unix2dos TMP/script.js > /dev/null 2> /dev/null
+unix2dos TMP/1/1.js > /dev/null 2> /dev/null
+unix2dos TMP/1/2/2.js > /dev/null 2> /dev/null
 
 mkdir -p EXPECTED/1/2
 cd recursive.expected
@@ -54,5 +54,3 @@ test -d DIR
 sort OUT -o OUT
 diff --strip-trailing-cr verbose.expected.out OUT
 diff --strip-trailing-cr -r EXPECTED DIR
-
-rm -fr TMP EXPECTED DIR OUT
