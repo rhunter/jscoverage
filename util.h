@@ -96,8 +96,8 @@ struct DirListEntry * make_recursive_dir_list(const char * directory);
 
 void free_dir_list(struct DirListEntry * list);
 
-#ifndef HAVE_CLOSESOCKET
-int closesocket(int s);
+#ifndef HAVE_STRNDUP
+char * strndup(const char * s, size_t size);
 #endif
 
 #ifndef HAVE_VASPRINTF

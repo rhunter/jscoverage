@@ -25,8 +25,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include <arpa/inet.h>
-
 #include "util.h"
 
 #define CONNECTION_BUFFER_CAPACITY 8192
@@ -61,7 +59,7 @@ HTTPConnection * HTTPConnection_new_client(const char * host, uint16_t port) {
   }
 
   SOCKET s = socket(PF_INET, SOCK_STREAM, 0);
-  if (s < 0) {
+  if (s == INVALID_SOCKET) {
     return NULL;
   }
 

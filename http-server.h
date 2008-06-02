@@ -24,11 +24,18 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifdef _WIN32
+#ifdef __MINGW32__
 #include <winsock2.h>
+typedef int socklen_t;
 #else
+#include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define closesocket close
 #endif
 
 #include "stream.h"
@@ -192,5 +199,9 @@ int URL_parse_host_and_port(const char * s, char ** host, uint16_t * port) __att
 int URL_parse_abs_path_and_query(const char * s, char ** abs_path, char ** query) __attribute__((warn_unused_result));
 
 int xgethostbyname(const char * host, struct in_addr * result) __attribute__((warn_unused_result));
+
+#ifndef HAVE_INET_ATON
+int inet_aton(const char * name, struct in_addr * a);
+#endif
 
 #endif /* HTTP_SERVER_H_ */

@@ -25,7 +25,9 @@
 #include <string.h>
 
 #include <dirent.h>
+#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
+#endif
 
 #include "http-server.h"
 #include "instrument-js.h"
@@ -64,19 +66,28 @@ static bool proxy = false;
 static const char ** no_instrument;
 static size_t num_no_instrument = 0;
 
+#ifdef __MINGW32__
+CRITICAL_SECTION javascript_mutex;
+CRITICAL_SECTION source_cache_mutex;
+#define LOCK EnterCriticalSection
+#define UNLOCK LeaveCriticalSection
+#else
 pthread_mutex_t javascript_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t source_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define LOCK pthread_mutex_lock
+#define UNLOCK pthread_mutex_unlock
+#endif
 
 static Stream * find_cached_source(const char * url) {
   Stream * result = NULL;
-  pthread_mutex_lock(&source_cache_mutex);
+  LOCK(&source_cache_mutex);
   for (SourceCache * p = source_cache; p != NULL; p = p->next) {
     if (strcmp(url, p->url) == 0) {
       result = p->source;
       break;
     }
   }
-  pthread_mutex_unlock(&source_cache_mutex);
+  UNLOCK(&source_cache_mutex);
   return result;
 }
 
@@ -84,10 +95,10 @@ static void add_cached_source(const char * url, Stream * source) {
   SourceCache * new_source_cache = xmalloc(sizeof(SourceCache));
   new_source_cache->url = xstrdup(url);
   new_source_cache->source = source;
-  pthread_mutex_lock(&source_cache_mutex);
+  LOCK(&source_cache_mutex);
   new_source_cache->next = source_cache;
   source_cache = new_source_cache;
-  pthread_mutex_unlock(&source_cache_mutex);
+  UNLOCK(&source_cache_mutex);
 }
 
 static int get(const char * url, Stream * stream) __attribute__((warn_unused_result));
@@ -344,9 +355,9 @@ static int merge(Coverage * coverage, FILE * f) {
   Stream * stream = Stream_new(0);
   Stream_write_file_contents(stream, f);
 
-  pthread_mutex_lock(&javascript_mutex);
+  LOCK(&javascript_mutex);
   int result = jscoverage_parse_json(coverage, stream->data, stream->length);
-  pthread_mutex_unlock(&javascript_mutex);
+  UNLOCK(&javascript_mutex);
 
   Stream_delete(stream);
   return result;
@@ -435,7 +446,7 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
       /* check that the path begins with / */
       if (file_coverage->id[0] == '/') {
         char * source_path = make_path(document_root, file_coverage->id + 1);
-        FILE * source_file = fopen(source_path, "r");
+        FILE * source_file = fopen(source_path, "rb");
         free(source_path);
         if (source_file == NULL) {
           fputs("\"\"", f);
@@ -502,9 +513,9 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     }
 
     Coverage * coverage = Coverage_new();
-    pthread_mutex_lock(&javascript_mutex);
+    LOCK(&javascript_mutex);
     int result = jscoverage_parse_json(coverage, json->data, json->length);
-    pthread_mutex_unlock(&javascript_mutex);
+    UNLOCK(&javascript_mutex);
     Stream_delete(json);
 
     if (result != 0) {
@@ -598,9 +609,9 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
 }
 
 static void instrument_js(const char * id, Stream * input_stream, Stream * output_stream) {
-  pthread_mutex_lock(&javascript_mutex);
+  LOCK(&javascript_mutex);
   jscoverage_instrument_js(id, input_stream, output_stream);
-  pthread_mutex_unlock(&javascript_mutex);
+  UNLOCK(&javascript_mutex);
 
   const struct Resource * resource = get_resource("report.js");
   Stream_write(output_stream, resource->data, resource->length);
@@ -808,6 +819,11 @@ static void handle_local_request(HTTPExchange * exchange) {
   }
 
   filesystem_path = make_path(document_root, abs_path + 1);
+  size_t filesystem_path_length = strlen(filesystem_path);
+  if (filesystem_path_length > 0 && filesystem_path[filesystem_path_length - 1] == '/') {
+    /* stat on Windows doesn't work with trailing slash */
+    filesystem_path[filesystem_path_length - 1] = '\0';
+  }
 
   struct stat buf;
   if (stat(filesystem_path, &buf) == -1) {
@@ -816,7 +832,7 @@ static void handle_local_request(HTTPExchange * exchange) {
   }
 
   if (S_ISDIR(buf.st_mode)) {
-    if (filesystem_path[strlen(filesystem_path) - 1] != '/') {
+    if (abs_path[strlen(abs_path) - 1] != '/') {
       const char * request_uri = HTTPExchange_get_request_uri(exchange);
       char * uri = xmalloc(strlen(request_uri) + 2);
       strcpy(uri, request_uri);
@@ -851,7 +867,7 @@ static void handle_local_request(HTTPExchange * exchange) {
     closedir(d);
   }
   else if (S_ISREG(buf.st_mode)) {
-    FILE * f = fopen(filesystem_path, "r");
+    FILE * f = fopen(filesystem_path, "rb");
     if (f == NULL) {
       send_response(exchange, 404, "Not found\n");
       goto done;
@@ -1015,6 +1031,13 @@ int main(int argc, char ** argv) {
 
   /* is this a shutdown? */
   if (shutdown) {
+#ifdef __MINGW32__
+    WSADATA data;
+    if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
+      fatal("Could not start Winsock");
+    }
+#endif
+
     /* INADDR_LOOPBACK */
     HTTPConnection * connection = HTTPConnection_new_client("127.0.0.1", numeric_port);
     if (connection == NULL) {
@@ -1044,22 +1067,31 @@ int main(int argc, char ** argv) {
 
   jscoverage_init();
 
+#ifndef __MINGW32__
   /* handle broken pipe */
   signal(SIGPIPE, SIG_IGN);
+#endif
+
+#ifdef __MINGW32__
+InitializeCriticalSection(&javascript_mutex);
+InitializeCriticalSection(&source_cache_mutex);
+#endif
 
   if (verbose) {
     printf("Starting HTTP server on %s:%lu\n", ip_address, numeric_port);
+    fflush(stdout);
   }
   HTTPServer_run(ip_address, (uint16_t) numeric_port, handler);
   if (verbose) {
     printf("Stopping HTTP server\n");
+    fflush(stdout);
   }
 
   jscoverage_cleanup();
 
   free(no_instrument);
 
-  pthread_mutex_lock(&source_cache_mutex);
+  LOCK(&source_cache_mutex);
   while (source_cache != NULL) {
     SourceCache * p = source_cache;
     source_cache = source_cache->next;
@@ -1067,7 +1099,7 @@ int main(int argc, char ** argv) {
     Stream_delete(p->source);
     free(p);
   }
-  pthread_mutex_unlock(&source_cache_mutex);
+  UNLOCK(&source_cache_mutex);
 
   return 0;
 }

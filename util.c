@@ -417,9 +417,20 @@ void free_dir_list(struct DirListEntry * list) {
   }
 }
 
-#ifndef HAVE_CLOSESOCKET
-int closesocket(int s) {
-  return close(s);
+#ifndef HAVE_STRNDUP
+char * strndup(const char * s, size_t size) {
+  size_t length = strlen(s);
+  if (length > size) {
+    char * result = xmalloc(size + 1);
+    strncpy(result, s, size);
+    result[size] = '\0';
+    return result;
+  }
+  else {
+    char * result = xmalloc(length + 1);
+    strcpy(result, s);
+    return result;
+  }
 }
 #endif
 

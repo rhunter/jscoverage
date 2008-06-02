@@ -20,6 +20,7 @@ AC_INIT([jscoverage], [0.3.1])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([main.c])
 AC_CONFIG_HEADERS([config.h])
+AC_CANONICAL_HOST
 
 # Checks for programs.
 AC_PROG_CC
@@ -31,10 +32,22 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_TYPES([SOCKET])
 
 # Checks for library functions.
-AC_CHECK_FUNCS([strndup vasprintf asprintf closesocket])
+AC_CHECK_FUNCS([inet_aton strndup vasprintf asprintf])
+
+AC_SUBST([EXTRA_SOCKET_LIBS])
+AC_SUBST([EXTRA_THREAD_LIBS])
+case "$host_os" in
+  mingw*)
+    EXTRA_SOCKET_LIBS='-lws2_32'
+    EXTRA_THREAD_LIBS=''
+    ;;
+  *)
+    EXTRA_SOCKET_LIBS=''
+    EXTRA_THREAD_LIBS='-lpthread'
+    ;;
+esac
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([js])

@@ -24,12 +24,17 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include <arpa/inet.h>
+#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
+#endif
+
+#ifdef __MINGW32__
+#include <process.h>
+#endif
 
 #include "util.h"
 
-#ifdef _WIN32
+#ifdef __MINGW32__
 typedef void ThreadRoutineReturnType;
 #define THREAD_ROUTINE_RETURN return
 #else
@@ -50,7 +55,15 @@ struct HTTPServerConnection {
 };
 
 static bool is_shutdown = false;
+#ifdef __MINGW32__
+CRITICAL_SECTION shutdown_mutex;
+#define LOCK EnterCriticalSection
+#define UNLOCK LeaveCriticalSection
+#else
 pthread_mutex_t shutdown_mutex = PTHREAD_MUTEX_INITIALIZER;
+#define LOCK pthread_mutex_lock
+#define UNLOCK pthread_mutex_unlock
+#endif
 
 static ThreadRoutineReturnType handle_connection(void * p) {
   struct HTTPServerConnection * connection = p;
@@ -77,9 +90,10 @@ static ThreadRoutineReturnType handle_connection(void * p) {
   free(connection);
 
   /* HACK: make connection to server to force accept() to return */
+  LOCK(&shutdown_mutex);
   if (is_shutdown) {
     SOCKET s = socket(PF_INET, SOCK_STREAM, 0);
-    if (s == -1) {
+    if (s == INVALID_SOCKET) {
       HTTPServer_log_err("Warning: error creating socket\n");
     }
     else {
@@ -93,6 +107,7 @@ static ThreadRoutineReturnType handle_connection(void * p) {
       closesocket(s);
     }
   }
+  UNLOCK(&shutdown_mutex);
 
   THREAD_ROUTINE_RETURN;
 }
@@ -120,15 +135,16 @@ static void HTTPServer_delete(struct HTTPServer * server) {
 void HTTPServer_run(const char * ip_address, uint16_t port, HTTPServerHandler handler) {
   struct HTTPServer * server = HTTPServer_new(ip_address, port, handler);
 
-#ifdef _WIN32
+#ifdef __MINGW32__
   WSADATA data;
   if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
     fatal("Could not start Winsock");
   }
+  InitializeCriticalSection(&shutdown_mutex);
 #endif
 
   server->s = socket(PF_INET, SOCK_STREAM, 0);
-  if (server->s == -1) {
+  if (server->s == INVALID_SOCKET) {
     fatal("could not create socket");
   }
 
@@ -166,21 +182,23 @@ void HTTPServer_run(const char * ip_address, uint16_t port, HTTPServerHandler ha
     struct sockaddr_in client_address;
     size_t client_address_size = sizeof(client_address);
     SOCKET s = accept(server->s, (struct sockaddr *) &client_address, &client_address_size);
-    if (s == -1) {
+    if (s == INVALID_SOCKET) {
       HTTPServer_log_err("Warning: could not accept client connection\n");
       continue;
     }
 
+    LOCK(&shutdown_mutex);
     if (is_shutdown) {
       closesocket(s);
       break;
     }
+    UNLOCK(&shutdown_mutex);
 
     struct HTTPServerConnection * connection = xmalloc(sizeof(struct HTTPServerConnection));
     connection->server = server;
     connection->connection = HTTPConnection_new_server(s);
 
-#ifdef _WIN32
+#ifdef __MINGW32__
     unsigned long thread = _beginthread(handle_connection, 0, connection);
 #else
     pthread_t thread;
@@ -196,9 +214,9 @@ void HTTPServer_run(const char * ip_address, uint16_t port, HTTPServerHandler ha
 }
 
 void HTTPServer_shutdown(void) {
-  pthread_mutex_lock(&shutdown_mutex);
+  LOCK(&shutdown_mutex);
   is_shutdown = true;
-  pthread_mutex_unlock(&shutdown_mutex);
+  UNLOCK(&shutdown_mutex);
 }
 
 void HTTPServer_log_out(const char * format, ...) {
@@ -206,6 +224,7 @@ void HTTPServer_log_out(const char * format, ...) {
   va_start(a, format);
   vfprintf(stdout, format, a);
   va_end(a);
+  fflush(stdout);
 }
 
 void HTTPServer_log_err(const char * format, ...) {
@@ -213,4 +232,5 @@ void HTTPServer_log_err(const char * format, ...) {
   va_start(a, format);
   vfprintf(stderr, format, a);
   va_end(a);
+  fflush(stderr);
 }

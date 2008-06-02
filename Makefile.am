@@ -45,9 +45,8 @@ jscoverage_server_SOURCES = http-connection.c \
                             stream.c stream.h \
                             util.c util.h \
                             $(resources)
-
 jscoverage_server_LDFLAGS = -static
-jscoverage_server_LDADD = js/libjs.la -lm -lpthread
+jscoverage_server_LDADD = js/libjs.la -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

@@ -22,13 +22,12 @@
 #include "http-server.h"
 
 #include <errno.h>
-#include <netdb.h>
 
 #include "util.h"
 
 int xgethostbyname(const char * host, struct in_addr * a) {
-#ifdef __CYGWIN__
-  /* cygwin's gethostbyname is thread-safe */
+#if defined(__CYGWIN__) || defined(__MINGW32__)
+  /* gethostbyname is thread-safe */
   struct hostent * p = gethostbyname(host);
   if (p == NULL || p->h_addrtype != AF_INET) {
     return -1;
@@ -58,3 +57,16 @@ int xgethostbyname(const char * host, struct in_addr * a) {
   return 0;
 #endif
 }
+
+#ifndef HAVE_INET_ATON
+int inet_aton(const char * name, struct in_addr * a) {
+  unsigned long result = inet_addr(name);
+  if (result == INADDR_NONE) {
+    return 0;
+  }
+  else {
+    a->s_addr = result;
+    return 1;
+  }
+}
+#endif

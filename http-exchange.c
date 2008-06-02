@@ -25,8 +25,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#include <arpa/inet.h>
-
 #include "util.h"
 
 struct HTTPExchange {
@@ -303,7 +301,6 @@ int HTTPExchange_write_request_headers(HTTPExchange * exchange) {
       if (result != 0) {
         return result;
       }
-      /* FIXME: is this thread-safe??? */
       const char * a = inet_ntoa(peer.sin_addr);
       char * value;
       xasprintf(&value, "%s:%u", a, ntohs(peer.sin_port));
