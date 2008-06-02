@@ -35,7 +35,7 @@ AC_CHECK_HEADERS([pthread.h])
 # Checks for typedefs, structures, and compiler characteristics.
 
 # Checks for library functions.
-AC_CHECK_FUNCS([inet_aton strndup vasprintf asprintf])
+AC_CHECK_FUNCS([getaddrinfo gethostbyname_r inet_aton strndup vasprintf asprintf])
 
 AC_SUBST([EXTRA_SOCKET_LIBS])
 AC_SUBST([EXTRA_THREAD_LIBS])

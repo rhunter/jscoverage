@@ -34,7 +34,30 @@ int xgethostbyname(const char * host, struct in_addr * a) {
   }
   *a = *((struct in_addr *) p->h_addr);
   return 0;
-#else
+#elif HAVE_GETADDRINFO
+  struct addrinfo hints;
+  hints.ai_flags = 0;
+  hints.ai_family = PF_INET;
+  hints.ai_socktype = 0;
+  hints.ai_protocol = 0;
+  hints.ai_addrlen = 0;
+  hints.ai_addr = NULL;
+  hints.ai_canonname = NULL;
+  hints.ai_next = NULL;
+  struct addrinfo * p;
+  int result = getaddrinfo(host, NULL, &hints, &p);
+  if (result != 0 || p == NULL) {
+    return -1;
+  }
+  if (p->ai_family != PF_INET) {
+    freeaddrinfo(p);
+    return -1;
+  }
+  struct sockaddr_in * address_and_port = (struct sockaddr_in *) p->ai_addr;
+  *a = address_and_port->sin_addr;
+  freeaddrinfo(p);
+  return 0;
+#elif HAVE_GETHOSTBYNAME_R
   struct hostent h;
   struct hostent * p;
   char * buffer;
@@ -55,6 +78,8 @@ int xgethostbyname(const char * host, struct in_addr * a) {
   *a = *((struct in_addr *) p->h_addr);
   free(buffer);
   return 0;
+#else
+#error "No thread-safe host lookup available"
 #endif
 }
 
