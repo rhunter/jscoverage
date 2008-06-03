@@ -18,7 +18,7 @@
 
 set -e
 
-function cleanup() {
+cleanup() {
   kill -9 $origin_server_pid
 }
 

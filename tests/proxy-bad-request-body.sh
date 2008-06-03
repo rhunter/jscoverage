@@ -18,17 +18,17 @@
 
 set -e
 
-function shutdown() {
+shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${proxy_server_port}/jscoverage-shutdown" > /dev/null
   wait $proxy_server_pid
 }
 
-function shutdown_perl() {
+shutdown_perl() {
   wget -q -O- --post-data= http://127.0.0.1:8000/perl-shutdown > /dev/null
   wait $origin_server_pid
 }
 
-function cleanup() {
+cleanup() {
   shutdown
   shutdown_perl
 }

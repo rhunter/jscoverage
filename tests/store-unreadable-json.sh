@@ -26,12 +26,12 @@ case "$uname" in
     ;;
 esac
 
-function shutdown() {
+shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
   wait $server_pid
 }
 
-function cleanup() {
+cleanup() {
   shutdown
 }
 

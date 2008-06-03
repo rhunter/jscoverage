@@ -18,7 +18,7 @@
 
 set -e
 
-function shutdown() {
+shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${proxy_server_port}/jscoverage-shutdown" > /dev/null
   wait $proxy_server_pid
   if [ "$origin_server_pid" != "" ]
@@ -27,7 +27,7 @@ function shutdown() {
   fi
 }
 
-function cleanup() {
+cleanup() {
   shutdown
 }
 
