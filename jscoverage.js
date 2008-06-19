@@ -1193,8 +1193,8 @@ function jscoverage_storeButton_click() {
       img.style.visibility = 'hidden';
 
       var div = document.getElementById('storeDiv');
+      div.appendChild(document.createTextNode(new Date() + ': ' + message));
       div.appendChild(document.createElement('br'));
-      div.appendChild(document.createTextNode(message));
     }
   };
   request.setRequestHeader('Content-Type', 'application/json');
