@@ -1042,7 +1042,7 @@ int main(int argc, char ** argv) {
 #ifdef __MINGW32__
     WSADATA data;
     if (WSAStartup(MAKEWORD(1, 1), &data) != 0) {
-      fatal("Could not start Winsock");
+      fatal("could not start Winsock");
     }
 #endif
 
