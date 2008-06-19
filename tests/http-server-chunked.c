@@ -85,18 +85,19 @@ int main(void) {
           else {
             state = 0;
           }
+          break;
         }
       }
     }
 
     char * method;
     char * url;
-    char * request_line = stream->data;
+    char * request_line = (char *) stream->data;
     char * first_space = strchr(request_line, ' ');
     assert(first_space != NULL);
     char * second_space = strchr(first_space + 1, ' ');
     assert(second_space != NULL);
-    method = xstrndup(stream->data, first_space - request_line);
+    method = xstrndup(request_line, first_space - request_line);
     url = xstrndup(first_space + 1, second_space - (first_space + 1));
 
     /* send response */
