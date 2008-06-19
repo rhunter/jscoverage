@@ -403,10 +403,11 @@ function jscoverage_recalculateSummaryTab(cc) {
     var missing = [];
     var length = cc[file].length;
     for (i = 0; i < length; i++) {
-      if (cc[file][i] === undefined) {
+      var n = cc[file][i];
+      if (n === undefined || n === null) {
         continue;
       }
-      else if (cc[file][i] === 0) {
+      else if (n === 0) {
         missing.push(i);
       }
       else {
