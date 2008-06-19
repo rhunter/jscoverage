@@ -530,7 +530,7 @@ function jscoverage_checkbox_click() {
       jscoverage_removeMissingColumn();
     }
     jscoverage_recalculateSummaryTab();
-  }, 100);
+  }, 50);
   return true;
 }
 
