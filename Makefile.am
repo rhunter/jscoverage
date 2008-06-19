@@ -56,6 +56,8 @@ BUILT_SOURCES = resources.c
 resources.c: generate-resources $(resources)
 	$(srcdir)/generate-resources $(resources) > $@
 
+dist_man_MANS = jscoverage.1 jscoverage-server.1
+
 CLEANFILES = *.gcno *.exe resources.c *~
 
 example: jscoverage
