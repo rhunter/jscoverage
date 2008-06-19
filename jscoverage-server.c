@@ -526,12 +526,20 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
 
     mkdir_if_necessary(report_directory);
     char * path = make_path(report_directory, "jscoverage.json");
-    FILE * f = fopen(path, "r");
-    if (f != NULL) {
+
+    /* check if the JSON file exists */
+    struct stat buf;
+    if (stat(path, &buf) == 0) {
       /* it exists: merge */
-      result = merge(coverage, f);
-      if (fclose(f) == EOF) {
+      FILE * f = fopen(path, "r");
+      if (f == NULL) {
         result = 1;
+      }
+      else {
+        result = merge(coverage, f);
+        if (fclose(f) == EOF) {
+          result = 1;
+        }
       }
       if (result != 0) {
         free(path);
@@ -552,7 +560,7 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     /* copy other files */
     jscoverage_copy_resources(report_directory);
     path = make_path(report_directory, "jscoverage.js");
-    f = fopen(path, "ab");
+    FILE * f = fopen(path, "ab");
     free(path);
     if (f == NULL) {
       send_response(exchange, 500, "Could not write to file: jscoverage.js\n");
