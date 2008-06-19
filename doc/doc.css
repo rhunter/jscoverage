@@ -24,3 +24,8 @@ td pre {
   height: auto;
   margin-bottom: 0px;
 }
+
+img.icon {
+  vertical-align: middle;
+  border-width: 0px;
+}
