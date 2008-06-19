@@ -176,6 +176,11 @@ function jscoverage_setSize() {
 
   var sourceDiv = document.getElementById('sourceDiv');
   sourceDiv.style.height = (viewportHeight - jscoverage_findPos(sourceDiv) - 21) + 'px';
+
+  var storeDiv = document.getElementById('storeDiv');
+  if (storeDiv) {
+    storeDiv.style.height = (viewportHeight - jscoverage_findPos(storeDiv) - 21) + 'px';
+  }
 }
 
 /**
