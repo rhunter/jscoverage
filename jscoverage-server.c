@@ -883,14 +883,13 @@ static void handle_local_request(HTTPExchange * exchange) {
 
     const char * content_type = get_content_type(filesystem_path);
     HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, content_type);
-    const char * request_uri = HTTPExchange_get_request_uri(exchange);
-    if (strcmp(content_type, "text/javascript") == 0 && ! is_no_instrument(request_uri)) {
+    if (strcmp(content_type, "text/javascript") == 0 && ! is_no_instrument(abs_path)) {
       Stream * input_stream = Stream_new(0);
       Stream * output_stream = Stream_new(0);
 
       Stream_write_file_contents(input_stream, f);
 
-      instrument_js(request_uri, input_stream, output_stream);
+      instrument_js(abs_path, input_stream, output_stream);
 
       if (HTTPExchange_write_response(exchange, output_stream->data, output_stream->length) != 0) {
         HTTPServer_log_err("Warning: error writing to client\n");
