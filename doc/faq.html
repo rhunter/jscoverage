@@ -37,13 +37,28 @@
         <h3>Why doesn't my test suite run under JSCoverage in Firefox 3?</h3>
 
         <p>
-        Beta versions of Firefox 3 introduced <a
+        Firefox 3 introduces <a
         href="http://tech.groups.yahoo.com/group/jsunit/message/1075">new
         security restrictions</a> on local files.  Depending on the way your
         test suite is organized, this may cause problems for JSCoverage.
         (You may get the error "uncaught exception: Permission denied to get property Window._$jscoverage".)
-        These restrictions are not present in the final release of Firefox 3.
+        There are several workarounds:
         </p>
+
+        <ul class="list">
+        <li><p>Place your files on a web server instead of loading them from the file system.
+            This is usually the simplest solution.</p>
+        <li><p>Organize your HTML files in your test suite in a flat directory structure.  For example, suppose that
+            you instrument your test suite with this command:</p>
+<pre>
+jscoverage src instrumented
+</pre>
+            <p>If all your HTML files are located directly under the <code>src/</code> directory (i.e., not in a
+            subdirectory of <code>src/</code>), then you should not have any problems using Firefox 3.</p>
+        <li><p>Set the <a href="http://kb.mozillazine.org/Editing_configuration">Firefox preference</a> named 
+            <code><a href="http://kb.mozillazine.org/Security.fileuri.origin_policy">security.fileuri.origin_policy</a></code>
+            to 3.</p>
+        </ul>
 
         <h3>I'm trying to load my code with the URL
         <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
@@ -139,7 +154,7 @@ http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;
   <div id="ft">
     <address>
       Copyright &copy; 2007, 2008 <a href="http://siliconforks.com/"><img src="siliconforks-16x16.png" width="16" height="16" class="icon" alt="Silicon Forks"></a> <a href="http://siliconforks.com/">siliconforks.com</a><br>
-      Last updated June 18, 2008<br>
+      Last updated March 31, 2008<br>
       <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
     </address>
   </div>  
