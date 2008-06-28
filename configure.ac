@@ -1,5 +1,5 @@
 #    configure.ac - configures jscoverage
-#    Copyright (C) 2007 siliconforks.com
+#    Copyright (C) 2007, 2008 siliconforks.com
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 AC_PREREQ(2.61)
-AC_INIT([jscoverage], [0.3.1])
-AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AC_INIT([jscoverage], [0.3.2])
+AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([main.c])
 AC_PROG_CC
 AC_PROG_CC_C99
