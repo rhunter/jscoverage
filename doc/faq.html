@@ -34,6 +34,32 @@
         same <strong>directory</strong> as the <code>jscoverage.html</code> file.)
         </p>
 
+        <h3>Why doesn't my test suite run under JSCoverage in Firefox 3?</h3>
+
+        <p>
+        Firefox 3 introduces <a
+        href="http://tech.groups.yahoo.com/group/jsunit/message/1075">new
+        security restrictions</a> on local files.  Depending on the way your
+        test suite is organized, this may cause problems for JSCoverage.
+        (You may get the error "uncaught exception: Permission denied to get property Window._$jscoverage".)
+        There are several workarounds:
+        </p>
+
+        <ul class="list">
+        <li><p>Place your files on a web server instead of loading them from the file system.
+            This is usually the simplest solution.</p>
+        <li><p>Organize your HTML files in your test suite in a flat directory structure.  For example, suppose that
+            you instrument your test suite with this command:</p>
+<pre>
+jscoverage src instrumented
+</pre>
+            <p>If all your HTML files are located directly under the <code>src/</code> directory (i.e., not in a
+            subdirectory of <code>src/</code>), then you should not have any problems using Firefox 3.</p>
+        <li><p>Set the <a href="http://kb.mozillazine.org/Editing_configuration">Firefox preference</a> named 
+            <code><a href="http://kb.mozillazine.org/Security.fileuri.origin_policy">security.fileuri.origin_policy</a></code>
+            to 3.</p>
+        </ul>
+
         <h3>I'm trying to load my code with the URL
         <code>file:///C:/foo/bar/jscoverage.html?foo/bar.html</code>
         and I'm getting all kinds of JavaScript errors.</h3>
@@ -46,15 +72,15 @@
         As a workaround:
         </p>
         <ul class="list">
-        <li>Place your files on a web server instead of loading them from the file system.
-            (<code>http:</code> URLs work fine.)
-        <li>Do not use a query string; enter your URL in the "URL" field in the "Browser" tab.
-        <li>Rearrange your directory structure so that <code>bar.html</code>
+        <li><p>Place your files on a web server instead of loading them from the file system.
+            (<code>http:</code> URLs work fine.)</p>
+        <li><p>Do not use a query string; enter your URL in the "URL" field in the "Browser" tab.</p>
+        <li><p>Rearrange your directory structure so that <code>bar.html</code>
             ends up in the same directory as <code>jscoverage.html</code>; then
             you can use the URL
             <code>file:///C:/foo/bar/jscoverage.html?bar.html</code>
-            with no slash in the query string.
-        <li>Use a different browser.  (IE 7 seems to work.)
+            with no slash in the query string.</p>
+        <li><p>Use a different browser.  (IE 7 seems to work.)</p>
         </ul>
 
         <h3>JSCoverage changes my cursor to a busy cursor, and it never changes back!</h3>
@@ -127,8 +153,8 @@ http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;
   </div>  
   <div id="ft">
     <address>
-      Copyright &copy; 2007 siliconforks.com<br>
-      Last updated November 22, 2007<br>
+      Copyright &copy; 2007, 2008 <a href="http://siliconforks.com/"><img src="siliconforks-16x16.png" width="16" height="16" class="icon" alt="Silicon Forks"></a> <a href="http://siliconforks.com/">siliconforks.com</a><br>
+      Last updated March 31, 2008<br>
       <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
     </address>
   </div>  
