@@ -148,7 +148,12 @@ static const char * get_op(uint8 op) {
 static void instrument_expression(JSParseNode * node, Stream * f);
 static void instrument_statement(JSParseNode * node, Stream * f, int indent);
 
-static void instrument_function(JSParseNode * node, Stream * f, int indent) {
+enum FunctionType {
+  FUNCTION_NORMAL,
+  FUNCTION_GETTER_OR_SETTER
+};
+
+static void instrument_function(JSParseNode * node, Stream * f, int indent, enum FunctionType type) {
     assert(node->pn_arity == PN_FUNC);
     assert(ATOM_IS_OBJECT(node->pn_funAtom));
     JSObject * object = ATOM_TO_OBJECT(node->pn_funAtom);
@@ -157,7 +162,9 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent) {
     assert(function);
     assert(object == function->object);
     Stream_printf(f, "%*s", indent, "");
-    Stream_write_string(f, "function");
+    if (type == FUNCTION_NORMAL) {
+      Stream_write_string(f, "function");
+    }
 
     /* function name */
     if (function->atom) {
@@ -228,7 +235,7 @@ TOK_IN          binary
 static void instrument_expression(JSParseNode * node, Stream * f) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
-    instrument_function(node, f, 0);
+    instrument_function(node, f, 0, FUNCTION_NORMAL);
     break;
   case TOK_COMMA:
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
@@ -435,9 +442,25 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
       }
-      instrument_expression(p->pn_left, f);
-      Stream_write_string(f, ": ");
-      instrument_expression(p->pn_right, f);
+
+      /* check whether this is a getter or setter */
+      switch (p->pn_op) {
+      case JSOP_GETTER:
+        Stream_write_string(f, "get ");
+        instrument_expression(p->pn_left, f);
+        instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
+        break;
+      case JSOP_SETTER:
+        Stream_write_string(f, "set ");
+        instrument_expression(p->pn_left, f);
+        instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
+        break;
+      default:
+        instrument_expression(p->pn_left, f);
+        Stream_write_string(f, ": ");
+        instrument_expression(p->pn_right, f);
+        break;
+      }
     }
     Stream_write_char(f, '}');
     break;
@@ -541,7 +564,7 @@ static void instrument_var_statement(JSParseNode * node, Stream * f, int indent)
 static void output_statement(JSParseNode * node, Stream * f, int indent) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
-    instrument_function(node, f, indent);
+    instrument_function(node, f, indent, FUNCTION_NORMAL);
     break;
   case TOK_LC:
     assert(node->pn_arity == PN_LIST);
