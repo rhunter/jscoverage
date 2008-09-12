@@ -154,57 +154,57 @@ enum FunctionType {
 };
 
 static void instrument_function(JSParseNode * node, Stream * f, int indent, enum FunctionType type) {
-    assert(node->pn_arity == PN_FUNC);
-    assert(ATOM_IS_OBJECT(node->pn_funAtom));
-    JSObject * object = ATOM_TO_OBJECT(node->pn_funAtom);
-    assert(JS_ObjectIsFunction(context, object));
-    JSFunction * function = (JSFunction *) JS_GetPrivate(context, object);
-    assert(function);
-    assert(object == function->object);
-    Stream_printf(f, "%*s", indent, "");
-    if (type == FUNCTION_NORMAL) {
-      Stream_write_string(f, "function");
-    }
+  assert(node->pn_arity == PN_FUNC);
+  assert(ATOM_IS_OBJECT(node->pn_funAtom));
+  JSObject * object = ATOM_TO_OBJECT(node->pn_funAtom);
+  assert(JS_ObjectIsFunction(context, object));
+  JSFunction * function = (JSFunction *) JS_GetPrivate(context, object);
+  assert(function);
+  assert(object == function->object);
+  Stream_printf(f, "%*s", indent, "");
+  if (type == FUNCTION_NORMAL) {
+    Stream_write_string(f, "function");
+  }
 
-    /* function name */
-    if (function->atom) {
-      Stream_write_char(f, ' ');
-      print_string_atom(function->atom, f);
-    }
+  /* function name */
+  if (function->atom) {
+    Stream_write_char(f, ' ');
+    print_string_atom(function->atom, f);
+  }
 
-    /* function parameters */
-    Stream_write_string(f, "(");
-    JSAtom ** params = xnew(JSAtom *, function->nargs);
-    for (int i = 0; i < function->nargs; i++) {
-      /* initialize to NULL for sanity check */
-      params[i] = NULL;
+  /* function parameters */
+  Stream_write_string(f, "(");
+  JSAtom ** params = xnew(JSAtom *, function->nargs);
+  for (int i = 0; i < function->nargs; i++) {
+    /* initialize to NULL for sanity check */
+    params[i] = NULL;
+  }
+  JSScope * scope = OBJ_SCOPE(object);
+  for (JSScopeProperty * scope_property = SCOPE_LAST_PROP(scope); scope_property != NULL; scope_property = scope_property->parent) {
+    if (scope_property->getter != js_GetArgument) {
+      continue;
     }
-    JSScope * scope = OBJ_SCOPE(object);
-    for (JSScopeProperty * scope_property = SCOPE_LAST_PROP(scope); scope_property != NULL; scope_property = scope_property->parent) {
-      if (scope_property->getter != js_GetArgument) {
-        continue;
-      }
-      assert(scope_property->flags & SPROP_HAS_SHORTID);
-      assert((uint16) scope_property->shortid < function->nargs);
-      assert(JSID_IS_ATOM(scope_property->id));
-      params[(uint16) scope_property->shortid] = JSID_TO_ATOM(scope_property->id);
+    assert(scope_property->flags & SPROP_HAS_SHORTID);
+    assert((uint16) scope_property->shortid < function->nargs);
+    assert(JSID_IS_ATOM(scope_property->id));
+    params[(uint16) scope_property->shortid] = JSID_TO_ATOM(scope_property->id);
+  }
+  for (int i = 0; i < function->nargs; i++) {
+    assert(params[i] != NULL);
+    if (i > 0) {
+      Stream_write_string(f, ", ");
     }
-    for (int i = 0; i < function->nargs; i++) {
-      assert(params[i] != NULL);
-      if (i > 0) {
-        Stream_write_string(f, ", ");
-      }
-      if (ATOM_IS_STRING(params[i])) {
-        print_string_atom(params[i], f);
-      }
+    if (ATOM_IS_STRING(params[i])) {
+      print_string_atom(params[i], f);
     }
-    Stream_write_string(f, ") {\n");
-    free(params);
+  }
+  Stream_write_string(f, ") {\n");
+  free(params);
 
-    /* function body */
-    instrument_statement(node->pn_body, f, indent + 2);
+  /* function body */
+  instrument_statement(node->pn_body, f, indent + 2);
 
-    Stream_write_string(f, "}\n");
+  Stream_write_string(f, "}\n");
 }
 
 static void instrument_function_call(JSParseNode * node, Stream * f) {
