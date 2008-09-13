@@ -410,10 +410,7 @@ function jscoverage_recalculateSummaryTab(cc) {
         currentConditionalEnd = 0;
       }
       else if (currentConditionalEnd === 0 && cc[file].conditionals && cc[file].conditionals[i]) {
-        var condition = cc[file].conditionals[i].condition;
-        if (! condition()) {
-          currentConditionalEnd = cc[file].conditionals[i].end;
-        }
+        currentConditionalEnd = cc[file].conditionals[i];
       }
 
       if (currentConditionalEnd !== 0) {
@@ -577,10 +574,7 @@ function jscoverage_makeTable() {
         currentConditionalEnd = 0;
       }
       else if (currentConditionalEnd === 0 && coverage.conditionals && coverage.conditionals[lineNumber]) {
-        var condition = coverage.conditionals[lineNumber].condition;
-        if (! condition()) {
-          currentConditionalEnd = coverage.conditionals[lineNumber].end;
-        }
+        currentConditionalEnd = coverage.conditionals[lineNumber];
       }
 
       var row = '<tr>';

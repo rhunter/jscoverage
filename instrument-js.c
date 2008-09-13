@@ -877,6 +877,10 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
   free(lines);
   lines = NULL;
 
+  /* copy the instrumented source code to the output */
+  Stream_write(output, instrumented->data, instrumented->length);
+  Stream_write_char(output, '\n');
+
   /* conditionals */
   bool has_conditionals = false;
   size_t line_number = 0;
@@ -910,17 +914,15 @@ void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) 
         has_conditionals = true;
         Stream_printf(output, "_$jscoverage['%s'].conditionals = [];\n", file_id);
       }
-      Stream_printf(output, "_$jscoverage['%s'].conditionals[%d] = {condition: function () {return %s;}, ", file_id, line_number, line + 16);
+      Stream_printf(output, "if (!%s) {\n", line + 16);
+      Stream_printf(output, "  _$jscoverage['%s'].conditionals[%d] = ", file_id, line_number);
     }
     else if (str_starts_with(line, "//#JSCOVERAGE_ENDIF")) {
-      Stream_printf(output, "end: %d};\n", line_number);
+      Stream_printf(output, "%d;\n", line_number);
+      Stream_printf(output, "}\n");
     }
     JS_free(context, line);
   }
-
-  /* copy the instrumented source code to the output */
-  Stream_write(output, instrumented->data, instrumented->length);
-  Stream_write_char(output, '\n');
 
   /* copy the original source to the output */
   i = 0;
