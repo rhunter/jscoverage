@@ -500,6 +500,88 @@ This option may be given multiple times.
 <dd>Stop a running instance of the server.
 </dl>
 
+<h2>Advanced topics</h2>
+
+<h3>Conditional directives</h3>
+
+<p>
+Sometimes you may wish to exclude certain lines of code from coverage
+statistics. Some lines of code may be executed only in certain browsers; other
+lines should never be executed at all (they may only be present to detect
+programming errors).  You can use specially formatted comments in your code,
+called <dfn>conditional directives</dfn>, to tell JSCoverage when to exclude
+those lines from coverage statistics.  These lines will be ignored in the
+JSCoverage "Summary" tab; in the "Source" tab, these lines will be indicated
+with the color yellow.
+</p>
+
+<p>
+Conditional directives take the following form:
+</p>
+
+<pre class="sh_javascript">
+//#JSCOVERAGE_IF <var>CONDITION</var>
+...
+//#JSCOVERAGE_ENDIF
+</pre>
+
+<p>
+The <var>CONDITION</var> is an ordinary JavaScript expression; if this
+expression evaluates to <code>true</code>, then the lines of code between the
+<code>//#JSCOVERAGE_IF</code> and <code>//#JSCOVERAGE_ENDIF</code> directives are
+included in coverage statistics; otherwise, they are excluded from coverage
+statistics.
+</p>
+
+<p>
+In order to be recognized as a conditional directive, the comment must be
+formatted exactly as shown: it must be a line comment starting with <code>//</code>,
+it must start in the first column, and it must be followed by <code>#JSCOVERAGE_IF</code>
+or <code>#JSCOVERAGE_ENDIF</code> in uppercase letters with no intervening white space.
+</p>
+
+<p>
+For example, if you have some code in an <code>if</code> statement which is
+executed only in certain browsers, you can usually just repeat the condition in
+a <code>//#JSCOVERAGE_IF</code> directive:
+</p>
+
+<pre class="sh_javascript">
+  if (window.ActiveXObject) {
+//#JSCOVERAGE_IF window.ActiveXObject
+    return new ActiveXObject('Msxml2.XMLHTTP');
+//#JSCOVERAGE_ENDIF
+  }
+</pre>
+
+<p>
+Alternatively, it may be easier to diagnose problems if you specify exactly
+which browsers you expect to execute the code in the conditional:
+</p>
+
+<pre class="sh_javascript">
+  if (window.ActiveXObject) {
+//#JSCOVERAGE_IF /MSIE/.test(navigator.userAgent)
+    return new ActiveXObject('Msxml2.XMLHTTP');
+//#JSCOVERAGE_ENDIF
+  }
+</pre>
+
+<p>
+To exclude code from coverage statistics unconditionally, you can use <code>//#JSCOVERAGE_IF 0<code> or
+<code>//#JSCOVERAGE_IF false<code>:
+</p>
+
+<pre class="sh_javascript">
+function f(s) {
+  if (typeof(s) !== 'string') {
+//#JSCOVERAGE_IF 0
+    throw 'function f requires a string argument';
+//#JSCOVERAGE_ENDIF
+  }
+}
+</pre>
+
 <h2>Caveats</h2>
 
 <ul>
@@ -519,7 +601,7 @@ those which try to access the top-level frame (<code>window.top</code>, <code>ta
 
 <address>
   Copyright &copy; 2007, 2008 <a href="http://siliconforks.com/"><img src="siliconforks-16x16.png" width="16" height="16" class="icon" alt="Silicon Forks"></a> <a href="http://siliconforks.com/">siliconforks.com</a><br>
-  Last updated May 21, 2008<br>
+  Last updated September 12, 2008<br>
   <a href="mailto:jscoverage@siliconforks.com">jscoverage@siliconforks.com</a>
 </address>
 
