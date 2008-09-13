@@ -402,12 +402,29 @@ function jscoverage_recalculateSummaryTab(cc) {
     var num_executed = 0;
     var missing = [];
     var length = cc[file].length;
+    var currentConditionalEnd = 0;
     for (i = 0; i < length; i++) {
       var n = cc[file][i];
+
+      if (i === currentConditionalEnd) {
+        currentConditionalEnd = 0;
+      }
+      else if (currentConditionalEnd === 0 && cc[file].conditionals && cc[file].conditionals[i]) {
+        var condition = cc[file].conditionals[i].condition;
+        if (! condition()) {
+          currentConditionalEnd = cc[file].conditionals[i].end;
+        }
+      }
+
+      if (currentConditionalEnd !== 0) {
+        continue;
+      }
+
       if (n === undefined || n === null) {
         continue;
       }
-      else if (n === 0) {
+
+      if (n === 0) {
         missing.push(i);
       }
       else {
@@ -551,15 +568,29 @@ function jscoverage_makeTable() {
   var progressBar = document.getElementById('progressBar');
   var tableHTML;
   var oldDate = new Date().valueOf();
+  var currentConditionalEnd = 0;
   function makeTableRows() {
     while (i < lines.length) {
       var lineNumber = i + 1;
-  
+
+      if (lineNumber === currentConditionalEnd) {
+        currentConditionalEnd = 0;
+      }
+      else if (currentConditionalEnd === 0 && coverage.conditionals && coverage.conditionals[lineNumber]) {
+        var condition = coverage.conditionals[lineNumber].condition;
+        if (! condition()) {
+          currentConditionalEnd = coverage.conditionals[lineNumber].end;
+        }
+      }
+
       var row = '<tr>';
       row += '<td class="numeric">' + lineNumber + '</td>';
       var timesExecuted = coverage[lineNumber];
       if (timesExecuted !== undefined && timesExecuted !== null) {
-        if (timesExecuted === 0) {
+        if (currentConditionalEnd !== 0) {
+          row += '<td class="y numeric">';
+        }
+        else if (timesExecuted === 0) {
           row += '<td class="r numeric" id="line-' + lineNumber + '">';
         }
         else {
