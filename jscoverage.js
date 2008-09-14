@@ -89,12 +89,11 @@ function jscoverage_beginLengthyOperation() {
   if (BrowserDetect.browser === 'Opera' || BrowserDetect.browser === 'Safari') {
     return;
   }
-  var body = document.getElementsByTagName('body').item(0);
+
   /*
   Change the cursor style of each element.  Note that changing the class of the
   element (to one with a busy cursor) is buggy in IE.
   */
-  body.style.cursor = 'wait';
   var tabs = document.getElementById('tabs').getElementsByTagName('div');
   var i;
   for (i = 0; i < tabs.length; i++) {
@@ -114,8 +113,7 @@ function jscoverage_endLengthyOperation() {
     var progressLabel = document.getElementById('progressLabel');
     progressLabel.style.visibility = 'hidden';
     progressLabel.innerHTML = '';
-    var body = document.getElementsByTagName('body').item(0);
-    body.style.cursor = '';
+
     var tabs = document.getElementById('tabs').getElementsByTagName('div');
     var i;
     for (i = 0; i < tabs.length; i++) {
