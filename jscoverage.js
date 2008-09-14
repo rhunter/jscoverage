@@ -735,30 +735,29 @@ function jscoverage_get(file, line) {
     return;
   }
   jscoverage_beginLengthyOperation();
-  if (file === jscoverage_currentFile) {
-    setTimeout(function() {
-      jscoverage_selectTab('sourceTab');
+  setTimeout(function() {
+    var sourceDiv = document.getElementById('sourceDiv');
+    sourceDiv.innerHTML = '';
+    jscoverage_selectTab('sourceTab');
+    if (file === jscoverage_currentFile) {
       jscoverage_currentLine = line;
       jscoverage_recalculateSourceTab();
-    }, 50);
-  }
-  else {
-    if (jscoverage_currentFile === null) {
-      var tab = document.getElementById('sourceTab');
-      tab.className = '';
-      tab.onclick = jscoverage_tab_click;
     }
+    else {
+      if (jscoverage_currentFile === null) {
+        var tab = document.getElementById('sourceTab');
+        tab.className = '';
+        tab.onclick = jscoverage_tab_click;
+      }
 
-    // check the cache
-    if (file in jscoverage_sourceCache) {
-      jscoverage_currentFile = file;
-      jscoverage_currentLine = line || 1;
-      jscoverage_highlightSource();
-      return;
-    }
+      // check the cache
+      if (file in jscoverage_sourceCache) {
+        jscoverage_currentFile = file;
+        jscoverage_currentLine = line || 1;
+        jscoverage_highlightSource();
+        return;
+      }
 
-    setTimeout(function() {
-      jscoverage_selectTab('sourceTab');
       jscoverage_setThrobber();
       var request = jscoverage_createRequest();
       try {
@@ -791,8 +790,8 @@ function jscoverage_get(file, line) {
       catch (e) {
         jscoverage_httpError(file);
       }
-    }, 50);
-  }
+    }
+  }, 50);
 }
 
 /**
@@ -913,6 +912,16 @@ function jscoverage_tab_click(e) {
   }
   jscoverage_beginLengthyOperation();
   setTimeout(function() {
+    if (target.id === 'summaryTab') {
+      var tbody = document.getElementById("summaryTbody");
+      while (tbody.hasChildNodes()) {
+        tbody.removeChild(tbody.firstChild);
+      }
+    }
+    else if (target.id === 'sourceTab') {
+      var sourceDiv = document.getElementById('sourceDiv');
+      sourceDiv.innerHTML = '';
+    }
     jscoverage_selectTab(target);
     if (target.id === 'summaryTab') {
       jscoverage_recalculateSummaryTab();
