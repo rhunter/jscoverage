@@ -18,27 +18,23 @@
 */
 
 body {
-  background: #bfffbf;
+  background-color: #bfffbf;
   font-family: sans-serif;
   font-size: small;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  margin-left: 20px;
-  margin-right: 20px;
-  padding: 0px;
+  margin: 0;
 }
 
 #headingDiv {
+  position: absolute;
+  top: 0;
+  left: 1.5em;
   width: 500px;
-  padding: 0px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  bottom: 2.5em;
 }
 
-#headingDiv h1 {
-  font-size: large;
-  margin-top: 0px;
-  margin-bottom: 0px;
+h1 {
+  margin-top: 0.5em;
+  font-size: 1.3em;
 }
 
 #progressBar {
@@ -82,24 +78,27 @@ div.ProgressBar .pct {
 browser tab
 */
 
-div#locationDiv {
-  margin-bottom: 10px;
-}
-
 input#location, button {
   border: 1px solid black;
   margin-left: 1px;
   margin-right: 1px;
 }
 
+#iframeDiv {
+  position: absolute;
+  top: 4em;
+  left: 1em;
+  right: 1em;
+  bottom: 1em;
+}
+
 iframe {
   width: 100%;
-  margin: 0px;
-  padding: 0px;
+  height: 100%;
 }
 
 /*******************************************************************************
-coverage report tab
+summary tab
 */
 
 div#summaryDiv {
@@ -187,16 +186,14 @@ source tab
 div#fileDiv {
   font-size: large;
   font-weight: bold;
-  margin-bottom: 10px;
 }
 
 div#sourceDiv {
-  width: 98%;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 0px;
-  margin-bottom: 0px;
-  padding: 0px;
+  position: absolute;
+  top: 3em;
+  left: 1em;
+  right: 1em;
+  bottom: 1em;
   overflow: auto;
 }
 
@@ -250,57 +247,68 @@ store tab
 }
 
 /*******************************************************************************
+about tab
+*/
+
+p {
+  margin-top: 0;
+}
+
+/*******************************************************************************
 tabs
 */
 
-div.TabControl {
-  border-width: 0px;
-  margin: 0px;
-  padding: 0px;
+#tabs {
+  position: absolute;
+  top: 3em;
+  left: 1.5em;
+  right: 1.5em;
+  height: 2em;
 }
 
-div.TabControl div.Tabs div {
-  background: white;
+#tabs div {
+  background-color: white;
   position: relative;
   float: left;
   border: 1px solid black;
-  border-bottom-width: 0px;
+  border-bottom-width: 0;
   cursor: pointer;
-  margin-left: 5px;
-  margin-right: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  z-index: 2;
+  margin-left: 0.5em;
+  margin-right: 0.5em;
+  padding-top: 0.4em;
+  padding-bottom: 0.6em;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  height: 1em;
+  z-index: 1;
 }
 
-div.TabControl div.Tabs div.selected {
-  padding-bottom: 6px;
-  z-index: 2;
+#tabs div.selected {
+  z-index: 3;
   cursor: default;
 }
 
-div.TabControl div.Tabs div.disabled {
+#tabs div.disabled {
   /* windows system color GrayText */
   color: #808080;
   cursor: default; 
 }
 
-div.TabControl div.TabPages {
-  background: white;
-  clear: left;
+.TabPage {
+  background-color: white;
   border: 1px solid black;
-  position: relative;
-  top: -1px;
-  z-index: 1;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: 10px;
-  padding-right: 10px;
+  position: absolute;
+  top: 5em;
+  left: 1.5em;
+  right: 1.5em;
+  bottom: 1.5em;
+  z-index: 2;
+  padding: 1em;
+  display: none;
 }
 
-div.TabControl div.TabPages div {
+#tabPages div.selected {
+  display: block;
 }
 
 img {

@@ -72,25 +72,6 @@ function jscoverage_findPos(obj) {
   return result;
 }
 
-// http://www.quirksmode.org/viewport/compatibility.html
-function jscoverage_getViewportHeight() {
-  if (self.innerHeight) {
-    // all except Explorer
-    return self.innerHeight;
-  }
-  else if (document.documentElement && document.documentElement.clientHeight) {
-    // Explorer 6 Strict Mode
-    return document.documentElement.clientHeight;
-  }
-  else if (document.body) {
-    // other Explorers
-    return document.body.clientHeight;
-  }
-  else {
-    throw "Couldn't calculate viewport height";
-  }
-}
-
 /**
 Indicates visually that a lengthy operation has begun.  The progress bar is
 displayed, and the cursor is changed to busy (on browsers which support this).
@@ -141,46 +122,6 @@ function jscoverage_endLengthyOperation() {
       tabs.item(i).style.cursor = '';
     }
   }, 50);
-}
-
-/**
-Sets the sizes of various elements according to the viewport size.  This
-function must be called:
-1. When the document is loaded
-2. When the window is resized
-3. When a tab is selected
-*/
-function jscoverage_setSize() {
-  var viewportHeight = jscoverage_getViewportHeight();
-
-  /*
-  border-top-width:     1px
-  padding-top:         10px
-  padding-bottom:      10px
-  border-bottom-width:  1px
-  margin-bottom:       10px
-                       ----
-                       32px
-  */
-  var tabPages = document.getElementById('tabPages');
-  tabPages.style.height = (viewportHeight - jscoverage_findPos(tabPages) - 32) + 'px';
-
-  var browserIframe = document.getElementById('browserIframe');
-  // may not exist if we have removed the first tab
-  if (browserIframe) {
-    browserIframe.height = viewportHeight - jscoverage_findPos(browserIframe) - 23;
-  }
-
-  var summaryDiv = document.getElementById('summaryDiv');
-  summaryDiv.style.height = (viewportHeight - jscoverage_findPos(summaryDiv) - 21) + 'px';
-
-  var sourceDiv = document.getElementById('sourceDiv');
-  sourceDiv.style.height = (viewportHeight - jscoverage_findPos(sourceDiv) - 21) + 'px';
-
-  var storeDiv = document.getElementById('storeDiv');
-  if (storeDiv) {
-    storeDiv.style.height = (viewportHeight - jscoverage_findPos(storeDiv) - 21) + 'px';
-  }
 }
 
 /**
@@ -321,10 +262,6 @@ function jscoverage_body_load() {
   jscoverage_initTabControl();
 
   jscoverage_initTabContents(location.search);
-}
-
-function jscoverage_body_resize() {
-  jscoverage_setSize();
 }
 
 // -----------------------------------------------------------------------------
@@ -934,7 +871,6 @@ function jscoverage_selectTab(tab) {
       tabNum++;
     }
   }
-  jscoverage_setSize();
 }
 
 /**
