@@ -846,7 +846,6 @@ function jscoverage_selectTab(tab) {
   if (typeof tab !== 'number') {
     tab = jscoverage_tabIndexOf(tab);
   }
-  var tabControl = document.getElementById("tabControl");
   var tabs = document.getElementById('tabs');
   var tabPages = document.getElementById('tabPages');
   var i;
