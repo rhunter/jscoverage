@@ -86,7 +86,7 @@ input#location, button {
 
 #iframeDiv {
   position: absolute;
-  top: 4em;
+  top: 3.5em;
   left: 1em;
   right: 1em;
   bottom: 1em;
@@ -101,9 +101,12 @@ iframe {
 summary tab
 */
 
-div#summaryDiv {
-  margin: 0px;
-  padding: 0px;
+#summaryDiv {
+  position: absolute;
+  top: 3em;
+  left: 1em;
+  right: 1em;
+  bottom: 1em;
   overflow: auto;
 }
 
@@ -183,12 +186,12 @@ tbody#summaryTbody tr.even td {
 source tab
 */
 
-div#fileDiv {
+#fileDiv {
   font-size: large;
   font-weight: bold;
 }
 
-div#sourceDiv {
+#sourceDiv {
   position: absolute;
   top: 3em;
   left: 1em;

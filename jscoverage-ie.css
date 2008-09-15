@@ -37,12 +37,19 @@
 
 #iframeDiv {
   position: static;
+  width: 100%;
 }
 
 #summaryDiv {
   position: static;
+  width: 100%;
+}
+
+#fileDiv {
+  margin-bottom: 10px;
 }
 
 #sourceDiv {
   position: static;
+  width: 100%;
 }
