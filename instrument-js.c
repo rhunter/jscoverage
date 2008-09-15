@@ -968,7 +968,7 @@ void jscoverage_copy_resources(const char * destination_directory) {
   copy_resource("jscoverage.html", destination_directory);
   copy_resource("jscoverage.css", destination_directory);
   copy_resource("jscoverage.js", destination_directory);
-  copy_resource("jscoverage-ie.js", destination_directory);
+  copy_resource("jscoverage-ie.css", destination_directory);
   copy_resource("jscoverage-throbber.gif", destination_directory);
   copy_resource("jscoverage-sh_main.js", destination_directory);
   copy_resource("jscoverage-sh_javascript.js", destination_directory);
