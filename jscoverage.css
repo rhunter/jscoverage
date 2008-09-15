@@ -275,12 +275,11 @@ tabs
   cursor: pointer;
   margin-left: 0.5em;
   margin-right: 0.5em;
-  padding-top: 0.4em;
-  padding-bottom: 0.6em;
   padding-left: 0.5em;
   padding-right: 0.5em;
-  height: 1em;
+  height: 2em;
   z-index: 1;
+  line-height: 1.8em;
 }
 
 #tabs div.selected {

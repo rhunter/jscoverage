@@ -23,12 +23,15 @@
 <title>JSCoverage</title>
 <link rel="stylesheet" type="text/css" href="jscoverage-sh_nedit.css">
 <link rel="stylesheet" type="text/css" href="jscoverage.css">
+<!--[if IE]>
+<link rel="stylesheet" type="text/css" href="jscoverage-ie.css">
+<![endif]-->
 <script type="text/javascript" src="jscoverage-sh_main.js"></script>
 <script type="text/javascript" src="jscoverage-sh_javascript.js"></script>
 <script type="text/javascript" src="jscoverage.js"></script>
 </head>
 
-<body onload="jscoverage_body_load();">
+<body onload="jscoverage_body_load();" onresize="jscoverage_body_resize();">
 <div id="headingDiv">
 <div id="progressBar" class="ProgressBar"><div class="pctGraph"><div class="covered"></div></div><span class="pct"></span></div>
 <div id="progressLabel"></div>

@@ -21,7 +21,7 @@ AM_CFLAGS = -Ijs/src -DXP_UNIX
 
 resources = help.txt jscoverage-server-help.txt \
             jscoverage-sh_main.js jscoverage-sh_javascript.js jscoverage-sh_nedit.css \
-            jscoverage.html jscoverage.css jscoverage.js jscoverage-throbber.gif report.js
+            jscoverage.html jscoverage.css jscoverage-ie.css jscoverage.js jscoverage-throbber.gif report.js
 
 bin_PROGRAMS = jscoverage jscoverage-server
 jscoverage_SOURCES = instrument.c instrument.h \

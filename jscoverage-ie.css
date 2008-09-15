@@ -1,0 +1,48 @@
+#headingDiv {
+  position: static;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#tabs {
+  position: static;
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#tabs div {
+  position: relative;
+  top: 1px;
+  height: 1em;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+#tabs div.selected {
+  padding-bottom: 6px;
+  z-index: 2;
+}
+
+.TabPage {
+  position: static;
+  margin-left: 10px;
+  margin-right: 10px;
+  padding: 10px;
+  z-index: 1;
+}
+
+#locationDiv {
+  margin-bottom: 10px;
+}
+
+#iframeDiv {
+  position: static;
+}
+
+#summaryDiv {
+  position: static;
+}
+
+#sourceDiv {
+  position: static;
+}
