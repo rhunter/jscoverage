@@ -910,25 +910,45 @@ function jscoverage_selectTab(tab) {
   }
   var tabs = document.getElementById('tabs');
   var tabPages = document.getElementById('tabPages');
+  var nodeList;
+  var tabNum;
   var i;
-  var child;
-  var tabNum = 0;
-  for (i = 0; i < tabs.childNodes.length; i++) {
-    child = tabs.childNodes.item(i);
-    if (child.nodeType === 1) {
-      if (child.className !== 'disabled') {
-        child.className = tabNum === tab? 'selected': '';
-      }
-      tabNum++;
-    }
-  }
+  var node;
+
+  nodeList = tabs.childNodes;
   tabNum = 0;
-  for (i = 0; i < tabPages.childNodes.length; i++) {
-    child = tabPages.childNodes.item(i);
-    if (child.nodeType === 1) {
-      child.style.display = tabNum === tab? 'block': 'none';
-      tabNum++;
+  for (i = 0; i < nodeList.length; i++) {
+    node = nodeList.item(i);
+    if (node.nodeType !== 1) {
+      continue;
     }
+
+    if (node.className !== 'disabled') {
+      if (tabNum === tab) {
+        node.className = 'selected';
+      }
+      else {
+        node.className = '';
+      }
+    }
+    tabNum++;
+  }
+
+  nodeList = tabPages.childNodes;
+  tabNum = 0;
+  for (i = 0; i < nodeList.length; i++) {
+    node = nodeList.item(i);
+    if (node.nodeType !== 1) {
+      continue;
+    }
+
+    if (tabNum === tab) {
+      node.style.display = 'block';
+    }
+    else {
+      node.style.display = 'none';
+    }
+    tabNum++;
   }
 }
 
