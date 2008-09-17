@@ -25,6 +25,7 @@ shutdown() {
 
 cleanup() {
   shutdown
+  rm -f x x.y
 }
 
 trap 'cleanup' 0 1 2 3 15
@@ -56,12 +57,12 @@ echo text/plain > EXPECTED
 ! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/recursive/windows.txt 2> /dev/null > ACTUAL
 diff --strip-trailing-cr EXPECTED ACTUAL
 
-touch foo
+touch x
 echo application/octet-stream > EXPECTED
-! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/foo 2> /dev/null > ACTUAL
+! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/x 2> /dev/null > ACTUAL
 diff --strip-trailing-cr EXPECTED ACTUAL
 
-touch foo.bar
+touch x.y
 echo application/octet-stream > EXPECTED
-! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/foo.bar 2> /dev/null > ACTUAL
+! curl -f -w '%{content_type}\n' -o /dev/null http://127.0.0.1:8080/x.y 2> /dev/null > ACTUAL
 diff --strip-trailing-cr EXPECTED ACTUAL
