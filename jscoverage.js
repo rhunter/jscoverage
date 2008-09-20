@@ -943,10 +943,10 @@ function jscoverage_selectTab(tab) {
     }
 
     if (tabNum === tab) {
-      node.style.display = 'block';
+      node.className = 'selected TabPage';
     }
     else {
-      node.style.display = 'none';
+      node.className = 'TabPage';
     }
     tabNum++;
   }
