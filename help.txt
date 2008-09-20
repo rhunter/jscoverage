@@ -2,6 +2,7 @@ Usage: jscoverage SOURCE-DIRECTORY DESTINATION-DIRECTORY
 Instrument JavaScript with code coverage information.
 
 Options:
+      --encoding=ENCODING   assume .js files use the given character encoding
       --exclude=PATH        do not copy PATH
       --no-instrument=PATH  copy but do not instrument PATH
   -v, --verbose             explain what is being done

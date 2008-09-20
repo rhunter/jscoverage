@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "global.h"
 #include "instrument-js.h"
 #include "resource-manager.h"
 #include "util.h"
@@ -97,7 +98,7 @@ static void instrument_file(const char * source_file, const char * destination_f
 
         Stream_write_file_contents(input_stream, input);
 
-        jscoverage_instrument_js(id, input_stream, output_stream);
+        jscoverage_instrument_js(id, jscoverage_encoding, input_stream, output_stream);
 
         if (fwrite(output_stream->data, 1, output_stream->length, output) != output_stream->length) {
           fatal("cannot write to file: %s", destination_file);

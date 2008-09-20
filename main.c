@@ -23,10 +23,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "global.h"
 #include "instrument.h"
 #include "instrument-js.h"
 #include "resource-manager.h"
 #include "util.h"
+
+const char * jscoverage_encoding = "ISO-8859-1";
 
 int main(int argc, char ** argv) {
   int verbose = 0;
@@ -78,6 +81,16 @@ int main(int argc, char ** argv) {
     else if (strncmp(argv[i], "--exclude=", 10) == 0) {
       exclude[num_exclude] = argv[i] + 10;
       num_exclude++;
+    }
+    else if (strcmp(argv[i], "--encoding") == 0) {
+      i++;
+      if (i == argc) {
+        fatal("--encoding: option requires an argument");
+      }
+      jscoverage_encoding = argv[i];
+    }
+    else if (strncmp(argv[i], "--encoding=", 11) == 0) {
+      jscoverage_encoding = argv[i] + 11;
     }
     else if (strncmp(argv[i], "-", 1) == 0) {
       fatal("unrecognized option `%s'", argv[i]);

@@ -16,6 +16,7 @@
 #     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 noinst_PROGRAMS = asprintf \
+                  encodings \
                   gethostbyname \
                   http-client-bad-body \
                   http-client-bad-url \
@@ -30,6 +31,10 @@ noinst_PROGRAMS = asprintf \
                   streams
 
 asprintf_SOURCES = asprintf.c ../util.c
+
+encodings_SOURCES = encodings.c ../encoding.c ../util.c
+encodings_CPPFLAGS = -I../js/src
+encodings_LDADD = @LIBICONV@
 
 gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
 gethostbyname_LDADD = @EXTRA_SOCKET_LIBS@
@@ -51,7 +56,7 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
-json_SOURCES = json.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
+json_SOURCES = json.c ../encoding.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
 json_CPPFLAGS = -I../js/src
 json_LDFLAGS = -static
 json_LDADD = ../js/libjs.la -lm
@@ -62,7 +67,8 @@ recursive_dir_list_SOURCES = recursive-dir-list.c ../util.c
 
 streams_SOURCES = streams.c ../stream.c ../util.c
 
-TESTS = fatal.sh \
+TESTS = encodings.sh \
+        fatal.sh \
         help.sh \
         invalid-option.sh \
         javascript.sh \

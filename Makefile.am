@@ -15,6 +15,8 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+ACLOCAL_AMFLAGS = -I m4
+
 SUBDIRS = js
 
 AM_CFLAGS = -Ijs/src -DXP_UNIX
@@ -24,29 +26,31 @@ resources = help.txt jscoverage-server-help.txt \
             jscoverage.html jscoverage.css jscoverage-ie.css jscoverage.js jscoverage-throbber.gif report.js
 
 bin_PROGRAMS = jscoverage jscoverage-server
-jscoverage_SOURCES = instrument.c instrument.h \
+jscoverage_SOURCES = encoding.c encoding.h \
+                     instrument.c instrument.h \
                      instrument-js.c instrument-js.h \
-                     main.c \
+                     main.c global.h \
                      resource-manager.c resource-manager.h \
                      stream.c stream.h \
                      util.c util.h \
                      $(resources)
 jscoverage_LDFLAGS = -static
-jscoverage_LDADD = js/libjs.la -lm
+jscoverage_LDADD = js/libjs.la -lm @LIBICONV@
 jscoverage_server_SOURCES = http-connection.c \
                             http-exchange.c \
                             http-host.c \
                             http-message.c \
                             http-server.c http-server.h \
                             http-url.c \
+                            encoding.c encoding.h \
                             instrument-js.c instrument-js.h \
-                            jscoverage-server.c \
+                            jscoverage-server.c global.h \
                             resource-manager.c resource-manager.h \
                             stream.c stream.h \
                             util.c util.h \
                             $(resources)
 jscoverage_server_LDFLAGS = -static
-jscoverage_server_LDADD = js/libjs.la -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@
+jscoverage_server_LDADD = js/libjs.la -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

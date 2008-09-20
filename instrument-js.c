@@ -34,6 +34,7 @@
 #include <jsscope.h>
 #include <jsstr.h>
 
+#include "encoding.h"
 #include "resource-manager.h"
 #include "util.h"
 
@@ -75,9 +76,53 @@ void jscoverage_cleanup(void) {
 }
 
 static void print_string(JSString * s, Stream * f) {
-  for (size_t i = 0; i < s->length; i++) {
-    char c = s->chars[i];
-    Stream_write_char(f, c);
+  size_t length = JSSTRING_LENGTH(s);
+  jschar * characters = JSSTRING_CHARS(s);
+  for (size_t i = 0; i < length; i++) {
+    jschar c = characters[i];
+    if (32 <= c && c <= 126) {
+      switch (c) {
+      case '"':
+        Stream_write_string(f, "\\\"");
+        break;
+/*
+      case '\'':
+        Stream_write_string(f, "\\'");
+        break;
+*/
+      case '\\':
+        Stream_write_string(f, "\\\\");
+        break;
+      default:
+        Stream_write_char(f, c);
+        break;
+      }
+    }
+    else {
+      switch (c) {
+      case 0x8:
+        Stream_write_string(f, "\\b");
+        break;
+      case 0x9:
+        Stream_write_string(f, "\\t");
+        break;
+      case 0xa:
+        Stream_write_string(f, "\\n");
+        break;
+      case 0xb:
+        Stream_write_string(f, "\\v");
+        break;
+      case 0xc:
+        Stream_write_string(f, "\\f");
+        break;
+      case 0xd:
+        Stream_write_string(f, "\\r");
+        break;
+      default:
+        Stream_printf(f, "\\u%04x", c);
+        break;
+      }
+    }
   }
 }
 
@@ -87,17 +132,28 @@ static void print_string_atom(JSAtom * atom, Stream * f) {
   print_string(s, f);
 }
 
-static void print_string_jsval(jsval value, Stream * f) {
+static void print_regex(jsval value, Stream * f) {
   assert(JSVAL_IS_STRING(value));
   JSString * s = JSVAL_TO_STRING(value);
-  print_string(s, f);
+  size_t length = JSSTRING_LENGTH(s);
+  jschar * characters = JSSTRING_CHARS(s);
+  for (size_t i = 0; i < length; i++) {
+    jschar c = characters[i];
+    if (32 <= c && c <= 126) {
+      Stream_write_char(f, c);
+    }
+    else {
+      Stream_printf(f, "\\u%04x", c);
+    }
+  }
 }
 
 static void print_quoted_string_atom(JSAtom * atom, Stream * f) {
   assert(ATOM_IS_STRING(atom));
   JSString * s = ATOM_TO_STRING(atom);
-  JSString * quoted = js_QuoteString(context, s, '"');
-  print_string(quoted, f);
+  Stream_write_char(f, '"');
+  print_string(s, f);
+  Stream_write_char(f, '"');
 }
 
 static const char * get_op(uint8 op) {
@@ -487,7 +543,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
         JSObject * object = ATOM_TO_OBJECT(node->pn_atom);
         jsval result;
         js_regexp_toString(context, object, 0, NULL, &result);
-        print_string_jsval(result, f);
+        print_regex(result, f);
       }
       break;
     default:
@@ -827,14 +883,18 @@ static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
   output_statement(node, f, indent);
 }
 
-void jscoverage_instrument_js(const char * id, Stream * input, Stream * output) {
+void jscoverage_instrument_js(const char * id, const char * encoding, Stream * input, Stream * output) {
   file_id = id;
 
   /* scan the javascript */
   size_t input_length = input->length;
-  jschar * base = js_InflateString(context, (char *) input->data, &input_length);
-  if (base == NULL) {
-    fatal("out of memory");
+  jschar * base = NULL;
+  int result = jscoverage_bytes_to_characters(encoding, input->data, input->length, &base, &input_length);
+  if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
+    fatal("encoding %s not supported in file %s", encoding, id);
+  }
+  else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
+    fatal("error decoding %s in file %s", encoding, id);
   }
   JSTokenStream * token_stream = js_NewTokenStream(context, base, input_length, NULL, 1, NULL);
   if (token_stream == NULL) {

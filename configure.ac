@@ -28,14 +28,27 @@ AC_PROG_CC_C99
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
+AM_ICONV
 
 # Checks for header files.
 AC_CHECK_HEADERS([pthread.h])
+AC_CHECK_HEADERS([iconv.h])
+AC_CHECK_HEADERS([windows.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AC_C_BIGENDIAN
 
 # Checks for library functions.
 AC_CHECK_FUNCS([getaddrinfo gethostbyname_r inet_aton strndup vasprintf asprintf])
+AC_MSG_CHECKING([for MultiByteToWideChar])
+AC_LANG(C)
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM([[#include <windows.h>]],[[MultiByteToWideChar(0,0,0,0,0,0);]])],
+  [AC_DEFINE([HAVE_MULTIBYTETOWIDECHAR], [1], [Define to 1 if you have the `MultiByteToWideChar' function.])
+   jscoverage_have_multibytetowidechar=yes
+   AC_MSG_RESULT([yes])],
+  [jscoverage_have_multibytetowidechar=no
+   AC_MSG_RESULT([no])])
 
 AC_SUBST([EXTRA_SOCKET_LIBS])
 AC_SUBST([EXTRA_THREAD_LIBS])
@@ -49,6 +62,14 @@ case "$host_os" in
     EXTRA_THREAD_LIBS='-lpthread'
     ;;
 esac
+
+if test "$am_cv_func_iconv" != yes && test "$jscoverage_have_multibytetowidechar" != yes
+then
+  echo -ne '\033@<:@1;31m'
+  AC_MSG_WARN([neither iconv nor Windows character encoding conversion functions found])
+  AC_MSG_WARN([only ASCII will be supported])
+  echo -ne '\033@<:@0m'
+fi
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
 AC_CONFIG_SUBDIRS([js])

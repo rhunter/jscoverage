@@ -29,11 +29,14 @@
 #include <pthread.h>
 #endif
 
+#include "global.h"
 #include "http-server.h"
 #include "instrument-js.h"
 #include "resource-manager.h"
 #include "stream.h"
 #include "util.h"
+
+const char * jscoverage_encoding = "ISO-8859-1";
 
 typedef struct SourceCache {
   char * url;
@@ -616,9 +619,9 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
   }
 }
 
-static void instrument_js(const char * id, Stream * input_stream, Stream * output_stream) {
+static void instrument_js(const char * id, const char * encoding, Stream * input_stream, Stream * output_stream) {
   LOCK(&javascript_mutex);
-  jscoverage_instrument_js(id, input_stream, output_stream);
+  jscoverage_instrument_js(id, encoding, input_stream, output_stream);
   UNLOCK(&javascript_mutex);
 
   const struct Resource * resource = get_resource("report.js");
@@ -741,7 +744,7 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
 
     const char * request_uri = HTTPExchange_get_request_uri(client_exchange);
     Stream * output_stream = Stream_new(0);
-    instrument_js(request_uri, input_stream, output_stream);
+    instrument_js(request_uri, jscoverage_encoding, input_stream, output_stream);
 
     /* send the headers to the client */
     for (const HTTPHeader * h = HTTPExchange_get_response_headers(server_exchange); h != NULL; h = h->next) {
@@ -889,7 +892,7 @@ static void handle_local_request(HTTPExchange * exchange) {
 
       Stream_write_file_contents(input_stream, f);
 
-      instrument_js(abs_path, input_stream, output_stream);
+      instrument_js(abs_path, jscoverage_encoding, input_stream, output_stream);
 
       if (HTTPExchange_write_response(exchange, output_stream->data, output_stream->length) != 0) {
         HTTPServer_log_err("Warning: error writing to client\n");
@@ -973,6 +976,17 @@ int main(int argc, char ** argv) {
     }
     else if (strncmp(argv[i], "--document-root=", 16) == 0) {
       document_root = argv[i] + 16;
+    }
+
+    else if (strcmp(argv[i], "--encoding") == 0) {
+      i++;
+      if (i == argc) {
+        fatal("--encoding: option requires an argument");
+      }
+      jscoverage_encoding = argv[i];
+    }
+    else if (strncmp(argv[i], "--encoding=", 11) == 0) {
+      jscoverage_encoding = argv[i] + 11;
     }
 
     else if (strcmp(argv[i], "--ip-address") == 0) {

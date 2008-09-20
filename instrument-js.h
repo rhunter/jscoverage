@@ -33,7 +33,7 @@ void jscoverage_init(void);
 
 void jscoverage_cleanup(void);
 
-void jscoverage_instrument_js(const char * id, Stream * input, Stream * output);
+void jscoverage_instrument_js(const char * id, const char * encoding, Stream * input, Stream * output);
 
 void jscoverage_copy_resources(const char * destination_directory);
 
