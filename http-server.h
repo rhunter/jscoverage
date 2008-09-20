@@ -122,6 +122,7 @@ const HTTPHeader * HTTPMessage_get_headers(const HTTPMessage * message);
 const char * HTTPMessage_find_header(const HTTPMessage * message, const char * name);
 void HTTPMessage_add_header(HTTPMessage * message, const char * name, const char * value);
 void HTTPMessage_set_header(HTTPMessage * message, const char * name, const char * value);
+char * HTTPMessage_get_charset(const HTTPMessage * message);
 void HTTPMessage_set_content_length(HTTPMessage * message, size_t value);
 int HTTPMessage_read_start_line_and_headers(HTTPMessage * message) __attribute__((warn_unused_result));
 int HTTPMessage_write_start_line_and_headers(HTTPMessage * message) __attribute__((warn_unused_result));

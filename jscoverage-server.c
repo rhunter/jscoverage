@@ -744,7 +744,14 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
 
     const char * request_uri = HTTPExchange_get_request_uri(client_exchange);
     Stream * output_stream = Stream_new(0);
-    instrument_js(request_uri, jscoverage_encoding, input_stream, output_stream);
+    char * encoding = HTTPMessage_get_charset(HTTPExchange_get_response_message(server_exchange));
+    if (encoding == NULL) {
+      instrument_js(request_uri, jscoverage_encoding, input_stream, output_stream);
+    }
+    else {
+      instrument_js(request_uri, encoding, input_stream, output_stream);
+      free(encoding);
+    }
 
     /* send the headers to the client */
     for (const HTTPHeader * h = HTTPExchange_get_response_headers(server_exchange); h != NULL; h = h->next) {

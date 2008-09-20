@@ -50,6 +50,75 @@ struct HTTPMessage {
   bool is_started;
 };
 
+static bool is_lws(uint8_t c) {
+  return c == '\r' || c == '\n' || c == ' ' || c == '\t';
+}
+
+static bool is_separator(uint8_t c) {
+  /* RFC 2616 2.2 */
+  return strchr("()<>@,;:\\\"/[]?={} \t", c) != NULL;
+}
+
+static bool is_token_char(uint8_t c) {
+  /* RFC 2616 2.2 */
+  return 32 <= c && c <= 126 && ! is_separator(c);
+}
+
+static bool is_text(uint8_t c) {
+  return ! (c <= 31 || c == 127);
+}
+
+static void skip_lws(const uint8_t ** p) {
+  while (**p != '\0' && is_lws(**p)) {
+    (*p)++;
+  }
+}
+
+static uint8_t * parse_token(const uint8_t ** p) {
+  const uint8_t * start = *p;
+  while (**p != '\0' && is_token_char(**p)) {
+    (*p)++;
+  }
+
+  if (*p == start) {
+    return NULL;
+  }
+
+  return (uint8_t *) xstrndup((char *) start, *p - start);
+}
+
+static uint8_t * parse_quoted_string(const uint8_t ** p) {
+  const uint8_t * start = *p;
+
+  if (**p != '"') {
+    return NULL;
+  }
+  (*p)++;
+
+  while (**p != '\0' && **p != '"') {
+    if (**p == '\\') {
+      (*p)++;
+      if (**p < 1 || **p > 127) {
+        return NULL;
+      }
+      (*p)++;
+    }
+    else if (is_text(**p)) {
+      (*p)++;
+    }
+    else {
+      return NULL;
+    }
+  }
+
+  if (**p != '"') {
+    return NULL;
+  }
+  (*p)++;
+
+  return (uint8_t *) xstrndup((char *) start, *p - start);
+}
+
 HTTPMessage * HTTPMessage_new(HTTPConnection * connection) {
   HTTPMessage * message = xmalloc(sizeof(HTTPMessage));
   message->start_line = NULL;
@@ -123,6 +192,88 @@ void HTTPMessage_set_header(HTTPMessage * message, const char * name, const char
     }
   }
   HTTPMessage_add_header(message, name, value);
+}
+
+char * HTTPMessage_get_charset(const HTTPMessage * message) {
+  const char * content_type = HTTPMessage_find_header(message, HTTP_CONTENT_TYPE);
+  if (content_type == NULL) {
+    return NULL;
+  }
+
+  const uint8_t * p = (const uint8_t *) content_type;
+
+  /* e.g., text/html */
+  uint8_t * token;
+  skip_lws(&p);
+  if (! is_token_char(*p)) {
+    return NULL;
+  }
+  token = parse_token(&p);
+  free(token);
+  skip_lws(&p);
+  if (*p != '/') {
+    return NULL;
+  }
+  p++;
+  skip_lws(&p);
+  if (! is_token_char(*p)) {
+    return NULL;
+  }
+  token = parse_token(&p);
+  free(token);
+
+  skip_lws(&p);
+
+  while (*p != '\0') {
+    bool is_charset = false;
+    if (*p != ';') {
+      return NULL;
+    }
+    p++;
+
+    skip_lws(&p);
+
+    if (! is_token_char(*p)) {
+      return NULL;
+    }
+    uint8_t * attribute = parse_token(&p);
+    if (strcasecmp((char *) attribute, "charset") == 0) {
+      is_charset = true;
+    }
+    free(attribute);
+    skip_lws(&p);
+    if (*p != '=') {
+      return NULL;
+    }
+    p++;
+
+    skip_lws(&p);
+
+    if (*p == '"') {
+      uint8_t * value = parse_quoted_string(&p);
+      if (value == NULL) {
+        return NULL;
+      }
+      if (is_charset) {
+        return (char *) value;
+      }
+      free(value);
+    }
+    else if (is_token_char(*p)) {
+      uint8_t * value = parse_token(&p);
+      if (is_charset) {
+        return (char *) value;
+      }
+      free(value);
+    }
+    else {
+      return NULL;
+    }
+
+    skip_lws(&p);
+  }
+
+  return NULL;
 }
 
 void HTTPMessage_set_content_length(HTTPMessage * message, size_t value) {
@@ -203,75 +354,6 @@ static int read_header(Stream * stream, HTTPConnection * connection) {
   while (c == ' ' || c == '\t');
 
   return 0;
-}
-
-static bool is_lws(uint8_t c) {
-  return c == '\r' || c == '\n' || c == ' ' || c == '\t';
-}
-
-static bool is_separator(uint8_t c) {
-  /* RFC 2616 2.2 */
-  return strchr("()<>@,;:\\\"/[]?={} \t", c) != NULL;
-}
-
-static bool is_token_char(uint8_t c) {
-  /* RFC 2616 2.2 */
-  return 32 <= c && c <= 126 && ! is_separator(c);
-}
-
-static bool is_text(uint8_t c) {
-  return ! (c <= 31 || c == 127);
-}
-
-static void skip_lws(const uint8_t ** p) {
-  while (**p != '\0' && is_lws(**p)) {
-    (*p)++;
-  }
-}
-
-static uint8_t * parse_token(const uint8_t ** p) {
-  const uint8_t * start = *p;
-  while (**p != '\0' && is_token_char(**p)) {
-    (*p)++;
-  }
-
-  if (*p == start) {
-    return NULL;
-  }
-
-  return (uint8_t *) xstrndup((char *) start, *p - start);
-}
-
-static uint8_t * parse_quoted_string(const uint8_t ** p) {
-  const uint8_t * start = *p;
-
-  if (**p != '"') {
-    return NULL;
-  }
-  (*p)++;
-
-  while (**p != '\0' && **p != '"') {
-    if (**p == '\\') {
-      (*p)++;
-      if (**p < 1 || **p > 127) {
-        return NULL;
-      }
-      (*p)++;
-    }
-    else if (is_text(**p)) {
-      (*p)++;
-    }
-    else {
-      return NULL;
-    }
-  }
-
-  if (**p != '"') {
-    return NULL;
-  }
-  (*p)++;
-
-  return (uint8_t *) xstrndup((char *) start, *p - start);
 }
 
 static bool stream_contains_nul(const Stream * stream) {
