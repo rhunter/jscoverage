@@ -887,16 +887,16 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
   file_id = id;
 
   /* scan the javascript */
-  size_t input_length = input->length;
+  size_t num_characters = input->length;
   jschar * base = NULL;
-  int result = jscoverage_bytes_to_characters(encoding, input->data, input->length, &base, &input_length);
+  int result = jscoverage_bytes_to_characters(encoding, input->data, input->length, &base, &num_characters);
   if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
     fatal("encoding %s not supported in file %s", encoding, id);
   }
   else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
     fatal("error decoding %s in file %s", encoding, id);
   }
-  JSTokenStream * token_stream = js_NewTokenStream(context, base, input_length, NULL, 1, NULL);
+  JSTokenStream * token_stream = js_NewTokenStream(context, base, num_characters, NULL, 1, NULL);
   if (token_stream == NULL) {
     fatal("cannot create token stream from file: %s", file_id);
   }
@@ -945,18 +945,18 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
   bool has_conditionals = false;
   size_t line_number = 0;
   size_t i = 0;
-  while (i < input_length) {
+  while (i < num_characters) {
     line_number++;
     size_t line_start = i;
-    while (i < input_length && base[i] != '\r' && base[i] != '\n') {
+    while (i < num_characters && base[i] != '\r' && base[i] != '\n') {
       i++;
     }
     size_t line_end = i;
-    if (i < input_length) {
+    if (i < num_characters) {
       if (base[i] == '\r') {
         line_end = i;
         i++;
-        if (i < input_length && base[i] == '\n') {
+        if (i < num_characters && base[i] == '\n') {
           i++;
         }
       }
@@ -986,19 +986,19 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
 
   /* copy the original source to the output */
   i = 0;
-  while (i < input_length) {
+  while (i < num_characters) {
     Stream_write_string(output, "// ");
     size_t line_start = i;
-    while (i < input_length && base[i] != '\r' && base[i] != '\n') {
+    while (i < num_characters && base[i] != '\r' && base[i] != '\n') {
       i++;
     }
 
     size_t line_end = i;
-    if (i < input_length) {
+    if (i < num_characters) {
       if (base[i] == '\r') {
         line_end = i;
         i++;
-        if (i < input_length && base[i] == '\n') {
+        if (i < num_characters && base[i] == '\n') {
           i++;
         }
       }
