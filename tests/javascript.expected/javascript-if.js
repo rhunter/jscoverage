@@ -68,34 +68,4 @@ else {
     x = 0;
   }
 }
-
-// var x = 0;
-// 
-// if (x)
-//   x = 0;
-// 
-// if (x) {
-//   x = 0;
-// }
-// 
-// if (x)
-//   x = 0;
-// else
-//   x = 0;
-// 
-// if (x) {
-//   x = 0;
-// }
-// else {
-//   x = 0;
-// }
-// 
-// if (x) {
-//   x = 0;
-// }
-// else if (x) {
-//   x = 0;
-// }
-// else {
-//   x = 0;
-// }
+_$jscoverage['javascript-if.js'].source = ["<span class=\"k\">var</span> x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","","<span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","","<span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">else</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","","<span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","<span class=\"k\">else</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","<span class=\"k\">else</span> <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","<span class=\"k\">else</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","<span class=\"k\">}</span>"];

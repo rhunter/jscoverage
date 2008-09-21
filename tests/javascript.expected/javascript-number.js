@@ -15,7 +15,4 @@ _$jscoverage['javascript-number.js'][2]++;
 y = 2;
 _$jscoverage['javascript-number.js'][3]++;
 z = 10.5;
-
-// x = 1;
-// y = 2;
-// z = 10.5;
+_$jscoverage['javascript-number.js'].source = ["x <span class=\"k\">=</span> <span class=\"s\">1</span><span class=\"k\">;</span>","y <span class=\"k\">=</span> <span class=\"s\">2</span><span class=\"k\">;</span>","z <span class=\"k\">=</span> <span class=\"s\">10.5</span><span class=\"k\">;</span>"];

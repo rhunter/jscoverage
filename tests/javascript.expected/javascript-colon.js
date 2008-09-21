@@ -10,6 +10,4 @@ if (! _$jscoverage['javascript-colon.js']) {
 _$jscoverage['javascript-colon.js'][1]++;
 x:
 y = 0;
-
-// x:
-//   y = 0;
+_$jscoverage['javascript-colon.js'].source = ["x<span class=\"k\">:</span>","  y <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>"];

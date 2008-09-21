@@ -9,5 +9,4 @@ if (! _$jscoverage['javascript-object.js']) {
 }
 _$jscoverage['javascript-object.js'][1]++;
 x = /x\(\)\\\//i;
-
-// x = /x\(\)\\\//i;
+_$jscoverage['javascript-object.js'].source = ["x <span class=\"k\">=</span> <span class=\"s\">/x\\(\\)\\\\\\//i</span><span class=\"k\">;</span>"];

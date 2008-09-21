@@ -57,30 +57,4 @@ while (x) {
     continue label;
   }
 }
-
-// while (x) {
-//   x();
-// }
-// 
-// while (x) {
-//   ;
-// }
-// 
-// while (x)
-//   x();
-// 
-// while (x)
-//   ;
-// 
-// while (x) {
-//   if (x) {
-//     continue;
-//   }
-// }
-// 
-// label:
-// while (x) {
-//   if (x) {
-//     continue label;
-//   }
-// }
+_$jscoverage['javascript-while.js'].source = ["<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  x<span class=\"k\">();</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  <span class=\"k\">;</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span><span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>","","label<span class=\"k\">:</span>","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span> label<span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>"];

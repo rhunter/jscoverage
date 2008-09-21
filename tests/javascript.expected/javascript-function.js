@@ -49,26 +49,4 @@ x = function() {
   x();
 }
 ;
-
-// function x() {}
-// 
-// function x() {
-//   ;
-// }
-// 
-// function x() {
-//   x();
-//   return 'x';
-// }
-// 
-// function x(a) {
-//   x();
-// }
-// 
-// function x(a, b) {
-//   x();
-// }
-// 
-// x = function() {
-//   x();
-// };
+_$jscoverage['javascript-function.js'].source = ["<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","  <span class=\"k\">return</span> <span class=\"s\">'x'</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">,</span> b<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","x <span class=\"k\">=</span> <span class=\"k\">function</span><span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span><span class=\"k\">;</span>"];

@@ -63,36 +63,4 @@ finally {
   _$jscoverage['javascript-try.js'][31]++;
   f();
 }
-
-// function f() {}
-// 
-// try {
-//   f();
-// }
-// catch (e) {
-//   f();
-// }
-// 
-// try {
-//   f();
-// }
-// catch (e if e instanceof E) {
-//   f();
-// }
-// 
-// try {
-//   f();
-// }
-// finally {
-//   f();
-// }
-// 
-// try {
-//   f();
-// }
-// catch (e) {
-//   f();
-// }
-// finally {
-//   f();
-// }
+_$jscoverage['javascript-try.js'].source = ["<span class=\"k\">function</span> f<span class=\"k\">()</span> <span class=\"k\">{}</span>","","<span class=\"k\">try</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","<span class=\"k\">catch</span> <span class=\"k\">(</span>e<span class=\"k\">)</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">try</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","<span class=\"k\">catch</span> <span class=\"k\">(</span>e <span class=\"k\">if</span> e <span class=\"k\">instanceof</span> E<span class=\"k\">)</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">try</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","<span class=\"k\">finally</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">try</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","<span class=\"k\">catch</span> <span class=\"k\">(</span>e<span class=\"k\">)</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","<span class=\"k\">finally</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>"];

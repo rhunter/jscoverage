@@ -18,8 +18,4 @@ _$jscoverage['javascript-dot.js'][3]++;
 x[y] = y[x];
 _$jscoverage['javascript-dot.js'][4]++;
 x["2y"] = y["var"];
-
-// x.y = y.x;
-// x["y"] = y["x"];
-// x[y] = y[x];
-// x['2y'] = y['var'];
+_$jscoverage['javascript-dot.js'].source = ["x<span class=\"k\">.</span>y <span class=\"k\">=</span> y<span class=\"k\">.</span>x<span class=\"k\">;</span>","x<span class=\"k\">[</span><span class=\"s\">\"y\"</span><span class=\"k\">]</span> <span class=\"k\">=</span> y<span class=\"k\">[</span><span class=\"s\">\"x\"</span><span class=\"k\">];</span>","x<span class=\"k\">[</span>y<span class=\"k\">]</span> <span class=\"k\">=</span> y<span class=\"k\">[</span>x<span class=\"k\">];</span>","x<span class=\"k\">[</span><span class=\"s\">'2y'</span><span class=\"k\">]</span> <span class=\"k\">=</span> y<span class=\"k\">[</span><span class=\"s\">'var'</span><span class=\"k\">];</span>"];

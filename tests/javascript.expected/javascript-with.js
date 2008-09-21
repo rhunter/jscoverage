@@ -27,13 +27,4 @@ with (x) {
   _$jscoverage['javascript-with.js'][9]++;
   f();
 }
-
-// function f() {}
-// var x = {};
-// 
-// with (x) {
-//   f();
-// }
-// 
-// with (x)
-//   f();
+_$jscoverage['javascript-with.js'].source = ["<span class=\"k\">function</span> f<span class=\"k\">()</span> <span class=\"k\">{}</span>","<span class=\"k\">var</span> x <span class=\"k\">=</span> <span class=\"k\">{}</span><span class=\"k\">;</span>","","<span class=\"k\">with</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">with</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  f<span class=\"k\">();</span>"];

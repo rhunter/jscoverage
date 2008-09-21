@@ -34,16 +34,4 @@ default:
   _$jscoverage['javascript-switch.js'][11]++;
   break;
 }
-
-// switch (x) {
-// case x:
-//   x = 0;
-//   break;
-// case y:
-//   x = 0;
-//   y = 0;
-//   break;
-// default:
-//   x = 0;
-//   break;
-// }
+_$jscoverage['javascript-switch.js'].source = ["<span class=\"k\">switch</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","<span class=\"k\">case</span> x<span class=\"k\">:</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","  <span class=\"k\">break</span><span class=\"k\">;</span>","<span class=\"k\">case</span> y<span class=\"k\">:</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","  y <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","  <span class=\"k\">break</span><span class=\"k\">;</span>","<span class=\"k\">default</span><span class=\"k\">:</span>","  x <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span>","  <span class=\"k\">break</span><span class=\"k\">;</span>","<span class=\"k\">}</span>"];

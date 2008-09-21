@@ -12,6 +12,4 @@ _$jscoverage['javascript-inc.js'][1]++;
 x++;
 _$jscoverage['javascript-inc.js'][2]++;
 ++x;
-
-// x++;
-// ++x;
+_$jscoverage['javascript-inc.js'].source = ["x<span class=\"k\">++;</span>","<span class=\"k\">++</span>x<span class=\"k\">;</span>"];

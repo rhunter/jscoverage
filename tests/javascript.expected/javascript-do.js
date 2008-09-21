@@ -25,14 +25,4 @@ do {
   x = false;
 }
 while (x);
-
-// var x;
-// 
-// do {
-//   x = false;
-// }
-// while (x);
-// 
-// do
-//   x = false;
-// while (x);
+_$jscoverage['javascript-do.js'].source = ["<span class=\"k\">var</span> x<span class=\"k\">;</span>","","<span class=\"k\">do</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"k\">false</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">);</span>","","<span class=\"k\">do</span>","  x <span class=\"k\">=</span> <span class=\"k\">false</span><span class=\"k\">;</span>","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">);</span>"];

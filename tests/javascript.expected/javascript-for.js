@@ -48,26 +48,4 @@ for (i.value in x) {
   _$jscoverage['javascript-for.js'][21]++;
   x();
 }
-
-// for (i in x) {
-//   x();
-// }
-// 
-// for (var i in x) {
-//   x();
-// }
-// 
-// for (i = 0; i < x; i++) {
-//   x();
-// }
-// 
-// for (var j = 0; j < x; j++) {
-//   x();
-// }
-// 
-// for (i in x)
-//   x();
-// 
-// for (i.value in x) {
-//   x();
-// }
+_$jscoverage['javascript-for.js'].source = ["<span class=\"k\">for</span> <span class=\"k\">(</span>i <span class=\"k\">in</span> x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">for</span> <span class=\"k\">(</span><span class=\"k\">var</span> i <span class=\"k\">in</span> x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">for</span> <span class=\"k\">(</span>i <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span> i <span class=\"k\">&lt;</span> x<span class=\"k\">;</span> i<span class=\"k\">++)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">for</span> <span class=\"k\">(</span><span class=\"k\">var</span> j <span class=\"k\">=</span> <span class=\"s\">0</span><span class=\"k\">;</span> j <span class=\"k\">&lt;</span> x<span class=\"k\">;</span> j<span class=\"k\">++)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">for</span> <span class=\"k\">(</span>i <span class=\"k\">in</span> x<span class=\"k\">)</span>","  x<span class=\"k\">();</span>","","<span class=\"k\">for</span> <span class=\"k\">(</span>i<span class=\"k\">.</span>value <span class=\"k\">in</span> x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>"];

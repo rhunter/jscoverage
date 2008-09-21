@@ -18,10 +18,4 @@ catch (e) {
   _$jscoverage['javascript-throw.js'][5]++;
   ;
 }
-
-// try {
-//   throw "x";
-// }
-// catch (e) {
-//   ;
-// }
+_$jscoverage['javascript-throw.js'].source = ["<span class=\"k\">try</span> <span class=\"k\">{</span>","  <span class=\"k\">throw</span> <span class=\"s\">\"x\"</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","<span class=\"k\">catch</span> <span class=\"k\">(</span>e<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>"];

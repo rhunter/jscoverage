@@ -19,8 +19,4 @@ _$jscoverage['javascript-new.js'][3]++;
 x = new X(1);
 _$jscoverage['javascript-new.js'][4]++;
 x = new X(1, 2);
-
-// function X() {}
-// x = new X();
-// x = new X(1);
-// x = new X(1, 2);
+_$jscoverage['javascript-new.js'].source = ["<span class=\"k\">function</span> X<span class=\"k\">()</span> <span class=\"k\">{}</span>","x <span class=\"k\">=</span> <span class=\"k\">new</span> X<span class=\"k\">();</span>","x <span class=\"k\">=</span> <span class=\"k\">new</span> X<span class=\"k\">(</span><span class=\"s\">1</span><span class=\"k\">);</span>","x <span class=\"k\">=</span> <span class=\"k\">new</span> X<span class=\"k\">(</span><span class=\"s\">1</span><span class=\"k\">,</span> <span class=\"s\">2</span><span class=\"k\">);</span>"];

@@ -16,8 +16,4 @@ if ("a" in x) {
   _$jscoverage['javascript-in.js'][3]++;
   x = null;
 }
-
-// var x = {};
-// if ('a' in x) {
-//   x = null;
-// }
+_$jscoverage['javascript-in.js'].source = ["<span class=\"k\">var</span> x <span class=\"k\">=</span> <span class=\"k\">{}</span><span class=\"k\">;</span>","<span class=\"k\">if</span> <span class=\"k\">(</span><span class=\"s\">'a'</span> <span class=\"k\">in</span> x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x <span class=\"k\">=</span> <span class=\"k\">null</span><span class=\"k\">;</span>","<span class=\"k\">}</span>"];

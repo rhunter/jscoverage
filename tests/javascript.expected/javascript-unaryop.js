@@ -24,10 +24,4 @@ _$jscoverage['javascript-unaryop.js'][5]++;
 x = typeof x;
 _$jscoverage['javascript-unaryop.js'][6]++;
 x = void x;
-
-// x = -x;
-// x = +x;
-// x = !x;
-// x = ~x;
-// x = typeof x;
-// x = void x;
+_$jscoverage['javascript-unaryop.js'].source = ["x <span class=\"k\">=</span> <span class=\"k\">-</span>x<span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">+</span>x<span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">!</span>x<span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">~</span>x<span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">typeof</span> x<span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">void</span> x<span class=\"k\">;</span>"];
