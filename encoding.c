@@ -81,6 +81,7 @@ int jscoverage_bytes_to_characters(const char * encoding, const uint8_t * bytes,
   size_t output_bytes_left = sizeof(jschar) * num_bytes;
 
   size_t result = iconv(state, &input, &input_bytes_left, &output, &output_bytes_left);
+  iconv_close(state);
   if (result == (size_t) -1) {
     free(c);
     return JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE;
