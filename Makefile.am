@@ -22,11 +22,14 @@ SUBDIRS = js
 AM_CFLAGS = -Ijs/src -DXP_UNIX
 
 resources = help.txt jscoverage-server-help.txt \
-            jscoverage-sh_main.js jscoverage-sh_javascript.js jscoverage-sh_nedit.css \
-            jscoverage.html jscoverage.css jscoverage-ie.css jscoverage.js jscoverage-throbber.gif report.js
+            jscoverage.html \
+            jscoverage.css jscoverage-ie.css jscoverage-highlight.css \
+            jscoverage.js report.js \
+            jscoverage-throbber.gif
 
 bin_PROGRAMS = jscoverage jscoverage-server
 jscoverage_SOURCES = encoding.c encoding.h \
+                     highlight.c highlight.h \
                      instrument.c instrument.h \
                      instrument-js.c instrument-js.h \
                      main.c global.h \
@@ -43,6 +46,7 @@ jscoverage_server_SOURCES = http-connection.c \
                             http-server.c http-server.h \
                             http-url.c \
                             encoding.c encoding.h \
+                            highlight.c highlight.h \
                             instrument-js.c instrument-js.h \
                             jscoverage-server.c global.h \
                             resource-manager.c resource-manager.h \

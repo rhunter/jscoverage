@@ -41,10 +41,8 @@ function jscoverage_init(w) {
 
 var jscoverage_currentFile = null;
 var jscoverage_currentLine = null;
-var jscoverage_currentLines = null;
 
 var jscoverage_inLengthyOperation = false;
-var jscoverage_sourceCache = {};
 
 /*
 Possible states:
@@ -282,8 +280,8 @@ function jscoverage_body_load() {
             var file;
             for (file in json) {
               var fileCoverage = json[file];
-              jscoverage_sourceCache[file] = fileCoverage.source;
               _$jscoverage[file] = fileCoverage.coverage;
+              _$jscoverage[file].source = fileCoverage.source;
             }
             jscoverage_recalculateSummaryTab();
             jscoverage_endLengthyOperation();
@@ -557,64 +555,16 @@ function jscoverage_checkbox_click() {
 
 function jscoverage_makeTable() {
   var coverage = _$jscoverage[jscoverage_currentFile];
-  var lines = jscoverage_currentLines;
+  var lines = coverage.source;
   var rows = ['<table id="sourceTable">'];
   var i = 0;
   var progressBar = document.getElementById('progressBar');
   var tableHTML;
-  var oldDate = new Date().valueOf();
   var currentConditionalEnd = 0;
-  function makeTableRows() {
-    while (i < lines.length) {
-      var lineNumber = i + 1;
-
-      if (lineNumber === currentConditionalEnd) {
-        currentConditionalEnd = 0;
-      }
-      else if (currentConditionalEnd === 0 && coverage.conditionals && coverage.conditionals[lineNumber]) {
-        currentConditionalEnd = coverage.conditionals[lineNumber];
-      }
-
-      var row = '<tr>';
-      row += '<td class="numeric">' + lineNumber + '</td>';
-      var timesExecuted = coverage[lineNumber];
-      if (timesExecuted !== undefined && timesExecuted !== null) {
-        if (currentConditionalEnd !== 0) {
-          row += '<td class="y numeric">';
-        }
-        else if (timesExecuted === 0) {
-          row += '<td class="r numeric" id="line-' + lineNumber + '">';
-        }
-        else {
-          row += '<td class="g numeric">';
-        }
-        row += timesExecuted;
-        row += '</td>';
-      }
-      else {
-        row += '<td></td>';
-      }
-      row += '<td><pre class="sh_sourceCode sh_javascript">' + lines[i] + '</pre></td>';
-      row += '</tr>';
-      row += '\n';
-      rows[lineNumber] = row;
-      i++;
-      var newDate = new Date().valueOf();
-      if (newDate - oldDate > 250) {
-        oldDate = newDate;
-        ProgressBar.setPercentage(progressBar, parseInt(50 * i / lines.length));
-        setTimeout(makeTableRows, 0);
-        return;
-      }
-    }
-    rows[i + 1] = '</table>';
-    ProgressBar.setPercentage(progressBar, 50);
-    setTimeout(joinTableRows, 0);
-  }
 
   function joinTableRows() {
     tableHTML = rows.join('');
-    ProgressBar.setPercentage(progressBar, 75);
+    ProgressBar.setPercentage(progressBar, 60);
     /*
     This may be a long delay, so set a timeout of 100 ms to make sure the
     display is updated.
@@ -624,97 +574,49 @@ function jscoverage_makeTable() {
 
   function appendTable() {
     var sourceDiv = document.getElementById('sourceDiv');
-    while (sourceDiv.hasChildNodes()) {
-      sourceDiv.removeChild(sourceDiv.firstChild);
-    }
     sourceDiv.innerHTML = tableHTML;
-    ProgressBar.setPercentage(progressBar, 100);
+    ProgressBar.setPercentage(progressBar, 80);
     setTimeout(jscoverage_scrollToLine, 0);
   }
 
-  setTimeout(makeTableRows, 0);
-}
+  while (i < lines.length) {
+    var lineNumber = i + 1;
 
-function jscoverage_countLines(text) {
-  var length = text.length;
-  var pos = 0;
-  var count = 0;
-  while (pos < length) {
-    count++;
-    pos = text.indexOf('\n', pos);
-    if (pos == -1) {
-      break;
+    if (lineNumber === currentConditionalEnd) {
+      currentConditionalEnd = 0;
     }
-    pos++;
-  }
-  return count;
-}
+    else if (currentConditionalEnd === 0 && coverage.conditionals && coverage.conditionals[lineNumber]) {
+      currentConditionalEnd = coverage.conditionals[lineNumber];
+    }
 
-function jscoverage_highlightSource() {
-  var progressLabel = document.getElementById('progressLabel');
-  progressLabel.innerHTML = 'Loading source ...';
-
-  // set file name
-  var fileDiv = document.getElementById('fileDiv');
-  fileDiv.innerHTML = jscoverage_currentFile;
-
-  // highlight source and break into lines
-  var builder = {
-    lines: [],
-    currentLine: null,
-    _initCurrentLine: function() {
-      if (this.currentLine === null) {
-        this.currentLine = "";
+    var row = '<tr>';
+    row += '<td class="numeric">' + lineNumber + '</td>';
+    var timesExecuted = coverage[lineNumber];
+    if (timesExecuted !== undefined && timesExecuted !== null) {
+      if (currentConditionalEnd !== 0) {
+        row += '<td class="y numeric">';
       }
-    },
-    startElement: function(style) {
-      this._initCurrentLine();
-      this.currentLine += '<span class="' + style + '">';
-    },
-    endElement: function() {
-      this._initCurrentLine();
-      this.currentLine += '</span>';
-    },
-    text: function(s) {
-      this._initCurrentLine();
-      if (s === '\r\n' || s === '\r' || s === '\n') {
-        this.close();
-        this.currentLine = null;
+      else if (timesExecuted === 0) {
+        row += '<td class="r numeric" id="line-' + lineNumber + '">';
       }
       else {
-        this.currentLine += s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        row += '<td class="g numeric">';
       }
-    },
-    close: function() {
-      if (this.currentLine !== null) {
-        this.lines.push(this.currentLine);
-      }
-    }
-  };
-  var progressBar = document.getElementById('progressBar');
-  var source = jscoverage_sourceCache[jscoverage_currentFile];
-  var numLines = jscoverage_countLines(source);
-  var oldDate = new Date().valueOf();
-  var i = 0;
-  function updateFunction() {
-    i++;
-    var newDate = new Date().valueOf();
-    if (newDate - oldDate > 250) {
-      ProgressBar.setPercentage(progressBar, parseInt(100 * i / numLines));
-      oldDate = newDate;
-      return true;
+      row += timesExecuted;
+      row += '</td>';
     }
     else {
-      return false;
+      row += '<td></td>';
     }
+    row += '<td><pre>' + lines[i] + '</pre></td>';
+    row += '</tr>';
+    row += '\n';
+    rows[lineNumber] = row;
+    i++;
   }
-  sh_highlightString(source, sh_languages['javascript'], builder, updateFunction, function() {
-    builder.close();
-    jscoverage_currentLines = builder.lines;
-    ProgressBar.setPercentage(progressBar, 100);
-    // coverage
-    jscoverage_recalculateSourceTab();
-  });
+  rows[i + 1] = '</table>';
+  ProgressBar.setPercentage(progressBar, 40);
+  setTimeout(joinTableRows, 0);
 }
 
 function jscoverage_scrollToLine() {
@@ -735,47 +637,6 @@ function jscoverage_scrollToLine() {
   }
   jscoverage_currentLine = 0;
   jscoverage_endLengthyOperation();
-}
-
-function jscoverage_setThrobber() {
-  var throbberImg = document.getElementById('throbberImg');
-  throbberImg.style.visibility = 'visible';
-}
-
-function jscoverage_clearThrobber() {
-  var throbberImg = document.getElementById('throbberImg');
-  throbberImg.style.visibility = 'hidden';
-}
-
-function jscoverage_httpError(file) {
-  jscoverage_currentFile = null;
-  jscoverage_clearThrobber();
-  var fileDiv = document.getElementById('fileDiv');
-  fileDiv.innerHTML = '';
-  var sourceDiv = document.getElementById('sourceDiv');
-  sourceDiv.innerHTML = "Error retrieving document " + file + ".";
-  jscoverage_selectTab('sourceTab');
-  jscoverage_endLengthyOperation();
-}
-
-function jscoverage_getOriginalSource(instrumentedSource) {
-  var start = instrumentedSource.search(/^\/\/ /m);
-  if (start === -1) {
-    return '';
-  }
-  var lines = instrumentedSource.substr(start).split('\n');
-  var numLines = lines.length;
-  for (var i = 0; i < numLines; i++) {
-    line = lines[i];
-    if (/^\/\/ /.test(line)) {
-      lines[i] = line.substr(3) + '\n';
-    }
-    else {
-      lines.length = i;
-      break;
-    }
-  }
-  return lines.join('');
 }
 
 function jscoverage_createRequest() {
@@ -812,47 +673,12 @@ function jscoverage_get(file, line) {
         tab.className = '';
         tab.onclick = jscoverage_tab_click;
       }
-
-      // check the cache
-      if (file in jscoverage_sourceCache) {
-        jscoverage_currentFile = file;
-        jscoverage_currentLine = line || 1;
-        jscoverage_highlightSource();
-        return;
-      }
-
-      jscoverage_setThrobber();
-      var request = jscoverage_createRequest();
-      try {
-        request.open("GET", file, true);
-        request.onreadystatechange = function(event) {
-          if (request.readyState === 4) {
-            try {
-              if (request.status !== 0 && request.status !== 200) {
-                throw request.status;
-              }
-              var response = request.responseText;
-              // opera returns status zero even if there is a missing file
-              if (response === '') {
-                throw request.status;
-              }
-              var source = jscoverage_getOriginalSource(response);
-              jscoverage_sourceCache[file] = source;
-              jscoverage_clearThrobber();
-              jscoverage_currentFile = file;
-              jscoverage_currentLine = line || 1;
-              jscoverage_highlightSource();
-            }
-            catch (e) {
-              jscoverage_httpError(file);
-            }
-          }
-        };
-        request.send(null);
-      }
-      catch (e) {
-        jscoverage_httpError(file);
-      }
+      jscoverage_currentFile = file;
+      jscoverage_currentLine = line || 1;  // when changing the source, always scroll to top
+      var fileDiv = document.getElementById('fileDiv');
+      fileDiv.innerHTML = jscoverage_currentFile;
+      jscoverage_recalculateSourceTab();
+      return;
     }
   }, 50);
 }
@@ -868,7 +694,7 @@ function jscoverage_recalculateSourceTab() {
   var progressLabel = document.getElementById('progressLabel');
   progressLabel.innerHTML = 'Calculating coverage ...';
   var progressBar = document.getElementById('progressBar');
-  ProgressBar.setPercentage(progressBar, 0);
+  ProgressBar.setPercentage(progressBar, 20);
   setTimeout(jscoverage_makeTable, 0);
 }
 

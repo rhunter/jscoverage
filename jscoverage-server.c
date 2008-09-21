@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <signal.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <dirent.h>
@@ -29,6 +30,7 @@
 #include <pthread.h>
 #endif
 
+#include "encoding.h"
 #include "global.h"
 #include "http-server.h"
 #include "instrument-js.h"
@@ -37,10 +39,12 @@
 #include "util.h"
 
 const char * jscoverage_encoding = "ISO-8859-1";
+bool jscoverage_highlight = true;
 
 typedef struct SourceCache {
   char * url;
-  Stream * source;
+  uint16_t * characters;
+  size_t num_characters;
   struct SourceCache * next;
 } SourceCache;
 
@@ -81,12 +85,12 @@ pthread_mutex_t source_cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define UNLOCK pthread_mutex_unlock
 #endif
 
-static Stream * find_cached_source(const char * url) {
-  Stream * result = NULL;
+static const SourceCache * find_cached_source(const char * url) {
+  SourceCache * result = NULL;
   LOCK(&source_cache_mutex);
   for (SourceCache * p = source_cache; p != NULL; p = p->next) {
     if (strcmp(url, p->url) == 0) {
-      result = p->source;
+      result = p;
       break;
     }
   }
@@ -94,25 +98,27 @@ static Stream * find_cached_source(const char * url) {
   return result;
 }
 
-static void add_cached_source(const char * url, Stream * source) {
+static void add_cached_source(const char * url, uint16_t * characters, size_t num_characters) {
   SourceCache * new_source_cache = xmalloc(sizeof(SourceCache));
   new_source_cache->url = xstrdup(url);
-  new_source_cache->source = source;
+  new_source_cache->characters = characters;
+  new_source_cache->num_characters = num_characters;
   LOCK(&source_cache_mutex);
   new_source_cache->next = source_cache;
   source_cache = new_source_cache;
   UNLOCK(&source_cache_mutex);
 }
 
-static int get(const char * url, Stream * stream) __attribute__((warn_unused_result));
+static int get(const char * url, uint16_t ** characters, size_t * num_characters) __attribute__((warn_unused_result));
 
-static int get(const char * url, Stream * stream) {
+static int get(const char * url, uint16_t ** characters, size_t * num_characters) {
   char * host = NULL;
   uint16_t port;
   char * abs_path = NULL;
   char * query = NULL;
   HTTPConnection * connection = NULL;
   HTTPExchange * exchange = NULL;
+  Stream * stream = NULL;
 
   int result = URL_parse(url, &host, &port, &abs_path, &query);
   if (result != 0) {
@@ -137,7 +143,17 @@ static int get(const char * url, Stream * stream) {
     goto done;
   }
 
+  stream = Stream_new(0);
   result = HTTPExchange_read_entire_response_entity_body(exchange, stream);
+  if (result != 0) {
+    goto done;
+  }
+  char * encoding = HTTPMessage_get_charset(HTTPExchange_get_response_message(exchange));
+  if (encoding == NULL) {
+    encoding = xstrdup(jscoverage_encoding);
+  }
+  result = jscoverage_bytes_to_characters(encoding, stream->data, stream->length, characters, num_characters);
+  free(encoding);
   if (result != 0) {
     goto done;
   }
@@ -145,6 +161,9 @@ static int get(const char * url, Stream * stream) {
   result = 0;
 
 done:
+  if (stream != NULL) {
+    Stream_delete(stream);
+  }
   if (exchange != NULL) {
     HTTPExchange_delete(exchange);
   }
@@ -403,6 +422,13 @@ static void write_js_quoted_string(FILE * f, char * data, size_t length) {
   putc('"', f);
 }
 
+static void write_source(const char * id, const uint16_t * characters, size_t num_characters, FILE * f) {
+  Stream * output = Stream_new(num_characters);
+  jscoverage_write_source(id, characters, num_characters, output);
+  fwrite(output->data, 1, output->length, f);
+  Stream_delete(output);
+}
+
 static void write_json_for_file(const FileCoverage * file_coverage, int i, void * p) {
   FILE * f = p;
 
@@ -413,11 +439,11 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
   write_js_quoted_string(f, file_coverage->id, strlen(file_coverage->id));
 
   fputs(":{\"coverage\":[", f);
-  for (uint32_t i = 0; i <= file_coverage->num_lines; i++) {
+  for (uint32_t i = 0; i < file_coverage->num_coverage_lines; i++) {
     if (i > 0) {
       putc(',', f);
     }
-    int timesExecuted = file_coverage->lines[i];
+    int timesExecuted = file_coverage->coverage_lines[i];
     if (timesExecuted < 0) {
       fputs("null", f);
     }
@@ -426,23 +452,23 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
     }
   }
   fputs("],\"source\":", f);
-  if (file_coverage->source == NULL) {
+  if (file_coverage->source_lines == NULL) {
     if (proxy) {
-      Stream * stream = find_cached_source(file_coverage->id);
-      if (stream == NULL) {
-        stream = Stream_new(0);
-        if (get(file_coverage->id, stream) == 0) {
-          write_js_quoted_string(f, stream->data, stream->length);
-          add_cached_source(file_coverage->id, stream);
+      const SourceCache * cached = find_cached_source(file_coverage->id);
+      if (cached == NULL) {
+        uint16_t * characters;
+        size_t num_characters;
+        if (get(file_coverage->id, &characters, &num_characters) == 0) {
+          write_source(file_coverage->id, characters, num_characters, f);
+          add_cached_source(file_coverage->id, characters, num_characters);
         }
         else {
-          fputs("\"\"", f);
+          fputs("[]", f);
           HTTPServer_log_err("Warning: cannot retrieve URL: %s\n", file_coverage->id);
-          Stream_delete(stream);
         }
       }
       else {
-        write_js_quoted_string(f, stream->data, stream->length);
+        write_source(file_coverage->id, cached->characters, cached->num_characters, f);
       }
     }
     else {
@@ -452,26 +478,48 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
         FILE * source_file = fopen(source_path, "rb");
         free(source_path);
         if (source_file == NULL) {
-          fputs("\"\"", f);
+          fputs("[]", f);
           HTTPServer_log_err("Warning: cannot open file: %s\n", file_coverage->id);
         }
         else {
           Stream * stream = Stream_new(0);
           Stream_write_file_contents(stream, source_file);
           fclose(source_file);
-          write_js_quoted_string(f, stream->data, stream->length);
+          uint16_t * characters;
+          size_t num_characters;
+          int result = jscoverage_bytes_to_characters(jscoverage_encoding, stream->data, stream->length, &characters, &num_characters);
           Stream_delete(stream);
+          if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
+            fputs("[]", f);
+            HTTPServer_log_err("Warning: encoding %s not supported\n", jscoverage_encoding);
+          }
+          else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
+            fputs("[]", f);
+            HTTPServer_log_err("Warning: error decoding %s in file %s\n", jscoverage_encoding, file_coverage->id);
+          }
+          else {
+            write_source(file_coverage->id, characters, num_characters, f);
+            free(characters);
+          }
         }
       }
       else {
         /* path does not begin with / */
-        fputs("\"\"", f);
+        fputs("[]", f);
         HTTPServer_log_err("Warning: invalid source path: %s\n", file_coverage->id);
       }
     }
   }
   else {
-    write_js_quoted_string(f, file_coverage->source, strlen(file_coverage->source));
+    fputc('[', f);
+    for (uint32_t i = 0; i < file_coverage->num_source_lines; i++) {
+      if (i > 0) {
+        fputc(',', f);
+      }
+      char * source_line = file_coverage->source_lines[i];
+      write_js_quoted_string(f, source_line, strlen(source_line));
+    }
+    fputc(']', f);
   }
   fputc('}', f);
 }
@@ -619,9 +667,9 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
   }
 }
 
-static void instrument_js(const char * id, const char * encoding, Stream * input_stream, Stream * output_stream) {
+static void instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output_stream) {
   LOCK(&javascript_mutex);
-  jscoverage_instrument_js(id, encoding, input_stream, output_stream);
+  jscoverage_instrument_js(id, characters, num_characters, output_stream);
   UNLOCK(&javascript_mutex);
 
   const struct Resource * resource = get_resource("report.js");
@@ -743,15 +791,28 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
     }
 
     const char * request_uri = HTTPExchange_get_request_uri(client_exchange);
-    Stream * output_stream = Stream_new(0);
     char * encoding = HTTPMessage_get_charset(HTTPExchange_get_response_message(server_exchange));
     if (encoding == NULL) {
-      instrument_js(request_uri, jscoverage_encoding, input_stream, output_stream);
+      encoding = xstrdup(jscoverage_encoding);
     }
-    else {
-      instrument_js(request_uri, encoding, input_stream, output_stream);
-      free(encoding);
+    uint16_t * characters;
+    size_t num_characters;
+    int result = jscoverage_bytes_to_characters(encoding, input_stream->data, input_stream->length, &characters, &num_characters);
+    free(encoding);
+    Stream_delete(input_stream);
+    if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
+      free(characters);
+      send_response(client_exchange, 502, "Encoding not supported\n");
+      goto done;
     }
+    else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
+      free(characters);
+      send_response(client_exchange, 502, "Error decoding response\n");
+      goto done;
+    }
+
+    Stream * output_stream = Stream_new(0);
+    instrument_js(request_uri, characters, num_characters, output_stream);
 
     /* send the headers to the client */
     for (const HTTPHeader * h = HTTPExchange_get_response_headers(server_exchange); h != NULL; h = h->next) {
@@ -768,12 +829,12 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
       HTTPServer_log_err("Warning: error writing to client\n");
     }
 
-    /* input_stream goes on the cache */
+    /* characters go on the cache */
     /*
-    Stream_delete(input_stream);
+    free(characters);
     */
     Stream_delete(output_stream);
-    add_cached_source(request_uri, input_stream);
+    add_cached_source(request_uri, characters, num_characters);
   }
   else {
     /* does not need instrumentation */
@@ -895,17 +956,31 @@ static void handle_local_request(HTTPExchange * exchange) {
     HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, content_type);
     if (strcmp(content_type, "text/javascript") == 0 && ! is_no_instrument(abs_path)) {
       Stream * input_stream = Stream_new(0);
-      Stream * output_stream = Stream_new(0);
-
       Stream_write_file_contents(input_stream, f);
 
-      instrument_js(abs_path, jscoverage_encoding, input_stream, output_stream);
+      uint16_t * characters;
+      size_t num_characters;
+      int result = jscoverage_bytes_to_characters(jscoverage_encoding, input_stream->data, input_stream->length, &characters, &num_characters);
+      Stream_delete(input_stream);
+
+      if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
+        free(characters);
+        send_response(exchange, 500, "Encoding not supported\n");
+        goto done;
+      }
+      else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
+        free(characters);
+        send_response(exchange, 500, "Error decoding JavaScript file\n");
+        goto done;
+      }
+
+      Stream * output_stream = Stream_new(0);
+      instrument_js(abs_path, characters, num_characters, output_stream);
+      free(characters);
 
       if (HTTPExchange_write_response(exchange, output_stream->data, output_stream->length) != 0) {
         HTTPServer_log_err("Warning: error writing to client\n");
       }
-
-      Stream_delete(input_stream);
       Stream_delete(output_stream);
     }
     else {
@@ -1005,6 +1080,10 @@ int main(int argc, char ** argv) {
     }
     else if (strncmp(argv[i], "--ip-address=", 13) == 0) {
       ip_address = argv[i] + 13;
+    }
+
+    else if (strcmp(argv[i], "--no-highlight") == 0) {
+      jscoverage_highlight = false;
     }
 
     else if (strcmp(argv[i], "--no-instrument") == 0) {
@@ -1124,7 +1203,7 @@ InitializeCriticalSection(&source_cache_mutex);
     SourceCache * p = source_cache;
     source_cache = source_cache->next;
     free(p->url);
-    Stream_delete(p->source);
+    free(p->characters);
     free(p);
   }
   UNLOCK(&source_cache_mutex);

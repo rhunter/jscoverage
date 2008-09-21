@@ -1,5 +1,5 @@
 /*
-    global.h - global variables
+    highlight.h - JavaScript syntax highlighting
     Copyright (C) 2008 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
@@ -17,13 +17,13 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#ifndef GLOBAL_H_
-#define GLOBAL_H_
+#ifndef HIGHLIGHT_H_
+#define HIGHLIGHT_H_
 
-#include <stdbool.h>
+#include <jscntxt.h>
 
-extern const char * jscoverage_encoding;
+#include "stream.h"
 
-extern bool jscoverage_highlight;
+void jscoverage_highlight_js(JSContext * context, const char * id, const jschar * characters, size_t num_characters, Stream * output);
 
-#endif /* GLOBAL_H_ */
+#endif /* HIGHLIGHT_H_ */

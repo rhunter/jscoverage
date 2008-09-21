@@ -20,6 +20,8 @@
 #ifndef INSTRUMENT_JS_H_
 #define INSTRUMENT_JS_H_
 
+#include <stdint.h>
+
 #include "stream.h"
 #include "util.h"
 
@@ -33,7 +35,7 @@ void jscoverage_init(void);
 
 void jscoverage_cleanup(void);
 
-void jscoverage_instrument_js(const char * id, const char * encoding, Stream * input, Stream * output);
+void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output);
 
 void jscoverage_copy_resources(const char * destination_directory);
 
@@ -42,10 +44,12 @@ typedef struct Coverage Coverage;
 typedef struct FileCoverage {
   char * id;
 
-  int * lines;
-  uint32_t num_lines;
+  int * coverage_lines;
+  char ** source_lines;
 
-  char * source;
+  /* SpiderMonkey uses uint32 for array lengths */
+  uint32_t num_coverage_lines;
+  uint32_t num_source_lines;
 } FileCoverage;
 
 Coverage * Coverage_new(void);
@@ -57,5 +61,7 @@ typedef void (*CoverageForeachFunction) (const FileCoverage * file_coverage, int
 void Coverage_foreach_file(Coverage * coverage, CoverageForeachFunction f, void * p);
 
 int jscoverage_parse_json(Coverage * coverage, const uint8_t * data, size_t length) __attribute__((warn_unused_result));
+
+void jscoverage_write_source(const char * id, const uint16_t * characters, size_t num_characters, Stream * output);
 
 #endif

@@ -35,6 +35,8 @@
 #include <jsstr.h>
 
 #include "encoding.h"
+#include "global.h"
+#include "highlight.h"
 #include "resource-manager.h"
 #include "util.h"
 
@@ -883,20 +885,11 @@ static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
   output_statement(node, f, indent);
 }
 
-void jscoverage_instrument_js(const char * id, const char * encoding, Stream * input, Stream * output) {
+void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
   file_id = id;
 
   /* scan the javascript */
-  size_t num_characters = input->length;
-  jschar * base = NULL;
-  int result = jscoverage_bytes_to_characters(encoding, input->data, input->length, &base, &num_characters);
-  if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
-    fatal("encoding %s not supported in file %s", encoding, id);
-  }
-  else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
-    fatal("error decoding %s in file %s", encoding, id);
-  }
-  JSTokenStream * token_stream = js_NewTokenStream(context, base, num_characters, NULL, 1, NULL);
+  JSTokenStream * token_stream = js_NewTokenStream(context, characters, num_characters, NULL, 1, NULL);
   if (token_stream == NULL) {
     fatal("cannot create token stream from file: %s", file_id);
   }
@@ -939,7 +932,6 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
 
   /* copy the instrumented source code to the output */
   Stream_write(output, instrumented->data, instrumented->length);
-  Stream_write_char(output, '\n');
 
   /* conditionals */
   bool has_conditionals = false;
@@ -948,19 +940,20 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
   while (i < num_characters) {
     line_number++;
     size_t line_start = i;
-    while (i < num_characters && base[i] != '\r' && base[i] != '\n') {
+    /* FIXME */
+    while (i < num_characters && characters[i] != '\r' && characters[i] != '\n') {
       i++;
     }
     size_t line_end = i;
     if (i < num_characters) {
-      if (base[i] == '\r') {
+      if (characters[i] == '\r') {
         line_end = i;
         i++;
-        if (i < num_characters && base[i] == '\n') {
+        if (i < num_characters && characters[i] == '\n') {
           i++;
         }
       }
-      else if (base[i] == '\n') {
+      else if (characters[i] == '\n') {
         line_end = i;
         i++;
       }
@@ -968,7 +961,7 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
         abort();
       }
     }
-    char * line = js_DeflateString(context, base + line_start, line_end - line_start);
+    char * line = js_DeflateString(context, characters + line_start, line_end - line_start);
     if (str_starts_with(line, "//#JSCOVERAGE_IF")) {
       if (! has_conditionals) {
         has_conditionals = true;
@@ -985,43 +978,153 @@ void jscoverage_instrument_js(const char * id, const char * encoding, Stream * i
   }
 
   /* copy the original source to the output */
-  i = 0;
-  while (i < num_characters) {
-    Stream_write_string(output, "// ");
-    size_t line_start = i;
-    while (i < num_characters && base[i] != '\r' && base[i] != '\n') {
-      i++;
-    }
-
-    size_t line_end = i;
-    if (i < num_characters) {
-      if (base[i] == '\r') {
-        line_end = i;
-        i++;
-        if (i < num_characters && base[i] == '\n') {
-          i++;
-        }
-      }
-      else if (base[i] == '\n') {
-        line_end = i;
-        i++;
-      }
-      else {
-        abort();
-      }
-    }
-
-    char * line = js_DeflateString(context, base + line_start, line_end - line_start);
-    Stream_write_string(output, line);
-    Stream_write_char(output, '\n');
-    JS_free(context, line);
-  }
+  Stream_printf(output, "_$jscoverage['%s'].source = ", file_id);
+  jscoverage_write_source(id, characters, num_characters, output);
+  Stream_printf(output, ";\n");
 
   Stream_delete(instrumented);
 
-  JS_free(context, base);
-
   file_id = NULL;
+}
+
+void jscoverage_write_source(const char * id, const jschar * characters, size_t num_characters, Stream * output) {
+  Stream_write_string(output, "[");
+  if (jscoverage_highlight) {
+    Stream * highlighted_stream = Stream_new(num_characters);
+    jscoverage_highlight_js(context, id, characters, num_characters, highlighted_stream);
+    size_t i = 0;
+    while (i < highlighted_stream->length) {
+      if (i > 0) {
+        Stream_write_char(output, ',');
+      }
+
+      Stream_write_char(output, '"');
+      bool done = false;
+      while (! done) {
+        char c = highlighted_stream->data[i];
+        switch (c) {
+        case 0x8:
+          /* backspace */
+          Stream_write_string(output, "\\b");
+          break;
+        case 0x9:
+          /* horizontal tab */
+          Stream_write_string(output, "\\t");
+          break;
+        case 0xa:
+          /* line feed (new line) */
+          done = true;
+          break;
+        case 0xb:
+          /* vertical tab */
+          Stream_write_string(output, "\\v");
+          break;
+        case 0xc:
+          /* form feed */
+          Stream_write_string(output, "\\f");
+          break;
+        case 0xd:
+          /* carriage return */
+          done = true;
+          if (i + 1 < highlighted_stream->length && highlighted_stream->data[i + 1] == '\n') {
+            i++;
+          }
+          break;
+        case '"':
+          Stream_write_string(output, "\\\"");
+          break;
+        case '\\':
+          Stream_write_string(output, "\\\\");
+          break;
+        default:
+          Stream_write_char(output, c);
+          break;
+        }
+        i++;
+        if (i >= highlighted_stream->length) {
+          done = true;
+        }
+      }
+      Stream_write_char(output, '"');
+    }
+    Stream_delete(highlighted_stream);
+  }
+  else {
+    size_t i = 0;
+    while (i < num_characters) {
+      if (i > 0) {
+        Stream_write_char(output, ',');
+      }
+
+      Stream_write_char(output, '"');
+      bool done = false;
+      while (! done) {
+        jschar c = characters[i];
+        switch (c) {
+        case 0x8:
+          /* backspace */
+          Stream_write_string(output, "\\b");
+          break;
+        case 0x9:
+          /* horizontal tab */
+          Stream_write_string(output, "\\t");
+          break;
+        case 0xa:
+          /* line feed (new line) */
+          done = true;
+          break;
+        case 0xb:
+          /* vertical tab */
+          Stream_write_string(output, "\\v");
+          break;
+        case 0xc:
+          /* form feed */
+          Stream_write_string(output, "\\f");
+          break;
+        case 0xd:
+          /* carriage return */
+          done = true;
+          if (i + 1 < num_characters && characters[i + 1] == '\n') {
+            i++;
+          }
+          break;
+        case '"':
+          Stream_write_string(output, "\\\"");
+          break;
+        case '\\':
+          Stream_write_string(output, "\\\\");
+          break;
+        case '&':
+          Stream_write_string(output, "&amp;");
+          break;
+        case '<':
+          Stream_write_string(output, "&lt;");
+          break;
+        case '>':
+          Stream_write_string(output, "&gt;");
+          break;
+        case 0x2028:
+        case 0x2029:
+          done = true;
+          break;
+        default:
+          if (32 <= c && c <= 126) {
+            Stream_write_char(output, c);
+          }
+          else {
+            Stream_printf(output, "&#%d;", c);
+          }
+          break;
+        }
+        i++;
+        if (i >= num_characters) {
+          done = true;
+        }
+      }
+      Stream_write_char(output, '"');
+    }
+  }
+  Stream_write_string(output, "]");
 }
 
 void jscoverage_copy_resources(const char * destination_directory) {
@@ -1030,9 +1133,7 @@ void jscoverage_copy_resources(const char * destination_directory) {
   copy_resource("jscoverage.js", destination_directory);
   copy_resource("jscoverage-ie.css", destination_directory);
   copy_resource("jscoverage-throbber.gif", destination_directory);
-  copy_resource("jscoverage-sh_main.js", destination_directory);
-  copy_resource("jscoverage-sh_javascript.js", destination_directory);
-  copy_resource("jscoverage-sh_nedit.css", destination_directory);
+  copy_resource("jscoverage-highlight.css", destination_directory);
 }
 
 /*
@@ -1067,8 +1168,13 @@ void Coverage_delete(Coverage * coverage) {
   JS_HashTableDestroy(coverage->coverage_table);
   struct FileCoverageList * p = coverage->coverage_list;
   while (p != NULL) {
-    free(p->file_coverage->lines);
-    free(p->file_coverage->source);
+    free(p->file_coverage->coverage_lines);
+    if (p->file_coverage->source_lines != NULL) {
+      for (uint32 i = 0; i < p->file_coverage->num_source_lines; i++) {
+        free(p->file_coverage->source_lines[i]);
+      }
+      free(p->file_coverage->source_lines);
+    }
     free(p->file_coverage->id);
     free(p->file_coverage);
     struct FileCoverageList * q = p;
@@ -1190,7 +1296,7 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
         }
         else if (strcmp(s, "source") == 0) {
           source = element->pn_right;
-          if (source->pn_type != TOK_STRING || ! ATOM_IS_STRING(source->pn_atom)) {
+          if (source->pn_type != TOK_RB) {
             return -1;
           }
         }
@@ -1214,23 +1320,32 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
       char * id = xstrdup(id_bytes);
       file_coverage = xmalloc(sizeof(FileCoverage));
       file_coverage->id = id;
-      file_coverage->num_lines = array->pn_count - 1;
-      file_coverage->lines = xnew(int, array->pn_count);
+      file_coverage->num_coverage_lines = array->pn_count;
+      file_coverage->coverage_lines = xnew(int, array->pn_count);
       if (source == NULL) {
-        file_coverage->source = NULL;
+        file_coverage->source_lines = NULL;
       }
       else {
-        file_coverage->source = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(source->pn_atom)));
+        file_coverage->num_source_lines = source->pn_count;
+        file_coverage->source_lines = xnew(char *, source->pn_count);
+        uint32 i = 0;
+        for (JSParseNode * element = source->pn_head; element != NULL; element = element->pn_next, i++) {
+          if (element->pn_type != TOK_STRING) {
+            return -1;
+          }
+          file_coverage->source_lines[i] = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(element->pn_atom)));
+        }
+        assert(i == source->pn_count);
       }
 
       /* set coverage for all lines */
       uint32 i = 0;
       for (JSParseNode * element = array->pn_head; element != NULL; element = element->pn_next, i++) {
         if (element->pn_type == TOK_NUMBER) {
-          file_coverage->lines[i] = (int) element->pn_dval;
+          file_coverage->coverage_lines[i] = (int) element->pn_dval;
         }
         else if (element->pn_type == TOK_PRIMARY && element->pn_op == JSOP_NULL) {
-          file_coverage->lines[i] = -1;
+          file_coverage->coverage_lines[i] = -1;
         }
         else {
           return -1;
@@ -1248,7 +1363,7 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
     else {
       /* sanity check */
       assert(strcmp(file_coverage->id, id_bytes) == 0);
-      if (file_coverage->num_lines != array->pn_count - 1) {
+      if (file_coverage->num_coverage_lines != array->pn_count) {
         return -2;
       }
 
@@ -1256,13 +1371,13 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
       uint32 i = 0;
       for (JSParseNode * element = array->pn_head; element != NULL; element = element->pn_next, i++) {
         if (element->pn_type == TOK_NUMBER) {
-          if (file_coverage->lines[i] == -1) {
+          if (file_coverage->coverage_lines[i] == -1) {
             return -2;
           }
-          file_coverage->lines[i] += (int) element->pn_dval;
+          file_coverage->coverage_lines[i] += (int) element->pn_dval;
         }
         else if (element->pn_type == TOK_PRIMARY && element->pn_op == JSOP_NULL) {
-          if (file_coverage->lines[i] != -1) {
+          if (file_coverage->coverage_lines[i] != -1) {
             return -2;
           }
         }
@@ -1273,8 +1388,17 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
       assert(i == array->pn_count);
 
       /* if this JSON file has source, use it */
-      if (file_coverage->source == NULL && source != NULL) {
-        file_coverage->source = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(source->pn_atom)));
+      if (file_coverage->source_lines == NULL && source != NULL) {
+        file_coverage->num_source_lines = source->pn_count;
+        file_coverage->source_lines = xnew(char *, source->pn_count);
+        uint32 i = 0;
+        for (JSParseNode * element = source->pn_head; element != NULL; element = element->pn_next, i++) {
+          if (element->pn_type != TOK_STRING) {
+            return -1;
+          }
+          file_coverage->source_lines[i] = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(element->pn_atom)));
+        }
+        assert(i == source->pn_count);
       }
     }
   }

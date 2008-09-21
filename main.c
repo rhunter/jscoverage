@@ -30,6 +30,7 @@
 #include "util.h"
 
 const char * jscoverage_encoding = "ISO-8859-1";
+bool jscoverage_highlight = true;
 
 int main(int argc, char ** argv) {
   int verbose = 0;
@@ -57,6 +58,9 @@ int main(int argc, char ** argv) {
     }
     else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
       verbose = 1;
+    }
+    else if (strcmp(argv[i], "--no-highlight") == 0) {
+      jscoverage_highlight = false;
     }
     else if (strcmp(argv[i], "--no-instrument") == 0) {
       i++;

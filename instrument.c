@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "encoding.h"
 #include "global.h"
 #include "instrument-js.h"
 #include "resource-manager.h"
@@ -98,7 +99,17 @@ static void instrument_file(const char * source_file, const char * destination_f
 
         Stream_write_file_contents(input_stream, input);
 
-        jscoverage_instrument_js(id, jscoverage_encoding, input_stream, output_stream);
+        size_t num_characters = input_stream->length;
+        uint16_t * characters = NULL;
+        int result = jscoverage_bytes_to_characters(jscoverage_encoding, input_stream->data, input_stream->length, &characters, &num_characters);
+        if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
+          fatal("encoding %s not supported", jscoverage_encoding);
+        }
+        else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
+          fatal("error decoding %s in file %s", jscoverage_encoding, id);
+        }
+        jscoverage_instrument_js(id, characters, num_characters, output_stream);
+        free(characters);
 
         if (fwrite(output_stream->data, 1, output_stream->length, output) != output_stream->length) {
           fatal("cannot write to file: %s", destination_file);
