@@ -1,14 +1,14 @@
 {
   "script.js":{
     "coverage":[null,1,null,null,1,0],
-    "source":""
+    "source":[]
   },
   "1/1.js":{
     "coverage":[null,1],
-    "source":""
+    "source":[]
   },
   "1/2/2.js":{
     "coverage":[null,1],
-    "source":""
+    "source":[]
   }
 }

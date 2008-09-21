@@ -39,7 +39,7 @@ else
 fi
 
 rm -fr DIR
-$VALGRIND jscoverage-server --report-dir=DIR &
+$VALGRIND jscoverage-server --no-highlight --report-dir=DIR &
 server_pid=$!
 server_port=8080
 

@@ -52,7 +52,7 @@ cd ..
 
 rm -fr DIR
 mkdir DIR
-$VALGRIND jscoverage-server --proxy --report-dir=DIR > OUT 2> ERR &
+$VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR &
 proxy_server_pid=$!
 proxy_server_port=8080
 
@@ -95,9 +95,6 @@ echo -n '{}' | diff - DIR/jscoverage.json
 diff ../jscoverage.html DIR/jscoverage.html
 diff ../jscoverage.css DIR/jscoverage.css
 diff ../jscoverage-throbber.gif DIR/jscoverage-throbber.gif
-diff ../jscoverage-sh_main.js DIR/jscoverage-sh_main.js
-diff ../jscoverage-sh_javascript.js DIR/jscoverage-sh_javascript.js
-diff ../jscoverage-sh_nedit.css DIR/jscoverage-sh_nedit.css
 echo -e 'jscoverage_isReport = true;\r' | cat ../jscoverage.js - | diff - DIR/jscoverage.js
 
 ## send it an FTP request
@@ -126,7 +123,7 @@ diff EXPECTED ACTUAL
 # kill $proxy_server_pid
 shutdown
 
-$VALGRIND jscoverage-server --port=8081 --proxy --report-dir=DIR --no-instrument=http://127.0.0.1:8000/1/ &
+$VALGRIND jscoverage-server --no-highlight --port=8081 --proxy --report-dir=DIR --no-instrument=http://127.0.0.1:8000/1/ &
 proxy_server_pid=$!
 proxy_server_port=8081
 

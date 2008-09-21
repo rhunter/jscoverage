@@ -31,22 +31,22 @@ cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
 cat recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
 cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
 
-$VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR
+$VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR
 test -d DIR
 diff --strip-trailing-cr -r EXPECTED DIR
 
-$VALGRIND jscoverage --verbose --exclude .svn --exclude 1/.svn --exclude 1/2/.svn recursive DIR >OUT
+$VALGRIND jscoverage --no-highlight --verbose --exclude .svn --exclude 1/.svn --exclude 1/2/.svn recursive DIR >OUT
 test -d DIR
 sort OUT -o OUT
 diff --strip-trailing-cr verbose.expected.out OUT
 diff --strip-trailing-cr -r EXPECTED DIR
 
 # does it handle an argument with a slash at the end?
-$VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive/ DIR
+$VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive/ DIR
 diff --strip-trailing-cr -r EXPECTED DIR
-$VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR/
+$VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR/
 diff --strip-trailing-cr -r EXPECTED DIR
-$VALGRIND jscoverage --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive/ DIR/
+$VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive/ DIR/
 diff --strip-trailing-cr -r EXPECTED DIR
 
 rm -fr EXPECTED DIR OUT

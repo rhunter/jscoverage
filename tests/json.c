@@ -25,6 +25,8 @@
 #include "stream.h"
 #include "util.h"
 
+bool jscoverage_highlight = true;
+
 int main(void) {
   jscoverage_init();
 

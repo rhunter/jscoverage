@@ -39,7 +39,7 @@ else
 fi
 
 rm -fr DIR
-$VALGRIND jscoverage-server --document-root=recursive --report-dir=DIR > OUT 2> ERR &
+$VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 

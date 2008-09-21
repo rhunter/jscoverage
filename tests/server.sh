@@ -42,7 +42,7 @@ fi
 
 rm -fr EXPECTED DIR OUT
 mkdir DIR
-$VALGRIND jscoverage-server --document-root=recursive --report-dir=DIR &
+$VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR &
 server_pid=$!
 server_port=8080
 
@@ -82,9 +82,6 @@ echo -n '{}' | diff - DIR/jscoverage.json
 diff ../jscoverage.html DIR/jscoverage.html
 diff ../jscoverage.css DIR/jscoverage.css
 diff ../jscoverage-throbber.gif DIR/jscoverage-throbber.gif
-diff ../jscoverage-sh_main.js DIR/jscoverage-sh_main.js
-diff ../jscoverage-sh_javascript.js DIR/jscoverage-sh_javascript.js
-diff ../jscoverage-sh_nedit.css DIR/jscoverage-sh_nedit.css
 echo -e 'jscoverage_isReport = true;\r' | cat ../jscoverage.js - | diff - DIR/jscoverage.js
 
 # 404 not found
@@ -112,10 +109,10 @@ rm -fr DIR
 mkdir DIR
 case `uname` in
   MINGW*)
-    $VALGRIND jscoverage-server --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=1/ &
+    $VALGRIND jscoverage-server --no-highlight --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=1/ &
     ;;
   *)
-    $VALGRIND jscoverage-server --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=/1/ &
+    $VALGRIND jscoverage-server --no-highlight --port=8081 --document-root=recursive --report-dir=DIR --no-instrument=/1/ &
     ;;
 esac
 server_pid=$!
@@ -131,7 +128,7 @@ wget -q -O- http://127.0.0.1:8081/1/2/2.js | diff recursive/1/2/2.js -
 # kill $server_pid
 shutdown
 
-$VALGRIND jscoverage-server --port 8082 --document-root recursive --report-dir DIR --no-instrument 1/ &
+$VALGRIND jscoverage-server --no-highlight --port 8082 --document-root recursive --report-dir DIR --no-instrument 1/ &
 server_pid=$!
 server_port=8082
 

@@ -45,7 +45,7 @@ else
 fi
 
 rm -fr DIR
-$VALGRIND jscoverage-server --document-root=recursive --report-dir=DIR &
+$VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR &
 server_pid=$!
 server_port=8080
 
@@ -74,7 +74,7 @@ origin_server_pid=$!
 cd ..
 
 rm -fr DIR
-$VALGRIND jscoverage-server --proxy --report-dir=DIR > OUT 2> ERR &
+$VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
@@ -101,7 +101,7 @@ js json-cmp.js TMP DIR/jscoverage.json
 shutdown
 
 rm -fr DIR
-$VALGRIND jscoverage-server --proxy --report-dir=DIR > OUT 2> ERR &
+$VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
@@ -117,7 +117,7 @@ diff --strip-trailing-cr store-bad-source-urls.expected.err ERR
 shutdown
 
 rm -fr DIR
-$VALGRIND jscoverage-server --proxy --report-dir=DIR > OUT 2> ERR &
+$VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 

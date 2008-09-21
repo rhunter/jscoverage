@@ -56,8 +56,8 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
-json_SOURCES = json.c ../encoding.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
-json_CPPFLAGS = -I../js/src
+json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
+json_CPPFLAGS = -DXP_UNIX -I../js/src
 json_LDFLAGS = -static
 json_LDADD = ../js/libjs.la -lm
 

@@ -45,11 +45,11 @@ cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
 cat recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
 cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
 
-$VALGRIND jscoverage TMP DIR
+$VALGRIND jscoverage --no-highlight TMP DIR
 test -d DIR
 diff --strip-trailing-cr -r EXPECTED DIR
 
-$VALGRIND jscoverage --verbose TMP DIR > OUT
+$VALGRIND jscoverage --no-highlight --verbose TMP DIR > OUT
 test -d DIR
 sort OUT -o OUT
 diff --strip-trailing-cr verbose.expected.out OUT
