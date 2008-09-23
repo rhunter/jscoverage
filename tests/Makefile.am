@@ -72,6 +72,7 @@ TESTS = encodings.sh \
         help.sh \
         invalid-option.sh \
         javascript.sh \
+        javascript-utf-8.sh \
         no-arguments.sh \
         recursive.sh \
         recursive-crlf.sh \
