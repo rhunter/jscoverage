@@ -885,6 +885,25 @@ static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
   output_statement(node, f, indent);
 }
 
+static bool characters_start_with(const jschar * characters, size_t line_start, size_t line_end, const char * prefix) {
+  const jschar * characters_end = characters + line_end;
+  const jschar * cp = characters + line_start;
+  const char * bp = prefix;
+  for (;;) {
+    if (*bp == '\0') {
+      return true;
+    }
+    else if (cp == characters_end) {
+      return false;
+    }
+    else if (*cp != *bp) {
+      return false;
+    }
+    bp++;
+    cp++;
+  }
+}
+
 void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
   file_id = id;
 
@@ -940,41 +959,51 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   while (i < num_characters) {
     line_number++;
     size_t line_start = i;
-    /* FIXME */
-    while (i < num_characters && characters[i] != '\r' && characters[i] != '\n') {
-      i++;
+    jschar c;
+    bool done = false;
+    while (! done && i < num_characters) {
+      c = characters[i];
+      switch (c) {
+      case '\r':
+      case '\n':
+      case 0x2028:
+      case 0x2029:
+        done = true;
+        break;
+      default:
+        i++;
+        break;
+      }
     }
     size_t line_end = i;
     if (i < num_characters) {
-      if (characters[i] == '\r') {
-        line_end = i;
+      i++;
+      if (c == '\r' && i < num_characters && characters[i] == '\n') {
         i++;
-        if (i < num_characters && characters[i] == '\n') {
-          i++;
-        }
-      }
-      else if (characters[i] == '\n') {
-        line_end = i;
-        i++;
-      }
-      else {
-        abort();
       }
     }
-    char * line = js_DeflateString(context, characters + line_start, line_end - line_start);
-    if (str_starts_with(line, "//#JSCOVERAGE_IF")) {
+    if (characters_start_with(characters, line_start, line_end, "//#JSCOVERAGE_IF")) {
       if (! has_conditionals) {
         has_conditionals = true;
         Stream_printf(output, "_$jscoverage['%s'].conditionals = [];\n", file_id);
       }
-      Stream_printf(output, "if (!%s) {\n", line + 16);
+      Stream_write_string(output, "if (!(");
+      for (size_t j = line_start + 16; j < line_end; j++) {
+        jschar c = characters[j];
+        if (c == '\t' || (32 <= c && c <= 126)) {
+          Stream_write_char(output, c);
+        }
+        else {
+          Stream_printf(output, "\\u%04x", c);
+        }
+      }
+      Stream_write_string(output, ")) {\n");
       Stream_printf(output, "  _$jscoverage['%s'].conditionals[%d] = ", file_id, line_number);
     }
-    else if (str_starts_with(line, "//#JSCOVERAGE_ENDIF")) {
+    else if (characters_start_with(characters, line_start, line_end, "//#JSCOVERAGE_ENDIF")) {
       Stream_printf(output, "%d;\n", line_number);
       Stream_printf(output, "}\n");
     }
-    JS_free(context, line);
   }
 
   /* copy the original source to the output */
