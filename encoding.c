@@ -60,15 +60,15 @@ static void skip_bom(jschar ** characters, size_t * num_characters) {
 #ifdef HAVE_ICONV
 
 #ifdef WORDS_BIGENDIAN
-#define UCS_2_INTERNAL "UCS-2BE"
+#define UTF_16_INTERNAL "UTF-16BE"
 #else
-#define UCS_2_INTERNAL "UCS-2LE"
+#define UTF_16_INTERNAL "UTF-16LE"
 #endif
 
 int jscoverage_bytes_to_characters(const char * encoding, const uint8_t * bytes, size_t num_bytes, jschar ** characters, size_t * num_characters) {
   assert(encoding != NULL);
 
-  iconv_t state = iconv_open(UCS_2_INTERNAL, encoding);
+  iconv_t state = iconv_open(UTF_16_INTERNAL, encoding);
   if (state == (iconv_t) -1) {
     return JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED;
   }
