@@ -1092,7 +1092,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--report-dir") == 0) {
       i++;
       if (i == argc) {
-        fatal("--report-dir: option requires an argument");
+        fatal_command_line("--report-dir: option requires an argument");
       }
       report_directory = argv[i];
     }
@@ -1103,7 +1103,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--document-root") == 0) {
       i++;
       if (i == argc) {
-        fatal("--document-root: option requires an argument");
+        fatal_command_line("--document-root: option requires an argument");
       }
       document_root = argv[i];
     }
@@ -1114,7 +1114,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--encoding") == 0) {
       i++;
       if (i == argc) {
-        fatal("--encoding: option requires an argument");
+        fatal_command_line("--encoding: option requires an argument");
       }
       jscoverage_encoding = argv[i];
     }
@@ -1125,7 +1125,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--ip-address") == 0) {
       i++;
       if (i == argc) {
-        fatal("--ip-address: option requires an argument");
+        fatal_command_line("--ip-address: option requires an argument");
       }
       ip_address = argv[i];
     }
@@ -1140,7 +1140,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--no-instrument") == 0) {
       i++;
       if (i == argc) {
-        fatal("--no-instrument: option requires an argument");
+        fatal_command_line("--no-instrument: option requires an argument");
       }
       no_instrument[num_no_instrument] = argv[i];
       num_no_instrument++;
@@ -1153,7 +1153,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--port") == 0) {
       i++;
       if (i == argc) {
-        fatal("--port: option requires an argument");
+        fatal_command_line("--port: option requires an argument");
       }
       port = argv[i];
     }
@@ -1170,10 +1170,10 @@ int main(int argc, char ** argv) {
     }
 
     else if (strncmp(argv[i], "-", 1) == 0) {
-      fatal("unrecognized option `%s'", argv[i]);
+      fatal_command_line("unrecognized option `%s'", argv[i]);
     }
     else {
-      fatal("too many arguments");
+      fatal_command_line("too many arguments");
     }
   }
 
@@ -1181,10 +1181,10 @@ int main(int argc, char ** argv) {
   char * end;
   unsigned long numeric_port = strtoul(port, &end, 10);
   if (*end != '\0') {
-    fatal("--port: option must be an integer");
+    fatal_command_line("--port: option must be an integer");
   }
   if (numeric_port > UINT16_MAX) {
-    fatal("--port: option must be 16 bits");
+    fatal_command_line("--port: option must be 16 bits");
   }
 
   /* is this a shutdown? */

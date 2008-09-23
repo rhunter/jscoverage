@@ -35,6 +35,10 @@ void fatal(const char * format, ...)
   __attribute__((__noreturn__))
   __attribute__((__format__(printf, 1, 2)));
 
+void fatal_command_line(const char * format, ...)
+  __attribute__((__noreturn__))
+  __attribute__((__format__(printf, 1, 2)));
+
 size_t addst(size_t x, size_t y);
 
 size_t mulst(size_t x, size_t y);

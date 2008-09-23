@@ -65,7 +65,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--no-instrument") == 0) {
       i++;
       if (i == argc) {
-        fatal("--no-instrument: option requires an argument");
+        fatal_command_line("--no-instrument: option requires an argument");
       }
       no_instrument[num_no_instrument] = argv[i];
       num_no_instrument++;
@@ -77,7 +77,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--exclude") == 0) {
       i++;
       if (i == argc) {
-        fatal("--exclude: option requires an argument");
+        fatal_command_line("--exclude: option requires an argument");
       }
       exclude[num_exclude] = argv[i];
       num_exclude++;
@@ -89,7 +89,7 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--encoding") == 0) {
       i++;
       if (i == argc) {
-        fatal("--encoding: option requires an argument");
+        fatal_command_line("--encoding: option requires an argument");
       }
       jscoverage_encoding = argv[i];
     }
@@ -97,7 +97,7 @@ int main(int argc, char ** argv) {
       jscoverage_encoding = argv[i] + 11;
     }
     else if (strncmp(argv[i], "-", 1) == 0) {
-      fatal("unrecognized option `%s'", argv[i]);
+      fatal_command_line("unrecognized option `%s'", argv[i]);
     }
     else if (source == NULL) {
       source = argv[i];
@@ -106,12 +106,12 @@ int main(int argc, char ** argv) {
       destination = argv[i];
     }
     else {
-      fatal("too many arguments");
+      fatal_command_line("too many arguments");
     }
   }
 
   if (source == NULL || destination == NULL) {
-    fatal("missing argument");
+    fatal_command_line("missing argument");
   }
 
   source = make_canonical_path(source);

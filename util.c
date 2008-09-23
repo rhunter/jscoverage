@@ -47,6 +47,16 @@ void fatal(const char * format, ...) {
   vfprintf(stderr, format, ap);
   va_end(ap);
   fputc('\n', stderr);
+  exit(EXIT_FAILURE);
+}
+
+void fatal_command_line(const char * format, ...) {
+  fprintf(stderr, "%s: ", program);
+  va_list ap;
+  va_start(ap, format);
+  vfprintf(stderr, format, ap);
+  va_end(ap);
+  fputc('\n', stderr);
   fprintf(stderr, "Try `%s --help' for more information.\n", program);
   exit(EXIT_FAILURE);
 }
