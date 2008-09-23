@@ -237,6 +237,44 @@ static char * encode_uri_component(const char * s) {
   return result;
 }
 
+static unsigned int hex_value(char c) {
+  if ('0' <= c && c <= '9') {
+    return c - '0';
+  }
+  else if ('A' <= c && c <= 'F') {
+    return c - 'A';
+  }
+  else if ('a' <= c && c <= 'f') {
+    return c - 'a';
+  }
+  else {
+    return 0;
+  }
+}
+
+static char * decode_uri_component(const char * s) {
+  size_t length = strlen(s);
+  char * result = xmalloc(length + 1);
+  char * p = result;
+  while (*s != '\0') {
+    if (*s == '%') {
+      if (s[1] == '\0' || s[2] == '\0') {
+        *p = '\0';
+        return result;
+      }
+      *p = hex_value(s[1]) * 16 + hex_value(s[2]);
+      s += 2;
+    }
+    else {
+      *p = *s;
+    }
+    p++;
+    s++;
+  }
+  *p = '\0';
+  return result;
+}
+
 static const char * get_entity(char c) {
   switch(c) {
   case '<':
@@ -576,7 +614,17 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     }
 
     mkdir_if_necessary(report_directory);
-    char * path = make_path(report_directory, "jscoverage.json");
+    char * current_report_directory;
+    if (str_starts_with(abs_path, "/jscoverage-store/") && abs_path[18] != '\0') {
+      char * dir = decode_uri_component(abs_path + 18);
+      current_report_directory = make_path(report_directory, dir);
+      free(dir);
+    }
+    else {
+      current_report_directory = xstrdup(report_directory);
+    }
+    mkdir_if_necessary(current_report_directory);
+    char * path = make_path(current_report_directory, "jscoverage.json");
 
     /* check if the JSON file exists */
     struct stat buf;
@@ -593,6 +641,7 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
         }
       }
       if (result != 0) {
+        free(current_report_directory);
         free(path);
         Coverage_delete(coverage);
         send_response(exchange, 500, "Could not merge with existing coverage data\n");
@@ -604,13 +653,15 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     free(path);
     Coverage_delete(coverage);
     if (result != 0) {
+      free(current_report_directory);
       send_response(exchange, 500, "Could not write coverage data\n");
       return;
     }
 
     /* copy other files */
-    jscoverage_copy_resources(report_directory);
-    path = make_path(report_directory, "jscoverage.js");
+    jscoverage_copy_resources(current_report_directory);
+    path = make_path(current_report_directory, "jscoverage.js");
+    free(current_report_directory);
     FILE * f = fopen(path, "ab");
     free(path);
     if (f == NULL) {
@@ -668,12 +719,12 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
 }
 
 static void instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output_stream) {
+  const struct Resource * resource = get_resource("report.js");
+  Stream_write(output_stream, resource->data, resource->length);
+
   LOCK(&javascript_mutex);
   jscoverage_instrument_js(id, characters, num_characters, output_stream);
   UNLOCK(&javascript_mutex);
-
-  const struct Resource * resource = get_resource("report.js");
-  Stream_write(output_stream, resource->data, resource->length);
 }
 
 static bool is_hop_by_hop_header(const char * h) {

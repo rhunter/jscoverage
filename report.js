@@ -1,5 +1,5 @@
 if (! top.jscoverage_report) {
-  top.jscoverage_report = function () {
+  top.jscoverage_report = function (dir) {
     var createRequest = function () {
       if (window.XMLHttpRequest) {
         return new XMLHttpRequest();
@@ -49,7 +49,11 @@ if (! top.jscoverage_report) {
     json = '{' + json.join(',') + '}';
 
     var request = createRequest();
-    request.open('POST', '/jscoverage-store', false);
+    var url = '/jscoverage-store';
+    if (dir) {
+      url += '/' + encodeURIComponent(dir);
+    }
+    request.open('POST', url, false);
     request.setRequestHeader('Content-Type', 'application/json');
     request.setRequestHeader('Content-Length', json.length.toString());
     request.send(json);
