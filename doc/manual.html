@@ -526,6 +526,12 @@ Using the above example, the report would be stored to either
 <code>jscoverage-report/IE/</code> or <code>jscoverage-report/other/</code>.
 </p>
 
+<p>
+It is not necessary that your test suite be executed within the
+<code>jscoverage.html</code> web interface to store a coverage report.  The URL
+of the test suite can simply be loaded directly in a web browser.
+</p>
+
 <h3>Conditional directives</h3>
 
 <p>
@@ -605,6 +611,10 @@ function f(s) {
   }
 }
 </pre>
+
+<p>
+Currently, conditional directives are ignored in stored coverage reports.
+</p>
 
 <h2>Caveats</h2>
 
