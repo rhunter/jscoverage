@@ -63,11 +63,11 @@ wget -q -O- http://127.0.0.1:8080/index.html?foo | diff recursive/index.html -
 
 # test javascript
 wget -q -O- http://127.0.0.1:8080/script.js > OUT
-cat recursive.expected/script.js ../report.js | sed 's/@PREFIX@/\//g' | diff - OUT
+cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff - OUT
 wget -q -O- http://127.0.0.1:8080/1/1.js > OUT
-cat recursive.expected/1/1.js ../report.js | sed 's/@PREFIX@/\//g' | diff - OUT
+cat ../report.js recursive.expected/1/1.js | sed 's/@PREFIX@/\//g' | diff - OUT
 wget -q -O- http://127.0.0.1:8080/1/2/2.js > OUT
-cat recursive.expected/1/2/2.js ../report.js | sed 's/@PREFIX@/\//g' | diff - OUT
+cat ../report.js recursive.expected/1/2/2.js | sed 's/@PREFIX@/\//g' | diff - OUT
 
 # test jscoverage
 wget -q -O- http://127.0.0.1:8080/jscoverage.html | diff ../jscoverage.html -
@@ -121,7 +121,7 @@ server_port=8081
 sleep $delay
 
 wget -q -O- http://127.0.0.1:8081/script.js > OUT
-cat recursive.expected/script.js ../report.js | sed 's/@PREFIX@/\//g' | diff - OUT
+cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff - OUT
 wget -q -O- http://127.0.0.1:8081/1/1.js | diff recursive/1/1.js -
 wget -q -O- http://127.0.0.1:8081/1/2/2.js | diff recursive/1/2/2.js -
 
@@ -135,6 +135,6 @@ server_port=8082
 sleep $delay
 
 wget -q -O- http://127.0.0.1:8082/script.js > OUT
-cat recursive.expected/script.js ../report.js | sed 's/@PREFIX@/\//g' | diff - OUT
+cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff - OUT
 wget -q -O- http://127.0.0.1:8082/1/1.js | diff recursive/1/1.js -
 wget -q -O- http://127.0.0.1:8082/1/2/2.js | diff recursive/1/2/2.js -

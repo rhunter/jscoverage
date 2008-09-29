@@ -76,11 +76,11 @@ wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' --post-file=recursive/index.h
 
 # test javascript
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/script.js > OUT
-cat recursive.expected/script.js ../report.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
+cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/1/1.js > OUT
-cat recursive.expected/1/1.js ../report.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
+cat ../report.js recursive.expected/1/1.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/1/2/2.js > OUT
-cat recursive.expected/1/2/2.js ../report.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
+cat ../report.js recursive.expected/1/2/2.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
 
 ## test jscoverage
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://siliconforks.com/jscoverage.html | diff ../jscoverage.html -
@@ -130,6 +130,6 @@ proxy_server_port=8081
 sleep $delay
 
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8081/' http://127.0.0.1:8000/script.js > OUT
-cat recursive.expected/script.js ../report.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
+cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/http:\/\/127.0.0.1:8000\//g' | diff - OUT
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8081/' http://127.0.0.1:8000/1/1.js | diff recursive/1/1.js -
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8081/' http://127.0.0.1:8000/1/2/2.js | diff recursive/1/2/2.js -
