@@ -1,5 +1,6 @@
 body {
-  margin: 3%;
+  margin-left: 3%;
+  margin-right: 3%;
   font-family: sans-serif;
 }
 
@@ -11,18 +12,31 @@ pre {
   background-color: #eee;
 }
 
+pre.sh_sourceCode {
+  background-color: #eee;
+}
+
+table {
+  margin-left: 3%;
+  margin-right: 3%;
+  border-collapse: collapse;
+}
+
 td {
   vertical-align: top;
+  border-width: 0;
+  padding: 0;
 }
 
 td.arrow {
   vertical-align: middle;
   font-size: xx-large;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 td pre {
-  height: auto;
-  margin-bottom: 0px;
+  margin: 0;
 }
 
 img.icon {
