@@ -76,7 +76,23 @@ void Stream_write_string(Stream * stream, const char * s) {
 }
 
 void Stream_write_char(Stream * stream, char c) {
-  Stream_write(stream, &c, 1);
+  size_t stream_length = stream->length;
+  if (stream_length == stream->capacity) {
+    if (stream->capacity == SIZE_MAX) {
+      fatal("out of memory");
+    }
+
+    if (SIZE_MAX / 2 < stream->capacity) {
+      stream->capacity = SIZE_MAX;
+    }
+    else {
+      stream->capacity *= 2;
+    }
+
+    stream->data = xrealloc(stream->data, stream->capacity);
+  }
+  stream->data[stream_length] = c;
+  stream->length = stream_length + 1;
 }
 
 void Stream_printf(Stream * stream, const char * format, ...) {
