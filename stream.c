@@ -42,31 +42,33 @@ Stream * Stream_new(size_t capacity) {
 
 void Stream_write(Stream * stream, const void * p, size_t size) {
   size_t stream_length = stream->length;
+  size_t stream_capacity = stream->capacity;
+  if (stream_capacity - stream_length < size) {
+    if (SIZE_MAX - size < stream_length) {
+      fatal("out of memory");
+    }
 
-  if (SIZE_MAX - size < stream_length) {
-    fatal("out of memory");
-  }
-
-  size_t new_length = stream_length + size;
-  size_t new_capacity = stream->capacity;
-  if (new_capacity < new_length) {
-    if (SIZE_MAX / 2 < new_capacity) {
-      new_capacity = SIZE_MAX;
+    if (SIZE_MAX / 2 < stream_capacity) {
+      stream_capacity = SIZE_MAX;
     }
     else {
-      new_capacity *= 2;
+      stream_capacity *= 2;
     }
 
-    if (new_capacity < new_length) {
-      new_capacity = new_length;
+    size_t new_length = stream_length + size;
+    if (stream_capacity < new_length) {
+      stream_capacity = new_length;
     }
 
-    stream->data = xrealloc(stream->data, new_capacity);
-    stream->capacity = new_capacity;
+    stream->data = xrealloc(stream->data, stream_capacity);
+    stream->capacity = stream_capacity;
+    memcpy(stream->data + stream_length, p, size);
+    stream->length = new_length;
   }
-
-  memcpy(stream->data + stream_length, p, size);
-  stream->length = new_length;
+  else {
+    memcpy(stream->data + stream_length, p, size);
+    stream->length = stream_length + size;
+  }
 }
 
 void Stream_write_string(Stream * stream, const char * s) {
