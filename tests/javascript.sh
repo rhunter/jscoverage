@@ -23,7 +23,7 @@ trap 'rm -fr DIR' 1 2 3 15
 export PATH=.:..:$PATH
 
 rm -fr DIR
-$VALGRIND jscoverage javascript DIR
+$VALGRIND jscoverage --encoding ISO-8859-1 javascript DIR
 for i in javascript/*.js
 do
   FILE=${i##javascript/}
