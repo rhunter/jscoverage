@@ -22,6 +22,13 @@ function initCoverageData() {
   window._$jscoverage[file] = [];
   window._$jscoverage[file][100] = 0;
   window._$jscoverage[file][200] = 1;
+  var source = [];
+  for (var i = 0; i < 200; i++) {
+    source[i] = '';
+  }
+  source[99] = 'var foo = 1;';
+  source[199] = 'var bar = 2;';
+  window._$jscoverage[file].source = source;
 }
 
 new Test.Unit.Runner({
@@ -83,7 +90,7 @@ new Test.Unit.Runner({
 
   test_findPos: function() {
     with (this) {
-      var body = document.getElementById('body');
+      var body = document.getElementsByTagName('body').item(0);
       body.style.marginTop = '5px';
       var div1 = document.createElement('div');
       div1.style.height = '10px';
@@ -104,12 +111,16 @@ new Test.Unit.Runner({
 
   test_lengthyOperation: function() {
     with (this) {
-      var body = document.getElementById('body');
+      var body = document.getElementsByTagName('body').item(0);
+      var progressBar = document.getElementById('progressBar');
+      var progressLabel = document.getElementById('progressLabel');
       jscoverage_beginLengthyOperation();
-      assertEqual('wait', body.style.cursor);
+      assertEqual('visible', progressBar.style.visibility);
+      assertEqual('visible', progressLabel.style.visibility);
       jscoverage_endLengthyOperation();
       wait(500, function() {
-        this.assertEqual('', body.style.cursor);
+        assertEqual('hidden', progressBar.style.visibility);
+        assertEqual('hidden', progressLabel.style.visibility);
       });
     }
   },
@@ -354,8 +365,7 @@ new Test.Unit.Runner({
       _$jscoverage[jscoverage_currentFile] = [];
       _$jscoverage[jscoverage_currentFile][1] = 10;
       _$jscoverage[jscoverage_currentFile][2] = 100;
-      jscoverage_sourceCache['foo.js'] = 'foo\nbar\n';
-      jscoverage_currentLines = ['foo', 'bar'];
+      _$jscoverage['foo.js'].source = ['foo', 'bar'];
       jscoverage_makeTable();
       wait(1000, function() {
         var sourceDiv = document.getElementById('sourceDiv');
@@ -370,13 +380,6 @@ new Test.Unit.Runner({
     }
   },
 
-  test_countLines: function() {
-    this.assertIdentical(0, jscoverage_countLines(""));
-    this.assertIdentical(1, jscoverage_countLines("\n"));
-    this.assertIdentical(2, jscoverage_countLines("foo\n\bar\n"));
-    this.assertIdentical(2, jscoverage_countLines("foo\n\bar"));
-  },
-
   test_scrollToLine: function() {
     initCoverageData();
     var file = 'scriptaculous-data.js';
@@ -389,31 +392,6 @@ new Test.Unit.Runner({
       var offset = jscoverage_findPos(cell) - jscoverage_findPos(sourceDiv);
       this.assertIdentical(offset, sourceDiv.scrollTop);
     });
-  },
-
-  test_throbber: function() {
-    with (this) {
-      var throbberImg = document.getElementById('throbberImg');
-      jscoverage_setThrobber();
-      assertIdentical('visible', throbberImg.style.visibility);
-      jscoverage_clearThrobber();
-      assertIdentical('hidden', throbberImg.style.visibility);
-    }
-  },
-
-  test_getError: function() {
-    with (this) {
-      var file = 'missing.js';
-      jscoverage_get(file);
-      wait(1000, function() {
-        with (this) {
-          assertIdentical(null, jscoverage_currentFile);
-          var sourceDiv = document.getElementById('sourceDiv');
-          assertIdentical("Error retrieving document missing.js.", sourceDiv.innerHTML);
-          assertNotIdentical('visible', document.getElementById('throbberImg').style.visibility);
-        }
-      });
-    }
   },
 
   test_get: function() {
@@ -513,31 +491,81 @@ new Test.Unit.Runner({
     });
   },
 
-  test_getOriginalSource: function () {
-    var instrumentedSource = '1\n2\n// 3\n// 4\n5\n6\n';
-    var originalSource = jscoverage_getOriginalSource(instrumentedSource);
-    this.assertEqual('3\n4\n', originalSource);
+  // ---------------------------------------------------------------------------
+  // reports
+
+  test_pad: function() {
+    this.assertIdentical('0000', jscoverage_pad('0'));
+    this.assertIdentical('000f', jscoverage_pad('f'));
+    this.assertIdentical('0010', jscoverage_pad('10'));
+    this.assertIdentical('00ff', jscoverage_pad('ff'));
+    this.assertIdentical('0100', jscoverage_pad('100'));
+    this.assertIdentical('0fff', jscoverage_pad('fff'));
+    this.assertIdentical('1000', jscoverage_pad('1000'));
+    this.assertIdentical('ffff', jscoverage_pad('ffff'));
+  },
+
+  test_quote: function() {
+    this.assertIdentical('"\\u0000\\u0001\\u0002\\u0003"', jscoverage_quote('\u0000\u0001\u0002\u0003'));
+    this.assertIdentical('"\\u0004\\u0005\\u0006\\u0007"', jscoverage_quote('\u0004\u0005\u0006\u0007'));
+    this.assertIdentical('"\\b\\t\\n\\v"', jscoverage_quote('\u0008\u0009\u000a\u000b'));
+    this.assertIdentical('"\\f\\r\\u000e\\u000f"', jscoverage_quote('\u000c\u000d\u000e\u000f'));
+    this.assertIdentical('"\\u0010\\u0011\\u0012\\u0013"', jscoverage_quote('\u0010\u0011\u0012\u0013'));
+    this.assertIdentical('"\\u0014\\u0015\\u0016\\u0017"', jscoverage_quote('\u0014\u0015\u0016\u0017'));
+    this.assertIdentical('"\\u0018\\u0019\\u001a\\u001b"', jscoverage_quote('\u0018\u0019\u001a\u001b'));
+    this.assertIdentical('"\\u001c\\u001d\\u001e\\u001f"', jscoverage_quote('\u001c\u001d\u001e\u001f'));
+
+    this.assertIdentical('" !\\"#"', jscoverage_quote(' !"#'));
+    this.assertIdentical('"$%&\'"', jscoverage_quote('$%&\''));
+    this.assertIdentical('"()*+"', jscoverage_quote('()*+'));
+    this.assertIdentical('",-./"', jscoverage_quote(',-./'));
+    this.assertIdentical('"0123"', jscoverage_quote('0123'));
+    this.assertIdentical('"4567"', jscoverage_quote('4567'));
+    this.assertIdentical('"89:;"', jscoverage_quote('89:;'));
+    this.assertIdentical('"<=>?"', jscoverage_quote('<=>?'));
+
+    this.assertIdentical('"@ABC"', jscoverage_quote('@ABC'));
+    this.assertIdentical('"DEFG"', jscoverage_quote('DEFG'));
+    this.assertIdentical('"HIJK"', jscoverage_quote('HIJK'));
+    this.assertIdentical('"LMNO"', jscoverage_quote('LMNO'));
+    this.assertIdentical('"PQRS"', jscoverage_quote('PQRS'));
+    this.assertIdentical('"TUVW"', jscoverage_quote('TUVW'));
+    this.assertIdentical('"XYZ["', jscoverage_quote('XYZ['));
+    this.assertIdentical('"\\\\]^_"', jscoverage_quote('\\]^_'));
+    this.assertIdentical('"`abc"', jscoverage_quote('`abc'));
+    this.assertIdentical('"defg"', jscoverage_quote('defg'));
+    this.assertIdentical('"hijk"', jscoverage_quote('hijk'));
+    this.assertIdentical('"lmno"', jscoverage_quote('lmno'));
+    this.assertIdentical('"pqrs"', jscoverage_quote('pqrs'));
+    this.assertIdentical('"tuvw"', jscoverage_quote('tuvw'));
+    this.assertIdentical('"xyz{"', jscoverage_quote('xyz{'));
+    this.assertIdentical('"|}~\\u007f"', jscoverage_quote('|}~\u007f'));
+
+    this.assertIdentical('"\\u0080\\u0081\\u0082\\u0083"', jscoverage_quote('\u0080\u0081\u0082\u0083'));
+    this.assertIdentical('"\\ufffc\\ufffd\\ufffe\\uffff"', jscoverage_quote('\ufffc\ufffd\ufffe\uffff'));
   },
 
   setup: function() {
     var headingDiv = document.getElementById('headingDiv');
     this.headingDivClone = headingDiv.cloneNode(true);
-    var tabControl = document.getElementById('tabControl');
-    this.tabControlClone = tabControl.cloneNode(true);
+    var tabs = document.getElementById('tabs');
+    this.tabsClone = tabs.cloneNode(true);
+    var tabPages = document.getElementById('tabPages');
+    this.tabPagesClone = tabPages.cloneNode(true);
 
     jscoverage_init(window);
     jscoverage_currentFile = null;
     jscoverage_currentLine = null;
-    jscoverage_currentLines = null;
     jscoverage_inLengthyOperation = false;
-    jscoverage_body_load();
   },
 
   teardown: function() {
     // restore old DOM
     var headingDiv = document.getElementById('headingDiv');
     headingDiv.parentNode.replaceChild(this.headingDivClone, headingDiv);
-    var tabControl = document.getElementById('tabControl');
-    tabControl.parentNode.replaceChild(this.tabControlClone, tabControl);
+    var tabs = document.getElementById('tabs');
+    tabs.parentNode.replaceChild(this.tabsClone, tabs);
+    var tabPages = document.getElementById('tabPages');
+    tabPages.parentNode.replaceChild(this.tabPagesClone, tabPages);
   }
 });

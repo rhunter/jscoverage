@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-    scriptaculous.html - script.aculo.us unit tests for JSCoverage
+    jscoverage.html - code coverage for JavaScript
     Copyright (C) 2007, 2008 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
@@ -21,17 +21,20 @@
 <html>
 <head>
 <title>JSCoverage</title>
-<link rel="stylesheet" href="scriptaculous-js-1.7.0/test/test.css" type="text/css">
-<link rel="stylesheet" href="jscoverage-sh_nedit.css" type="text/css">
-<link rel="stylesheet" href="jscoverage.css" type="text/css">
-<script src="scriptaculous-js-1.7.0/lib/prototype.js" type="text/javascript"></script>
-<script src="scriptaculous-js-1.7.0/src/unittest.js" type="text/javascript"></script>
-<script type="text/javascript" src="jscoverage-sh_main.js"></script>
-<script type="text/javascript" src="jscoverage-sh_javascript.js"></script>
-<script src="jscoverage.js" type="text/javascript"></script>
+<link rel="stylesheet" type="text/css" href="scriptaculous-js-1.8.1/test/test.css">
+<script type="text/javascript" src="scriptaculous-js-1.8.1/lib/prototype.js"></script>
+<script type="text/javascript" src="scriptaculous-js-1.8.1/src/unittest.js"></script>
+
+<link rel="stylesheet" type="text/css" href="jscoverage-highlight.css">
+<link rel="stylesheet" type="text/css" href="jscoverage.css">
+<!--[if IE]>
+<link rel="stylesheet" type="text/css" href="jscoverage-ie.css">
+<![endif]-->
+<script type="text/javascript" src="jscoverage.js"></script>
 </head>
-<body id="body">
-<div style="position: absolute; top: 100px; left: 5%; width: 90%; z-index: 10; background: white;">
+
+<body onload="jscoverage_body_load();" onresize="jscoverage_body_resize();">
+<div style="position: absolute; top: 150px; left: 5%; width: 90%; z-index: 10; background-color: white;">
 <div id="testlog"></div>
 <div id="result"></div>
 </div>
@@ -42,88 +45,90 @@
 <h1>JSCoverage</h1>
 </div>
 
-<div id="tabControl" class="TabControl">
-  <div id="tabs" class="Tabs">
-    <div id="browserTab"><img src="jscoverage-throbber.gif" alt="loading..."> Browser <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div id="summaryTab"><img id="summaryThrobber" src="jscoverage-throbber.gif" alt="loading..."> Summary <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div id="sourceTab" class="disabled"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Source <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div id="storeTab"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Store <img src="jscoverage-throbber.gif" alt="loading..."></div>
-    <div id="aboutTab"><img src="jscoverage-throbber.gif" alt="loading..."> About <img src="jscoverage-throbber.gif" alt="loading..."></div>
+<div id="tabs" class="Tabs">
+  <div id="browserTab"><img src="jscoverage-throbber.gif" alt="loading..."> Browser <img src="jscoverage-throbber.gif" alt="loading..."></div>
+  <div id="summaryTab"><img id="summaryThrobber" src="jscoverage-throbber.gif" alt="loading..."> Summary <img src="jscoverage-throbber.gif" alt="loading..."></div>
+  <div id="sourceTab" class="disabled"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Source <img src="jscoverage-throbber.gif" alt="loading..."></div>
+  <div id="storeTab"><img id="throbberImg" src="jscoverage-throbber.gif" alt="loading..."> Store <img src="jscoverage-throbber.gif" alt="loading..."></div>
+  <div id="aboutTab"><img src="jscoverage-throbber.gif" alt="loading..."> About <img src="jscoverage-throbber.gif" alt="loading..."></div>
+</div>
+<div id="tabPages" class="TabPages">
+  <div class="TabPage" id="browserTabPage">
+    <div id="locationDiv">
+    URL: <input id="location" type="text" size="70" onkeypress="jscoverage_input_keypress(event)">
+    <button onclick="jscoverage_button_click();">Go</button>
+    </div>
+    <div id="iframeDiv">
+    <iframe id="browserIframe" onload="jscoverage_browser_load();"></iframe>
+    </div>
   </div>
-  <div id="tabPages" class="TabPages">
-    <div class="TabPage" id="browserTabPage">
-      <div id="locationDiv">
-      URL: <input id="location" type="text" size="70" onkeypress="jscoverage_input_keypress(event)">
-      <button onclick="jscoverage_button_click();">Go</button>
-      </div>
-      <iframe id="browserIframe" onload="jscoverage_browser_load();"></iframe>
-    </div>
-    <div class="TabPage">
-      <input type="checkbox" id="checkbox" onclick="return jscoverage_checkbox_click();"> <label for="checkbox">Show missing statements column</label>
-      <div id="summaryDiv">
-      <div id="summaryErrorDiv"></div>
-      <table id="summaryTable">
-      <thead>
-      <tr id="headerRow">
-      <th class="leftColumn">File</th>
-      <th><abbr title="The total number of executable statements">Statements</abbr></th>
-      <th><abbr title="The number of statements actually executed">Executed</abbr></th>
-      <th><abbr title="Number of executed statements as a percentage of total number of statements">Coverage</abbr></th>
-      </tr>
-      <tr id="summaryTotals">
-          <td class="leftColumn">
-              <span class="title">Total:</span>
-              <span>0</span>
-          </td>
-          <td class="numeric">0</td>
-          <td class="numeric">0</td>
-          <td class="coverage">
-              <div class="pctGraph">
-                  <div class="covered"></div>
-              </div>
-              <span class="pct">0%</span>
-          </td>
-      </tr>
+  <div class="TabPage">
+    <input type="checkbox" id="checkbox" onclick="return jscoverage_checkbox_click();"> <label for="checkbox">Show missing statements column</label>
+    <div id="summaryDiv">
+    <div id="summaryErrorDiv"></div>
+    <table id="summaryTable">
+    <thead>
+    <tr id="headerRow">
+    <th class="leftColumn">File</th>
+    <th><abbr title="The total number of executable statements">Statements</abbr></th>
+    <th><abbr title="The number of statements actually executed">Executed</abbr></th>
+    <th><abbr title="Number of executed statements as a percentage of total number of statements">Coverage</abbr></th>
+    </tr>
+    <tr id="summaryTotals">
+        <td class="leftColumn">
+            <span class="title">Total:</span>
+            <span>0</span>
+        </td>
+        <td class="numeric">0</td>
+        <td class="numeric">0</td>
+        <td class="coverage">
+            <div class="pctGraph">
+                <div class="covered"></div>
+            </div>
+            <span class="pct">0%</span>
+        </td>
+    </tr>
 
-      </thead>
-      <tbody id="summaryTbody">
+    </thead>
+    <tbody id="summaryTbody">
 
-      <!--
-      <tr>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0%</td>
-      <td>0</td>
-      </tr>
-      -->
+    <!--
+    <tr>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0%</td>
+    <td>0</td>
+    </tr>
+    -->
 
-      </tbody>
-      </table>
-      </div>
+    </tbody>
+    </table>
     </div>
-    <div class="TabPage">
-      <div id="fileDiv"></div>
-      <div id="sourceDiv"></div>
-    </div>
-    <div class="TabPage" id="storeTabPage">
-      <button id="storeButton" onclick="jscoverage_storeButton_click();">Store Report</button>
-      <img id="storeImg" src="jscoverage-throbber.gif" alt="loading...">
-      <div id="storeDiv"></div>
-    </div>
-    <div class="TabPage">
-      This is version 0.4 of JSCoverage, a program that calculates code
-      coverage statistics for JavaScript.
-      <p>
-      See <a href="http://siliconforks.com/jscoverage/">http://siliconforks.com/jscoverage/</a> for more information.
-      </p>
-      <p>
-      Copyright &copy; 2007, 2008 siliconforks.com
-      </p>
-    </div>
+  </div>
+  <div class="TabPage">
+    <div id="fileDiv"></div>
+    <div id="sourceDiv"></div>
+  </div>
+  <div class="TabPage" id="storeTabPage">
+    <button id="storeButton" onclick="jscoverage_storeButton_click();">Store Report</button>
+    <img id="storeImg" src="jscoverage-throbber.gif" alt="loading...">
+    <div id="storeDiv"></div>
+  </div>
+  <div class="TabPage">
+    <p>
+    This is version 0.4 of JSCoverage, a program that calculates code
+    coverage statistics for JavaScript.
+    </p>
+    <p>
+    See <a href="http://siliconforks.com/jscoverage/">http://siliconforks.com/jscoverage/</a> for more information.
+    </p>
+    <p>
+    Copyright &copy; 2007, 2008 siliconforks.com
+    </p>
   </div>
 </div>
 
-<script src="scriptaculous.js" type="text/javascript"></script>
+<script type="text/javascript" src="scriptaculous.js"></script>
 </body>
 </html>
