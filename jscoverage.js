@@ -887,9 +887,13 @@ var ProgressBar = {
 // -----------------------------------------------------------------------------
 // reports
 
+function jscoverage_pad(s) {
+  return '0000'.substr(s.length) + s;
+}
+
 function jscoverage_quote(s) {
-  return '"' + s.replace(/\cH|\f|\n|\r|\t|\v|"|\\/g, function(s) {
-    switch(s) {
+  return '"' + s.replace(/[\u0000-\u001f"\\\u007f-\uffff]/g, function (c) {
+    switch (c) {
     case '\b':
       return '\\b';
     case '\f':
@@ -907,7 +911,7 @@ function jscoverage_quote(s) {
     case '\\':
       return '\\\\';
     default:
-      throw "error";
+      return '\\u' + jscoverage_pad(c.charCodeAt(0).toString(16));
     }
   }) + '"';
 }

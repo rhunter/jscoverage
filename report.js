@@ -9,9 +9,13 @@ if (! top.jscoverage_report) {
       }
     };
 
+    var pad = function (s) {
+      return '0000'.substr(s.length) + s;
+    };
+
     var quote = function (s) {
-      return '"' + s.replace(/\cH|\f|\n|\r|\t|\v|"|\\/g, function(s) {
-        switch(s) {
+      return '"' + s.replace(/[\u0000-\u001f"\\\u007f-\uffff]/g, function (c) {
+        switch (c) {
         case '\b':
           return '\\b';
         case '\f':
@@ -28,6 +32,8 @@ if (! top.jscoverage_report) {
           return '\\"';
         case '\\':
           return '\\\\';
+        default:
+          return '\\u' + pad(c.charCodeAt(0).toString(16));
         }
       }) + '"';
     };
