@@ -33,6 +33,7 @@ rm $distdir/TIMESTAMP
 rm $distdir/bootstrap.sh
 rm $distdir/make-maintainer-clean.sh
 rm -r $distdir/scriptaculous*
+rm -r $distdir/selenium
 
 timestamp=`cat TIMESTAMP`
 find $distdir -exec touch -d "$timestamp" {} \;

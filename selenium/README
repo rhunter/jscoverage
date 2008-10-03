@@ -1,0 +1,6 @@
+To run the Selenium test suite:
+* ensure that you have no servers running on TCP ports 4444 and 8000
+* copy the files junit.jar, selenium-java-client-driver.jar, and
+  selenium-server.jar to this directory
+* type `ant' to compile the test suite
+* type `./selenium.sh' to run the test suite
