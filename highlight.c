@@ -115,11 +115,12 @@ static void output_character(jschar c, enum Class class) {
   case '>':
     Stream_write_string(g_output, "&gt;");
     break;
+  case '\t':
   case '\n':
     Stream_write_char(g_output, c);
     break;
   default:
-    if (c == '\t' || (32 <= c && c <= 126)) {
+    if (32 <= c && c <= 126) {
       Stream_write_char(g_output, c);
     }
     else {
