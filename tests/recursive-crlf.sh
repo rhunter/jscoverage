@@ -26,7 +26,7 @@ rm -fr TMP EXPECTED DIR OUT
 
 mkdir -p TMP/1/2
 cd recursive
-cp *.html *.js *.css *.png *.txt ../TMP
+cp *.html *.js *.css *.png *.txt x ../TMP
 cp 1/1.html 1/1.js 1/1.css ../TMP/1
 cp 1/2/2.html 1/2/2.js 1/2/2.css ../TMP/1/2
 cd ..
@@ -36,7 +36,7 @@ unix2dos TMP/1/2/2.js > /dev/null 2> /dev/null
 
 mkdir -p EXPECTED/1/2
 cd recursive.expected
-cp *.html *.js *.css *.png *.txt ../EXPECTED
+cp *.html *.js *.css *.png *.txt x ../EXPECTED
 cp 1/1.html 1/1.js 1/1.css ../EXPECTED/1
 cp 1/2/2.html 1/2/2.js 1/2/2.css ../EXPECTED/1/2
 cd ..
