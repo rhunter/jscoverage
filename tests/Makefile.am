@@ -77,6 +77,7 @@ TESTS = encodings.sh \
         recursive.sh \
         recursive-crlf.sh \
         recursive-fatal.sh \
+        recursive-exclude.sh \
         recursive-no-instrument.sh \
         same-directory.sh \
         version.sh \
