@@ -99,6 +99,9 @@ var {
 dfn {
   font-style: italic;
 }
+cite {
+  font-style: italic;
+}
 abbr {
   cursor: help;
   border-bottom-width: 1px;
