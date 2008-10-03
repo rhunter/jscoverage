@@ -6,14 +6,18 @@
 
 #tabs {
   position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  height: auto;
   margin-left: 10px;
   margin-right: 10px;
 }
 
 #tabs div {
   position: relative;
-  top: 1px;
-  height: 1em;
+  height: auto;
+  line-height: normal;
   padding-top: 5px;
   padding-bottom: 5px;
 }
@@ -24,7 +28,12 @@
 }
 
 .TabPage {
-  position: static;
+  position: relative;
+  top: -1px;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  clear: left;
   margin-left: 10px;
   margin-right: 10px;
   padding: 10px;
