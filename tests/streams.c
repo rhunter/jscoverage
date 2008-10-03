@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "stream.h"
+#include "util.h"
 
 int main(void) {
   Stream * stream;
@@ -30,6 +31,36 @@ int main(void) {
   Stream_write_string(stream, "bc");
   assert(stream->length == 3);
   assert(memcmp(stream->data, "abc", 3) == 0);
+  Stream_delete(stream);
+
+  /* test writing chars to stream */
+  stream = Stream_new(2);
+  Stream_write_char(stream, 'a');
+  Stream_write_char(stream, 'b');
+  Stream_write_char(stream, 'c');
+  assert(stream->length == 3);
+  assert(memcmp(stream->data, "abc", 3) == 0);
+  Stream_reset(stream);
+  Stream_write_char(stream, 'x');
+  Stream_write_char(stream, 'y');
+  assert(stream->length == 2);
+  assert(memcmp(stream->data, "xy", 2) == 0);
+  Stream_delete(stream);
+
+  /* test writing file to stream */
+  stream = Stream_new(0);
+  FILE * f = xfopen("Makefile", "r");
+  fseek(f, 0, SEEK_END);
+  long file_length = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  uint8_t * file_contents = xmalloc(file_length);
+  fread(file_contents, 1, file_length, f);
+  fseek(f, 0, SEEK_SET);
+  Stream_write_file_contents(stream, f);
+  fclose(f);
+  assert(stream->length == file_length);
+  assert(memcmp(stream->data, file_contents, file_length) == 0);
+  free(file_contents);
   Stream_delete(stream);
 
   stream = Stream_new(0);
