@@ -55,6 +55,11 @@ test ! -s OUT
 test -s ERR
 diff --strip-trailing-cr exclude-requires-argument.expected.err ERR
 
+$VALGRIND jscoverage --encoding > OUT 2> ERR && exit 1
+test ! -s OUT
+test -s ERR
+diff --strip-trailing-cr encoding-requires-argument.expected.err ERR
+
 # first arg does not exist
 rm -f foo
 $VALGRIND jscoverage foo bar > OUT 2> ERR && exit 1
