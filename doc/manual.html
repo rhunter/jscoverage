@@ -325,6 +325,9 @@ The <code>jscoverage</code> program accepts the following options:
 <dd>Display the version of the program.
 <dt><code>-v</code>, <code>--verbose</code>
 <dd>Explain what is being done.
+<dt><code>--encoding=<var>ENCODING</var></code>
+<dd>Assume that all JavaScript files use the given character encoding.  The
+default is ISO-8859-1.
 <dt><code>--exclude=<var>PATH</var></code>
 <dd>The command
 <pre>
@@ -335,6 +338,8 @@ recursively, but does not copy <var>SOURCE-DIRECTORY</var>/<var>PATH</var>.
 <var>PATH</var> must be a complete path relative to <var>SOURCE-DIRECTORY</var>.
 <var>PATH</var> can be a file or a directory (in which case the directory and
 its entire contents are skipped). This option may be given multiple times.
+<dt><code>--no-highlight</code>
+<dd>Do not perform syntax highlighting of JavaScript code.
 <dt><code>--no-instrument=<var>PATH</var></code>
 <dd>The command
 <pre>
@@ -458,9 +463,16 @@ by the proxy server whenever a URL with path <code>/jscoverage.html</code> is re
 <dt><code>--document-root=<var>PATH</var></code>
 <dd>Serve web content from the directory given by <var>PATH</var>.  The default is
 the current directory.  This option may not be given with the <code>--proxy</code> option.
+<dt><code>--encoding=<var>ENCODING</var></code>
+<dd>Assume that all JavaScript files use the given character encoding.  The
+default is ISO-8859-1.  Note that if you use the <code>--proxy</code> option, the
+character encoding will be determined from the <code>charset</code> parameter in
+the <code>Content-Type</code> HTTP header.
 <dt><code>--ip-address=<var>ADDRESS</var></code>
 <dd>Run the server on the IP address given by <var>ADDRESS</var>.  The default is <code>127.0.0.1</code>.  Specify
 <code>0.0.0.0</code> to use any address.
+<dt><code>--no-highlight</code>
+<dd>Do not perform syntax highlighting of JavaScript code.
 <dt><code>--no-instrument=<var>URL</var></code>
 <dd>Do not instrument JavaScript code from <var>URL</var>.  If you are running <code>jscoverage-server</code>
 with the <code>--proxy</code> option, <var>URL</var> should be a full URL.  For example:
