@@ -53,7 +53,7 @@ int main(void) {
   /*
   BOM is 0xfeff
   = 1111 1110 1111 1111
-  UTF: 1110xxxx 10xxxxxx 10xxxxxx
+  UTF: 1110---- 10------ 10------
      = 11101111 10111011 10111111
      = EF BB BF
   */
