@@ -53,6 +53,7 @@ wget -q -O- http://127.0.0.1:8080/style.css | diff recursive/style.css -
 wget -q -O- http://127.0.0.1:8080/unix.txt | diff recursive/unix.txt -
 wget -q -O- http://127.0.0.1:8080/windows.txt | diff recursive/windows.txt -
 wget -q -O- http://127.0.0.1:8080/image.png | diff recursive/image.png -
+wget -q -O- http://127.0.0.1:8080/x | diff recursive/x -
 wget -q -O- http://127.0.0.1:8080/1/1.html | diff recursive/1/1.html -
 wget -q -O- http://127.0.0.1:8080/1/1.css | diff recursive/1/1.css -
 wget -q -O- http://127.0.0.1:8080/1/2/2.html | diff recursive/1/2/2.html -
