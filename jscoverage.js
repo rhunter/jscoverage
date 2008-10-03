@@ -561,6 +561,12 @@ function jscoverage_checkbox_click() {
 function jscoverage_makeTable() {
   var coverage = _$jscoverage[jscoverage_currentFile];
   var lines = coverage.source;
+
+  // this can happen if there is an error in the original JavaScript file
+  if (! lines) {
+    lines = [];
+  }
+
   var rows = ['<table id="sourceTable">'];
   var i = 0;
   var progressBar = document.getElementById('progressBar');
@@ -636,9 +642,13 @@ function jscoverage_scrollToLine() {
   }
   else {
     var cell = document.getElementById('line-' + jscoverage_currentLine);
-    var divOffset = jscoverage_findPos(div);
-    var cellOffset = jscoverage_findPos(cell);
-    div.scrollTop = cellOffset - divOffset;
+
+    // this might not be there if there is an error in the original JavaScript
+    if (cell) {
+      var divOffset = jscoverage_findPos(div);
+      var cellOffset = jscoverage_findPos(cell);
+      div.scrollTop = cellOffset - divOffset;
+    }
   }
   jscoverage_currentLine = 0;
   jscoverage_endLengthyOperation();
