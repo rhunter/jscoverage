@@ -40,6 +40,16 @@
 #include "resource-manager.h"
 #include "util.h"
 
+struct IfDirective {
+  const jschar * condition_start;
+  const jschar * condition_end;
+  uint16_t start_line;
+  uint16_t end_line;
+  struct IfDirective * next;
+};
+
+static bool * exclusive_directives = NULL;
+
 static JSRuntime * runtime = NULL;
 static JSContext * context = NULL;
 static JSObject * global = NULL;
@@ -205,7 +215,7 @@ static const char * get_op(uint8 op) {
 }
 
 static void instrument_expression(JSParseNode * node, Stream * f);
-static void instrument_statement(JSParseNode * node, Stream * f, int indent);
+static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 
 enum FunctionType {
   FUNCTION_NORMAL,
@@ -261,7 +271,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   free(params);
 
   /* function body */
-  instrument_statement(node->pn_body, f, indent + 2);
+  instrument_statement(node->pn_body, f, indent + 2, false);
 
   Stream_write_string(f, "}\n");
 }
@@ -620,7 +630,7 @@ static void instrument_var_statement(JSParseNode * node, Stream * f, int indent)
   }
 }
 
-static void output_statement(JSParseNode * node, Stream * f, int indent) {
+static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
     instrument_function(node, f, indent, FUNCTION_NORMAL);
@@ -631,7 +641,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
     Stream_write_string(f, "{\n");
 */
     for (struct JSParseNode * p = node->pn_u.list.head; p != NULL; p = p->pn_next) {
-      instrument_statement(p, f, indent);
+      instrument_statement(p, f, indent, false);
     }
 /*
     Stream_printf(f, "%*s", indent, "");
@@ -639,22 +649,54 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
 */
     break;
   case TOK_IF:
+  {
     assert(node->pn_arity == PN_TERNARY);
+
+    uint16_t line = node->pn_pos.begin.lineno;
+    if (! is_jscoverage_if) {
+      if (line > num_lines) {
+        fatal("%s: script contains more than 65,535 lines", file_id);
+      }
+      if (line >= 2 && exclusive_directives[line - 2]) {
+        is_jscoverage_if = true;
+      }
+    }
+
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "if (");
     instrument_expression(node->pn_kid1, f);
     Stream_write_string(f, ") {\n");
-    instrument_statement(node->pn_kid2, f, indent + 2);
+    if (is_jscoverage_if && node->pn_kid3) {
+      uint16_t else_start = node->pn_kid3->pn_pos.begin.lineno;
+      uint16_t else_end = node->pn_kid3->pn_pos.end.lineno + 1;
+      Stream_printf(f, "%*s", indent + 2, "");
+      Stream_printf(f, "_$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, else_start, else_end);
+    }
+    instrument_statement(node->pn_kid2, f, indent + 2, false);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "}\n");
-    if (node->pn_kid3) {
+
+    if (node->pn_kid3 || is_jscoverage_if) {
       Stream_printf(f, "%*s", indent, "");
       Stream_write_string(f, "else {\n");
-      instrument_statement(node->pn_kid3, f, indent + 2);
+
+      if (is_jscoverage_if) {
+        uint16_t if_start = node->pn_kid2->pn_pos.begin.lineno + 1;
+        uint16_t if_end = node->pn_kid2->pn_pos.end.lineno + 1;
+        Stream_printf(f, "%*s", indent + 2, "");
+        Stream_printf(f, "_$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, if_start, if_end);
+      }
+
+      if (node->pn_kid3) {
+        instrument_statement(node->pn_kid3, f, indent + 2, is_jscoverage_if);
+      }
+
       Stream_printf(f, "%*s", indent, "");
       Stream_write_string(f, "}\n");
     }
+
     break;
+  }
   case TOK_SWITCH:
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
@@ -676,7 +718,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
         abort();
         break;
       }
-      instrument_statement(p->pn_right, f, indent + 2);
+      instrument_statement(p->pn_right, f, indent + 2, false);
     }
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "}\n");
@@ -691,14 +733,14 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
     Stream_write_string(f, "while (");
     instrument_expression(node->pn_left, f);
     Stream_write_string(f, ") {\n");
-    instrument_statement(node->pn_right, f, indent + 2);
+    instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_write_string(f, "}\n");
     break;
   case TOK_DO:
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "do {\n");
-    instrument_statement(node->pn_left, f, indent + 2);
+    instrument_statement(node->pn_left, f, indent + 2, false);
     Stream_write_string(f, "}\n");
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "while (");
@@ -761,7 +803,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
       break;
     }
     Stream_write_string(f, ") {\n");
-    instrument_statement(node->pn_right, f, indent + 2);
+    instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_write_string(f, "}\n");
     break;
   case TOK_THROW:
@@ -774,7 +816,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
   case TOK_TRY:
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "try {\n");
-    instrument_statement(node->pn_kid1, f, indent + 2);
+    instrument_statement(node->pn_kid1, f, indent + 2, false);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "}\n");
     {
@@ -789,7 +831,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
           instrument_expression(catch->pn_kid1->pn_expr, f);
         }
         Stream_write_string(f, ") {\n");
-        instrument_statement(catch->pn_kid3, f, indent + 2);
+        instrument_statement(catch->pn_kid3, f, indent + 2, false);
         Stream_printf(f, "%*s", indent, "");
         Stream_write_string(f, "}\n");
       }
@@ -797,7 +839,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
     if (node->pn_kid3) {
       Stream_printf(f, "%*s", indent, "");
       Stream_write_string(f, "finally {\n");
-      instrument_statement(node->pn_kid3, f, indent + 2);
+      instrument_statement(node->pn_kid3, f, indent + 2, false);
       Stream_printf(f, "%*s", indent, "");
       Stream_write_string(f, "}\n");
     }
@@ -823,7 +865,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
     Stream_write_string(f, "with (");
     instrument_expression(node->pn_left, f);
     Stream_write_string(f, ") {\n");
-    instrument_statement(node->pn_right, f, indent + 2);
+    instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "}\n");
     break;
@@ -861,7 +903,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent) {
     /*
     ... use output_statement instead of instrument_statement.
     */
-    output_statement(node->pn_expr, f, indent);
+    output_statement(node->pn_expr, f, indent, false);
     break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
@@ -873,7 +915,7 @@ See <Statements> in jsparse.h.
 TOK_FUNCTION is handled as a statement and as an expression.
 TOK_EXPORT, TOK_IMPORT are not handled.
 */
-static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
+static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
   if (node->pn_type != TOK_LC) {
     uint16_t line = node->pn_pos.begin.lineno;
     if (line > num_lines) {
@@ -887,7 +929,7 @@ static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
       lines[line - 1] = 1;
     }
   }
-  output_statement(node, f, indent);
+  output_statement(node, f, indent, is_jscoverage_if);
 }
 
 static bool characters_start_with(const jschar * characters, size_t line_start, size_t line_end, const char * prefix) {
@@ -909,6 +951,21 @@ static bool characters_start_with(const jschar * characters, size_t line_start, 
   }
 }
 
+static bool characters_are_white_space(const jschar * characters, size_t line_start, size_t line_end) {
+  /* XXX - other Unicode space */
+  const jschar * end = characters + line_end;
+  for (const jschar * p = characters + line_start; p < end; p++) {
+    jschar c = *p;
+    if (c == 0x9 || c == 0xB || c == 0xC || c == 0x20 || c == 0xA0) {
+      continue;
+    }
+    else {
+      return false;
+    }
+  }
+  return true;
+}
+
 void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
   file_id = id;
 
@@ -925,43 +982,24 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   }
   num_lines = node->pn_pos.end.lineno;
   lines = xmalloc(num_lines);
-  for (int i = 0; i < num_lines; i++) {
+  for (unsigned int i = 0; i < num_lines; i++) {
     lines[i] = 0;
   }
 
-  /*
-  An instrumented JavaScript file has 3 sections:
-  1. initialization
-  2. instrumented source code
-  3. original source code
-  */
-
-  Stream * instrumented = Stream_new(0);
-  instrument_statement(node, instrumented, 0);
-
-  /* write line number info to the output */
-  Stream_write_string(output, "/* automatically generated by JSCoverage - do not edit */\n");
-  Stream_write_string(output, "if (! top._$jscoverage) {\n  top._$jscoverage = {};\n}\n");
-  Stream_write_string(output, "var _$jscoverage = top._$jscoverage;\n");
-  Stream_printf(output, "if (! _$jscoverage['%s']) {\n", file_id);
-  Stream_printf(output, "  _$jscoverage['%s'] = [];\n", file_id);
-  for (int i = 0; i < num_lines; i++) {
-    if (lines[i]) {
-      Stream_printf(output, "  _$jscoverage['%s'][%d] = 0;\n", file_id, i + 1);
-    }
+  /* search code for conditionals */
+  exclusive_directives = xnew(bool, num_lines);
+  for (unsigned int i = 0; i < num_lines; i++) {
+    exclusive_directives[i] = false;
   }
-  Stream_write_string(output, "}\n");
-  free(lines);
-  lines = NULL;
 
-  /* copy the instrumented source code to the output */
-  Stream_write(output, instrumented->data, instrumented->length);
-
-  /* conditionals */
   bool has_conditionals = false;
+  struct IfDirective * if_directives = NULL;
   size_t line_number = 0;
   size_t i = 0;
   while (i < num_characters) {
+    if (line_number == UINT16_MAX) {
+      fatal("%s: script has more than 65,535 lines", file_id);
+    }
     line_number++;
     size_t line_start = i;
     jschar c;
@@ -977,7 +1015,6 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
         break;
       default:
         i++;
-        break;
       }
     }
     size_t line_end = i;
@@ -987,28 +1024,91 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
         i++;
       }
     }
+
     if (characters_start_with(characters, line_start, line_end, "//#JSCOVERAGE_IF")) {
-      if (! has_conditionals) {
-        has_conditionals = true;
-        Stream_printf(output, "_$jscoverage['%s'].conditionals = [];\n", file_id);
+      has_conditionals = true;
+
+      if (characters_are_white_space(characters, line_start + 16, line_end)) {
+        exclusive_directives[line_number - 1] = true;
       }
-      Stream_write_string(output, "if (!(");
-      for (size_t j = line_start + 16; j < line_end; j++) {
-        jschar c = characters[j];
-        if (c == '\t' || (32 <= c && c <= 126)) {
-          Stream_write_char(output, c);
-        }
-        else {
-          Stream_printf(output, "\\u%04x", c);
-        }
+      else {
+        struct IfDirective * if_directive = xnew(struct IfDirective, 1);
+        if_directive->condition_start = characters + line_start + 16;
+        if_directive->condition_end = characters + line_end;
+        if_directive->start_line = line_number;
+        if_directive->end_line = 0;
+        if_directive->next = if_directives;
+        if_directives = if_directive;
       }
-      Stream_write_string(output, ")) {\n");
-      Stream_printf(output, "  _$jscoverage['%s'].conditionals[%d] = ", file_id, line_number);
     }
     else if (characters_start_with(characters, line_start, line_end, "//#JSCOVERAGE_ENDIF")) {
-      Stream_printf(output, "%d;\n", line_number);
-      Stream_printf(output, "}\n");
+      for (struct IfDirective * p = if_directives; p != NULL; p = p->next) {
+        if (p->end_line == 0) {
+          p->end_line = line_number;
+          break;
+        }
+      }
     }
+  }
+
+  /*
+  An instrumented JavaScript file has 4 sections:
+  1. initialization
+  2. instrumented source code
+  3. conditionals
+  4. original source code
+  */
+
+  Stream * instrumented = Stream_new(0);
+  instrument_statement(node, instrumented, 0, false);
+
+  /* write line number info to the output */
+  Stream_write_string(output, "/* automatically generated by JSCoverage - do not edit */\n");
+  Stream_write_string(output, "if (! top._$jscoverage) {\n  top._$jscoverage = {};\n}\n");
+  Stream_write_string(output, "var _$jscoverage = top._$jscoverage;\n");
+  Stream_printf(output, "if (! _$jscoverage['%s']) {\n", file_id);
+  Stream_printf(output, "  _$jscoverage['%s'] = [];\n", file_id);
+  for (int i = 0; i < num_lines; i++) {
+    if (lines[i]) {
+      Stream_printf(output, "  _$jscoverage['%s'][%d] = 0;\n", file_id, i + 1);
+    }
+  }
+  Stream_write_string(output, "}\n");
+  free(lines);
+  lines = NULL;
+  free(exclusive_directives);
+  exclusive_directives = NULL;
+
+  /* conditionals */
+  if (has_conditionals) {
+    Stream_printf(output, "_$jscoverage['%s'].conditionals = [];\n", file_id);
+  }
+
+  /* copy the instrumented source code to the output */
+  Stream_write(output, instrumented->data, instrumented->length);
+
+  /* conditionals */
+  for (struct IfDirective * if_directive = if_directives; if_directive != NULL; if_directive = if_directive->next) {
+    Stream_write_string(output, "if (!(");
+    for (const jschar * p = if_directive->condition_start; p < if_directive->condition_end; p++) {
+      jschar c = *p;
+      if (c == '\t' || (32 <= c && c <= 126)) {
+        Stream_write_char(output, c);
+      }
+      else {
+        Stream_printf(output, "\\u%04x", c);
+      }
+    }
+    Stream_write_string(output, ")) {\n");
+    Stream_printf(output, "  _$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, if_directive->start_line, if_directive->end_line);
+    Stream_write_string(output, "}\n");
+  }
+
+  /* free */
+  while (if_directives != NULL) {
+    struct IfDirective * if_directive = if_directives;
+    if_directives = if_directives->next;
+    free(if_directive);
   }
 
   /* copy the original source to the output */

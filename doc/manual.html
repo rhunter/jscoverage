@@ -544,21 +544,20 @@ It is not necessary that your test suite be executed within the
 of the test suite can simply be loaded directly in a web browser.
 </p>
 
-<h3>Conditional directives</h3>
+<h3>Ignoring certain lines of code</h3>
 
 <p>
 Sometimes you may wish to exclude certain lines of code from coverage
 statistics. Some lines of code may be executed only in certain browsers; other
 lines should never be executed at all (they may be present only to detect
-programming errors).  You can use specially formatted comments in your code,
-called <dfn>conditional directives</dfn>, to tell JSCoverage when to exclude
-those lines from coverage statistics.  These lines will be ignored in the
-JSCoverage "Summary" tab; in the "Source" tab, these lines will be indicated
-with the color yellow.
+programming errors).  You can use specially formatted comments in your code to
+tell JSCoverage to ignore certain lines of code. These lines will not be
+included in the JSCoverage "Summary" tab; in the "Source" tab, these lines will
+be indicated with the color yellow.
 </p>
 
 <p>
-Conditional directives take the following form:
+These comments take the following form:
 </p>
 
 <pre class="sh_javascript">
@@ -568,64 +567,94 @@ Conditional directives take the following form:
 </pre>
 
 <p>
+The comment must be formatted exactly as shown: it must be a line comment
+starting with <code>//</code>, it must start in the first column, and it must be
+followed by <code>#JSCOVERAGE_IF</code> or <code>#JSCOVERAGE_ENDIF</code> in
+uppercase letters with no intervening white space.
+</p>
+
+<p>
 The <var>CONDITION</var> is an ordinary JavaScript expression; if this
 expression evaluates to <code>true</code>, then the lines of code between the
-<code>//#JSCOVERAGE_IF</code> and <code>//#JSCOVERAGE_ENDIF</code> directives are
+<code>//#JSCOVERAGE_IF</code> and <code>//#JSCOVERAGE_ENDIF</code> comments are
 included in coverage statistics; otherwise, they are excluded from coverage
 statistics.
 </p>
 
 <p>
-In order to be recognized as a conditional directive, the comment must be
-formatted exactly as shown: it must be a line comment starting with <code>//</code>,
-it must start in the first column, and it must be followed by <code>#JSCOVERAGE_IF</code>
-or <code>#JSCOVERAGE_ENDIF</code> in uppercase letters with no intervening white space.
-</p>
-
-<p>
-For example, if you have some code in an <code>if</code> statement which is
-executed only in certain browsers, you can usually just repeat the condition in
-a <code>//#JSCOVERAGE_IF</code> directive:
+For example:
 </p>
 
 <pre class="sh_javascript">
-  if (window.ActiveXObject) {
-//#JSCOVERAGE_IF window.ActiveXObject
-    return new ActiveXObject('Msxml2.XMLHTTP');
-//#JSCOVERAGE_ENDIF
-  }
-</pre>
-
-<p>
-Alternatively, it may be easier to diagnose problems if you specify exactly
-which browsers you expect to execute the code in the conditional:
-</p>
-
-<pre class="sh_javascript">
-  if (window.ActiveXObject) {
-//#JSCOVERAGE_IF /MSIE/.test(navigator.userAgent)
-    return new ActiveXObject('Msxml2.XMLHTTP');
-//#JSCOVERAGE_ENDIF
-  }
-</pre>
-
-<p>
-To exclude code from coverage statistics unconditionally, you can use <code>//#JSCOVERAGE_IF 0</code> or
-<code>//#JSCOVERAGE_IF false</code>:
-</p>
-
-<pre class="sh_javascript">
-function f(s) {
-  if (typeof(s) !== 'string') {
-//#JSCOVERAGE_IF 0
-    throw 'function f requires a string argument';
+function log(s) {
+  if (window.console) {
+//#JSCOVERAGE_IF window.console
+    console.log(s);
 //#JSCOVERAGE_ENDIF
   }
 }
 </pre>
 
 <p>
-Currently, conditional directives are ignored in stored coverage reports.
+You can exclude code from coverage statistics unconditionally by using
+<code>#JSCOVERAGE_IF 0</code> or <code>#JSCOVERAGE_IF false</code>:
+</p>
+
+<pre class="sh_javascript">
+function f(x) {
+  if (x === null) {
+//#JSCOVERAGE_IF 0
+    throw 'error';
+//#JSCOVERAGE_ENDIF
+  }
+  ...
+</pre>
+
+<p>
+There is also a short form, which must appear on the line preceding an
+<code>if</code> statement:
+</p>
+
+<pre class="sh_javascript">
+//#JSCOVERAGE_IF
+if (...) {
+  ...
+}
+else if (...) {
+  ...
+}
+...
+else {
+  ...
+}
+</pre>
+
+<p>
+
+In this form, there is no condition on the <code>//#JSCOVERAGE_IF</code> line
+and no <code>//#JSCOVERAGE_ENDIF</code>. You use this form to tell JSCoverage
+that you expect only one branch of the <code>if</code> statement to be executed;
+coverage statistics will not be collected for the other branch(es).  For
+example:
+</p>
+
+<pre class="sh_javascript">
+function log(s) {
+//#JSCOVERAGE_IF
+  if (window.console) {
+    console.log(s);
+  }
+  else if (window.opera) {
+    opera.postError(s);
+  }
+  else {
+    throw 'no logging function available';
+  }
+}
+</pre>
+
+<p>
+Currently, <code>//#JSCOVERAGE_IF</code> comments are not recorded in stored coverage reports.
 </p>
 
 <h2>Caveats</h2>
