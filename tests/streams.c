@@ -58,7 +58,7 @@ int main(void) {
   fseek(f, 0, SEEK_SET);
   Stream_write_file_contents(stream, f);
   fclose(f);
-  assert(stream->length == file_length);
+  assert(stream->length == (size_t) file_length);
   assert(memcmp(stream->data, file_contents, file_length) == 0);
   free(file_contents);
   Stream_delete(stream);
