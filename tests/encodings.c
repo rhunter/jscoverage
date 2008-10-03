@@ -81,5 +81,98 @@ int main(void) {
 
   free(characters);
 
+  uint8_t utf16be[] = {
+    0, 'e',
+    0, 0xe8,
+    0, 0xe9,
+    0, 0xea,
+  };
+
+  result = jscoverage_bytes_to_characters("UTF-16BE", utf16be, 8, &characters, &num_characters);
+
+  assert(result == 0);
+  assert(num_characters == 4);
+  assert(characters[0] == 'e');
+  assert(characters[1] == 0xe8);
+  assert(characters[2] == 0xe9);
+  assert(characters[3] == 0xea);
+
+  free(characters);
+
+  uint8_t utf16be_with_bom[] = {
+    0xfe, 0xff,
+    0, 'e',
+    0, 0xe8,
+    0, 0xe9,
+    0, 0xea,
+  };
+
+  result = jscoverage_bytes_to_characters("UTF-16BE", utf16be_with_bom, 10, &characters, &num_characters);
+
+  assert(result == 0);
+  assert(num_characters == 4);
+  assert(characters[0] == 'e');
+  assert(characters[1] == 0xe8);
+  assert(characters[2] == 0xe9);
+  assert(characters[3] == 0xea);
+
+  free(characters);
+
+  uint8_t utf16le[] = {
+    'e', 0,
+    0xe8, 0,
+    0xe9, 0,
+    0xea, 0,
+  };
+
+  result = jscoverage_bytes_to_characters("UTF-16LE", utf16le, 8, &characters, &num_characters);
+
+  assert(result == 0);
+  assert(num_characters == 4);
+  assert(characters[0] == 'e');
+  assert(characters[1] == 0xe8);
+  assert(characters[2] == 0xe9);
+  assert(characters[3] == 0xea);
+
+  free(characters);
+
+  uint8_t utf16le_with_bom[] = {
+    0xff, 0xfe,
+    'e', 0,
+    0xe8, 0,
+    0xe9, 0,
+    0xea, 0,
+  };
+
+  result = jscoverage_bytes_to_characters("UTF-16LE", utf16le_with_bom, 10, &characters, &num_characters);
+
+  assert(result == 0);
+  assert(num_characters == 4);
+  assert(characters[0] == 'e');
+  assert(characters[1] == 0xe8);
+  assert(characters[2] == 0xe9);
+  assert(characters[3] == 0xea);
+
+  free(characters);
+
+  /* bogus encoding */
+  uint8_t bogus[] = {'b', 'o', 'g', 'u', 's'};
+
+  result = jscoverage_bytes_to_characters("BOGUS", bogus, 5, &characters, &num_characters);
+
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+
+  /* malformed */
+  uint8_t malformed_ascii[] = {
+    'e',
+    0xe8,
+    0xe9,
+    0xea,
+  };
+
+  result = jscoverage_bytes_to_characters("US-ASCII", malformed_ascii, 4, &characters, &num_characters);
+
+  assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
+
   return 0;
 }
