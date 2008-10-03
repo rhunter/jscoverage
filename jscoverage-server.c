@@ -566,7 +566,7 @@ static int write_json(Coverage * coverage, const char * path) __attribute__((war
 
 static int write_json(Coverage * coverage, const char * path) {
   /* write the JSON */
-  FILE * f = fopen(path, "w");
+  FILE * f = fopen(path, "wb");
   if (f == NULL) {
     return -1;
   }
@@ -630,7 +630,7 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
     struct stat buf;
     if (stat(path, &buf) == 0) {
       /* it exists: merge */
-      FILE * f = fopen(path, "r");
+      FILE * f = fopen(path, "rb");
       if (f == NULL) {
         result = 1;
       }

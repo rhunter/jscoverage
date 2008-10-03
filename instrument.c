@@ -91,8 +91,8 @@ static void instrument_file(const char * source_file, const char * destination_f
       break;
     case FILE_TYPE_JS:
       {
-        FILE * input = xfopen(source_file, "r");
-        FILE * output = xfopen(destination_file, "w");
+        FILE * input = xfopen(source_file, "rb");
+        FILE * output = xfopen(destination_file, "wb");
 
         Stream * input_stream = Stream_new(0);
         Stream * output_stream = Stream_new(0);
