@@ -21,6 +21,7 @@
 
 #include "highlight.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,28 +81,55 @@ static const char * get_class_name(enum Class class) {
   }
 }
 
-static enum Class ** classes = NULL;
-static jschar ** lines = NULL;
+static const char * g_id;
+static const jschar * g_characters;
+static size_t g_num_characters;
+static Stream * g_output;
+static size_t character_offset;
+static uint16_t line_num;
+static uint16_t column_num;
+static enum Class current_class;
 
-static uint16_t num_characters_in_line(jschar * line) {
-  uint16_t result = 0;
-  while (line[result] != '\0') {
-    result++;
-  }
-  return result;
-}
+static void output_character(jschar c, enum Class class) {
+  if (class != current_class) {
+    /* output the end tag */
+    if (current_class != CLASS_NONE) {
+      Stream_write_string(g_output, "</span>");
+    }
 
-static void mark_token_chars(enum Class class, uint16_t start_line, uint16_t start_column, uint16_t end_line, uint16_t end_column) {
-  for (uint16_t i = start_line; i <= end_line; i++) {
-    uint16_t c1 = i == start_line? start_column: 0;
-    uint16_t c2 = i == end_line? end_column: num_characters_in_line(lines[i - 1]);
-    for (uint16_t j = c1; j < c2; j++) {
-      classes[i - 1][j] = class;
+    current_class = class;
+
+    /* output the start tag */
+    if (current_class != CLASS_NONE) {
+      Stream_printf(g_output, "<span class=\"%s\">", get_class_name(class));
     }
   }
+
+  switch (c) {
+  case '&':
+    Stream_write_string(g_output, "&amp;");
+    break;
+  case '<':
+    Stream_write_string(g_output, "&lt;");
+    break;
+  case '>':
+    Stream_write_string(g_output, "&gt;");
+    break;
+  case '\n':
+    Stream_write_char(g_output, c);
+    break;
+  default:
+    if (c == '\t' || (32 <= c && c <= 126)) {
+      Stream_write_char(g_output, c);
+    }
+    else {
+      Stream_printf(g_output, "&#%d;", c);
+    }
+    break;
+  }
 }
 
-static void mark_nontoken_chars(uint16_t start_line, uint16_t start_column, uint16_t end_line, uint16_t end_column) {
+static void mark_nontoken_chars(uint16_t end_line, uint16_t end_column) {
   enum State {
     STATE_NORMAL,
     STATE_LINE_COMMENT,
@@ -109,114 +137,93 @@ static void mark_nontoken_chars(uint16_t start_line, uint16_t start_column, uint
   };
 
   enum State state = STATE_NORMAL;
-  for (uint16_t i = start_line; i <= end_line; i++) {
-    uint16_t c1 = i == start_line? start_column: 0;
-    uint16_t c2 = i == end_line? end_column: num_characters_in_line(lines[i - 1]);
-    for (uint16_t j = c1; j < c2; j++) {
-      jschar c = lines[i - 1][j];
-      switch (state) {
-      case STATE_NORMAL:
-        if (c == '/' && j + 1 < c2 && lines[i - 1][j + 1] == '/') {
-          state = STATE_LINE_COMMENT;
-          classes[i - 1][j] = CLASS_COMMENT;
-        }
-        else if (c == '/' && j + 1 < c2 && lines[i - 1][j + 1] == '*') {
-          state = STATE_MULTILINE_COMMENT;
-          classes[i - 1][j] = CLASS_COMMENT;
-          j++;
-          classes[i - 1][j] = CLASS_COMMENT;
-        }
-        else {
-          classes[i - 1][j] = CLASS_NONE;
-        }
-        break;
-      case STATE_LINE_COMMENT:
-        if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
-          state = STATE_NORMAL;
-          classes[i - 1][j] = CLASS_NONE;
-        }
-        else {
-          classes[i - 1][j] = CLASS_COMMENT;
-        }
-        break;
-      case STATE_MULTILINE_COMMENT:
-        classes[i - 1][j] = CLASS_COMMENT;
-        if (c == '*' && j + 1 < c2 && lines[i - 1][j + 1] == '/') {
-          j++;
-          classes[i - 1][j] = CLASS_COMMENT;
-          state = STATE_NORMAL;
-        }
-        break;
-      }
+  while (character_offset < g_num_characters) {
+    if (end_line != 0 && line_num > end_line) {
+      break;
     }
-    /* end of the line */
-    if (state == STATE_LINE_COMMENT) {
-      state = STATE_NORMAL;
+    else if (line_num == end_line && column_num >= end_column) {
+      break;
+    }
+
+    jschar c = g_characters[character_offset];
+    if (c == '\0') {
+      fatal("%s: script contains NULL character", g_id);
+    }
+
+    switch (state) {
+    case STATE_NORMAL:
+      if (c == '/' && character_offset + 1 < g_num_characters && g_characters[character_offset + 1] == '/') {
+        state = STATE_LINE_COMMENT;
+      }
+      else if (c == '/' && character_offset + 1 < g_num_characters && g_characters[character_offset + 1] == '*') {
+        state = STATE_MULTILINE_COMMENT;
+        output_character('/', CLASS_COMMENT);
+        output_character('*', CLASS_COMMENT);
+        character_offset += 2;
+        if (column_num >= UINT16_MAX - 1) {
+          fatal("%s: script contains line with more than 65,535 characters", g_id);
+        }
+        column_num += 2;
+        continue;
+      }
+      break;
+    case STATE_LINE_COMMENT:
+      if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
+        state = STATE_NORMAL;
+      }
+      break;
+    case STATE_MULTILINE_COMMENT:
+      if (c == '*' && character_offset + 1 < g_num_characters && g_characters[character_offset + 1] == '/') {
+        output_character('*', CLASS_COMMENT);
+        output_character('/', CLASS_COMMENT);
+        state = STATE_NORMAL;
+        character_offset += 2;
+        if (column_num >= UINT16_MAX - 1) {
+          fatal("%s: script contains line with more than 65,535 characters", g_id);
+        }
+        column_num += 2;
+        continue;
+      }
+      break;
+    }
+
+    character_offset++;
+    if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
+      if (line_num == UINT16_MAX) {
+        fatal("%s: script contains more than 65,535 lines", g_id);
+      }
+      line_num++;
+      column_num = 0;
+      if (c == '\r' && character_offset < g_num_characters && g_characters[character_offset] == '\n') {
+        character_offset++;
+      }
+      output_character('\n', CLASS_NONE);
+    }
+    else {
+      if (column_num == UINT16_MAX) {
+        fatal("%s: script contains line with more than 65,535 characters", g_id);
+      }
+      column_num++;
+      if (state == STATE_NORMAL) {
+        output_character(c, CLASS_NONE);
+      }
+      else {
+        output_character(c, CLASS_COMMENT);
+      }
     }
   }
 }
 
 void jscoverage_highlight_js(JSContext * context, const char * id, const jschar * characters, size_t num_characters, Stream * output) {
-  /* count the lines - see GetChar in jsscan.c */
-  size_t i = 0;
-  uint16_t num_lines = 0;
-  while (i < num_characters) {
-    if (num_lines == UINT16_MAX) {
-      fatal("%s: script has more than 65535 lines", id);
-    }
-    num_lines++;
-    jschar c;
-    while (i < num_characters) {
-      c = characters[i];
-      if (c == '\0') {
-        fatal("%s: script contains NULL character", id);
-      }
-      if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
-        break;
-      }
-      i++;
-    }
-    if (i < num_characters) {
-      i++;
-      if (c == '\r' && i < num_characters && characters[i] == '\n') {
-        i++;
-      }
-    }
-  }
+  g_id = id;
+  g_characters = characters;
+  g_num_characters = num_characters;
+  g_output = output;
 
-  lines = xnew(jschar *, num_lines);
-  classes = xnew(enum Class *, num_lines);
-
-  uint16_t line_num = 0;
-  i = 0;
-  while (i < num_characters) {
-    size_t line_start = i;
-    jschar c;
-    while (i < num_characters) {
-      c = characters[i];
-      if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
-        break;
-      }
-      i++;
-    }
-    size_t line_end = i;
-    if (i < num_characters) {
-      i++;
-      if (c == '\r' && i < num_characters && characters[i] == '\n') {
-        i++;
-      }
-    }
-    size_t line_length = line_end - line_start;
-    if (line_length >= UINT16_MAX) {
-      fatal("%s: script has line with 65535 characters or more", id);
-    }
-    jschar * line = xnew(jschar, line_length + 1);
-    memcpy(line, characters + line_start, sizeof(jschar) * line_length);
-    line[line_length] = '\0';
-    lines[line_num] = line;
-    classes[line_num] = xnew(enum Class, line_length);
-    line_num++;
-  }
+  character_offset = 0;
+  line_num = 1;
+  column_num = 0;
+  current_class = CLASS_NONE;
 
   /* tokenize the JavaScript */
   JSTokenStream * token_stream = js_NewTokenStream(context, characters, num_characters, NULL, 1, NULL);
@@ -258,8 +265,6 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
      */
     JS_KEEP_ATOMS(cx->runtime);
 
-  line_num = 1;
-  uint16_t column_num = 0;
   for (;;) {
     JSTokenType tt = js_GetToken(context, token_stream);
 
@@ -268,20 +273,13 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     }
 
     if (tt == TOK_EOF) {
-      /* it seems t.pos is invalid for TOK_EOF??? */
-      /* mark the remaining chars */
-      if (num_lines == 0) {
-        break;
-      }
-      uint16_t end_line = num_lines;
-      uint16_t end_column = num_characters_in_line(lines[num_lines - 1]);
-      mark_nontoken_chars(line_num, column_num, end_line, end_column);
+      mark_nontoken_chars(0, 0);
       break;
     }
 
     /* mark the chars before the token */
     JSToken t = CURRENT_TOKEN(token_stream);
-    mark_nontoken_chars(line_num, column_num, t.pos.begin.lineno, t.pos.begin.index);
+    mark_nontoken_chars(t.pos.begin.lineno, t.pos.begin.index);
 
     /* mark the token */
     enum Class class;
@@ -460,14 +458,26 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       abort();
       break;
     }
-    mark_token_chars(class, t.pos.begin.lineno, t.pos.begin.index, t.pos.end.lineno, t.pos.end.index);
-    if (tt == TOK_STRING) {
-      for (uint16_t i = t.pos.begin.index + 1; i < t.pos.end.index - 1; i++) {
-        jschar c = lines[t.pos.begin.lineno - 1][i];
-        if (c == '\\') {
-          mark_token_chars(CLASS_SPECIALCHAR, t.pos.begin.lineno, i, t.pos.begin.lineno, i + 2);
-          i++;
-        }
+
+    assert(t.pos.begin.lineno == t.pos.end.lineno);
+    if (t.pos.begin.index > t.pos.end.index) {
+      fatal("%s: script contains line with more than 65,535 characters", id);
+    }
+    for (uint16_t i = t.pos.begin.index; i < t.pos.end.index; i++) {
+      assert(character_offset < num_characters);
+      jschar c = characters[character_offset];
+      if (tt == TOK_STRING && c == '\\') {
+        output_character(c, CLASS_SPECIALCHAR);
+        character_offset++;
+        i++;
+        assert(character_offset < num_characters);
+        c = characters[character_offset];
+        output_character(c, CLASS_SPECIALCHAR);
+        character_offset++;
+      }
+      else {
+        output_character(c, class);
+        character_offset++;
       }
     }
 
@@ -475,50 +485,9 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     column_num = t.pos.end.index;
   }
 
-  /* output the highlighted code */
-  enum Class class = CLASS_NONE;
-  for (uint16_t i = 0; i < num_lines; i++) {
-    uint16_t length = num_characters_in_line(lines[i]);
-    for (uint16_t j = 0; j < length; j++) {
-      jschar c = lines[i][j];
-      if (classes[i][j] != class) {
-        if (class != CLASS_NONE) {
-          Stream_write_string(output, "</span>");
-        }
-        class = classes[i][j];
-        if (class != CLASS_NONE) {
-          Stream_printf(output, "<span class=\"%s\">", get_class_name(class));
-        }
-      }
-      if (c == '&') {
-        Stream_write_string(output, "&amp;");
-      }
-      else if (c == '<') {
-        Stream_write_string(output, "&lt;");
-      }
-      else if (c == '>') {
-        Stream_write_string(output, "&gt;");
-      }
-      else if (c == '\t' || (32 <= c && c <= 126)) {
-        Stream_write_char(output, c);
-      }
-      else {
-        Stream_printf(output, "&#%d;", c);
-      }
-    }
-    if (class != CLASS_NONE) {
-      Stream_write_string(output, "</span>");
-      class = CLASS_NONE;
-    }
-    Stream_write_char(output, '\n');
+  if (current_class != CLASS_NONE) {
+    output_character('\n', CLASS_NONE);
   }
-
-  for (uint16_t i = 0; i < num_lines; i++) {
-    free(lines[i]);
-    free(classes[i]);
-  }
-  free(lines);
-  free(classes);
 
   /* cleanup */
   JS_UNKEEP_ATOMS(cx->runtime);
