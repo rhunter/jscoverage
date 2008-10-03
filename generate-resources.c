@@ -29,6 +29,7 @@ int main(int argc, char ** argv) {
     printf("const unsigned char RESOURCE%d_[] = {\n", i);
     FILE * f = fopen(argv[i], "rb");
     if (f == NULL) {
+      fprintf(stderr, "cannot open file %s\n", argv[i]);
       exit(EXIT_FAILURE);
     }
     int c;
