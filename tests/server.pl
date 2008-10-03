@@ -26,14 +26,17 @@ while (not $done and my $c = $d->accept) {
       binmode FILE;
       my $content = <FILE>;
       close FILE;
-      my $content_type;
+      my @headers = ('Connection' => 'close');
       if ($file =~ /\.js$/) {
-        $content_type = 'text/javascript';
+        push @headers, 'Content-Type' => 'text/javascript';
+      }
+      elsif ($file =~ /\.[^\/]+$/) {
+        push @headers, 'Content-Type' => 'application/octet-stream';
       }
       else {
-        $content_type = 'application/octet-stream';
+        # do nothing - no Content-Type
       }
-      my $response = HTTP::Response->new(200, 'OK', ['Connection' => 'close', 'Content-Type' => $content_type], $content);
+      my $response = HTTP::Response->new(200, 'OK', \@headers, $content);
       $c->send_response($response);
     }
     else {
