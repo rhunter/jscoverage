@@ -50,6 +50,7 @@ The lines array stores line numbers starting from 0.
 */
 static const char * file_id = NULL;
 static char * lines = NULL;
+static uint16_t num_lines = 0;
 
 void jscoverage_init(void) {
   runtime = JS_NewRuntime(8L * 1024L * 1024L);
@@ -874,7 +875,11 @@ TOK_EXPORT, TOK_IMPORT are not handled.
 */
 static void instrument_statement(JSParseNode * node, Stream * f, int indent) {
   if (node->pn_type != TOK_LC) {
-    int line = node->pn_pos.begin.lineno;
+    uint16_t line = node->pn_pos.begin.lineno;
+    if (line > num_lines) {
+      fatal("%s: script contains more than 65,535 lines", file_id);
+    }
+
     /* the root node has line number 0 */
     if (line != 0) {
       Stream_printf(f, "%*s", indent, "");
@@ -918,7 +923,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   if (node == NULL) {
     fatal("parse error in file: %s", file_id);
   }
-  int num_lines = node->pn_pos.end.lineno;
+  num_lines = node->pn_pos.end.lineno;
   lines = xmalloc(num_lines);
   for (int i = 0; i < num_lines; i++) {
     lines[i] = 0;
