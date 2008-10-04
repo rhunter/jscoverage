@@ -75,14 +75,14 @@ dd {
   padding-left: 1em;
 }
 ul.list {
-  list-style: outside;
-  list-style-type: disc;
   padding-left: 1em;
   margin-top: 1em;
   margin-bottom: 1em;
 }
 ul.list li {
   display: list-item;
+  list-style-position: outside;
+  list-style-type: disc;
 }
 address {
   font-style: italic;
