@@ -40,7 +40,7 @@ else
   delay=2
 fi
 
-rm -fr EXPECTED DIR OUT
+rm -fr EXPECTED ACTUAL DIR OUT
 mkdir DIR
 $VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR &
 server_pid=$!
