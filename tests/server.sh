@@ -139,3 +139,27 @@ wget -q -O- http://127.0.0.1:8082/script.js > OUT
 cat ../report.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff - OUT
 wget -q -O- http://127.0.0.1:8082/1/1.js | diff recursive/1/1.js -
 wget -q -O- http://127.0.0.1:8082/1/2/2.js | diff recursive/1/2/2.js -
+
+# kill $server_pid
+shutdown
+
+$VALGRIND jscoverage-server --port 8080 --encoding iso-8859-1 --document-root javascript &
+server_pid=$!
+server_port=8080
+
+sleep $delay
+
+wget -q -O- http://127.0.0.1:8080/javascript-iso-8859-1.js > OUT
+cat ../report.js javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/\/javascript-iso-8859-1.js/g' | diff - OUT
+
+# kill $server_pid
+shutdown
+
+$VALGRIND jscoverage-server --no-highlight --port=8080 --encoding=utf-8 --document-root=javascript-utf-8 &
+server_pid=$!
+server_port=8080
+
+sleep $delay
+
+wget -q -O- http://127.0.0.1:8080/javascript-utf-8.js > OUT
+cat ../report.js javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff - OUT
