@@ -852,12 +852,10 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
     free(encoding);
     Stream_delete(input_stream);
     if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
-      free(characters);
       send_response(client_exchange, 502, "Encoding not supported\n");
       goto done;
     }
     else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
-      free(characters);
       send_response(client_exchange, 502, "Error decoding response\n");
       goto done;
     }
