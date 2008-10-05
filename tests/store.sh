@@ -66,6 +66,12 @@ echo 405 > EXPECTED
 ! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/jscoverage-store 2> /dev/null > ACTUAL
 diff EXPECTED ACTUAL
 
+# try with a path
+cat store.json | sed "s/@PREFIX@/\\//g" > TMP
+wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store/DIR > /dev/null
+cat store.expected.json | sed "s/@PREFIX@/\\//g" > TMP
+js json-cmp.js TMP DIR/DIR/jscoverage.json
+
 shutdown
 
 cd recursive
