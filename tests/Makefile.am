@@ -81,8 +81,8 @@ TESTS = encodings.sh \
         no-arguments.sh \
         recursive.sh \
         recursive-crlf.sh \
-        recursive-fatal.sh \
         recursive-exclude.sh \
+        recursive-fatal.sh \
         recursive-no-instrument.sh \
         same-directory.sh \
         version.sh \
@@ -116,15 +116,15 @@ TESTS = encodings.sh \
         server-special-file.sh \
         server-unreadable-directory.sh \
         server-unreadable-file.sh \
-        server-version.sh \
         server-verbose.sh \
+        server-version.sh \
         store.sh \
         store-bad-json.sh \
         store-bad-request-body.sh \
         store-bad-response-headers.sh \
         store-escaped-characters.sh \
-        store-server-closes-immediately.sh \
         store-server-bad-body.sh \
+        store-server-closes-immediately.sh \
         store-source-not-found.sh \
         store-unreadable-json.sh \
         store-unwritable-json.sh
