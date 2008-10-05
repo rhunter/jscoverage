@@ -88,6 +88,30 @@ void jscoverage_cleanup(void) {
   JS_DestroyRuntime(runtime);
 }
 
+static void print_javascript(const jschar * characters, size_t num_characters, Stream * f) {
+  for (size_t i = 0; i < num_characters; i++) {
+    jschar c = characters[i];
+    /*
+    XXX does not handle no-break space, other unicode "space separator"
+    */
+    switch (c) {
+    case 0x9:
+    case 0xB:
+    case 0xC:
+      Stream_write_char(f, c);
+      break;
+    default:
+      if (32 <= c && c <= 126) {
+        Stream_write_char(f, c);
+      }
+      else {
+        Stream_printf(f, "\\u%04x", c);
+      }
+      break;
+    }
+  }
+}
+
 static void print_string(JSString * s, Stream * f) {
   size_t length = JSSTRING_LENGTH(s);
   jschar * characters = JSSTRING_CHARS(s);
@@ -1090,15 +1114,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   /* conditionals */
   for (struct IfDirective * if_directive = if_directives; if_directive != NULL; if_directive = if_directive->next) {
     Stream_write_string(output, "if (!(");
-    for (const jschar * p = if_directive->condition_start; p < if_directive->condition_end; p++) {
-      jschar c = *p;
-      if (c == '\t' || (32 <= c && c <= 126)) {
-        Stream_write_char(output, c);
-      }
-      else {
-        Stream_printf(output, "\\u%04x", c);
-      }
-    }
+    print_javascript(if_directive->condition_start, if_directive->condition_end - if_directive->condition_start, output);
     Stream_write_string(output, ")) {\n");
     Stream_printf(output, "  _$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, if_directive->start_line, if_directive->end_line);
     Stream_write_string(output, "}\n");
