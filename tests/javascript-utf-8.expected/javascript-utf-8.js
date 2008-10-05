@@ -12,4 +12,4 @@ _$jscoverage['javascript-utf-8.js'][1]++;
 var s = "e\u00e8\u00e9\u00ea";
 _$jscoverage['javascript-utf-8.js'][2]++;
 var r = /e\u00e8\u00e9\u00ea/;
-_$jscoverage['javascript-utf-8.js'].source = ["<span class=\"k\">var</span> s <span class=\"k\">=</span> <span class=\"s\">'e&#232;&#233;&#234;'</span><span class=\"k\">;</span>","<span class=\"k\">var</span> r <span class=\"k\">=</span> <span class=\"s\">/e&#232;&#233;&#234;/</span><span class=\"k\">;</span>"];
+_$jscoverage['javascript-utf-8.js'].source = ["var s = 'e&#232;&#233;&#234;';","var r = /e&#232;&#233;&#234;/;"];

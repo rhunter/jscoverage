@@ -23,6 +23,6 @@ trap 'rm -fr DIR' 1 2 3 15
 export PATH=.:..:$PATH
 
 rm -fr DIR
-$VALGRIND jscoverage --encoding=UTF-8 javascript-utf-8 DIR
+$VALGRIND jscoverage --no-highlight --encoding=UTF-8 javascript-utf-8 DIR
 diff -u --strip-trailing-cr javascript-utf-8.expected/javascript-utf-8.js DIR/javascript-utf-8.js
 rm -fr DIR
