@@ -115,6 +115,22 @@ int main(void) {
                 "var s = 'eийк';\n"
                 "var r = /eийк/;\n";
     }
+    else if (strcmp(url, "http://127.0.0.1:8000/bogus.js") == 0 || strcmp(url, "/bogus.js") == 0) {
+      message = "HTTP/1.1 200 OK\r\n"
+                "Connection: close\r\n"
+                "Content-type: text/javascript; charset=BOGUS\r\n"
+                "\r\n"
+                "var s = 'eийк';\n"
+                "var r = /eийк/;\n";
+    }
+    else if (strcmp(url, "http://127.0.0.1:8000/malformed.js") == 0 || strcmp(url, "/malformed.js") == 0) {
+      message = "HTTP/1.1 200 OK\r\n"
+                "Connection: close\r\n"
+                "Content-type: text/javascript; charset=UTF-8\r\n"
+                "\r\n"
+                "var s = 'eийк';\n"
+                "var r = /eийк/;\n";
+    }
     else {
       abort();
     }

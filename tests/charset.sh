@@ -65,3 +65,13 @@ cat ../report.js > EXPECTED
 cat javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/http:\/\/127.0.0.1:8000\/iso-8859-1.js/g' >> EXPECTED
 curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/iso-8859-1.js > ACTUAL
 diff EXPECTED ACTUAL
+
+# bogus charset
+echo 502 > EXPECTED
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/bogus.js 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
+
+# malformed encoding
+echo 502 > EXPECTED
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/malformed.js 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
