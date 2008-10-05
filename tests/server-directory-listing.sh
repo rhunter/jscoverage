@@ -1,5 +1,5 @@
 #!/bin/sh
-#    server.sh - test jscoverage-server directory listings
+#    server-directory-listing.sh - test jscoverage-server directory listings
 #    Copyright (C) 2008 siliconforks.com
 #
 #    This program is free software; you can redistribute it and/or modify
