@@ -69,6 +69,13 @@ wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/1/1.css
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/1/2/2.html | diff recursive/1/2/2.html -
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/1/2/2.css | diff recursive/1/2/2.css -
 
+# test localhost
+wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://localhost:8000/index.html | diff recursive/index.html -
+
+# test actual hostname
+h=`hostname`
+wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://${h}:8000/index.html | diff recursive/index.html -
+
 # test query string
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/index.html?foo | diff recursive/index.html -
 
@@ -98,15 +105,15 @@ diff ../jscoverage.css DIR/jscoverage.css
 diff ../jscoverage-throbber.gif DIR/jscoverage-throbber.gif
 echo -e 'jscoverage_isReport = true;\r' | cat ../jscoverage.js - | diff - DIR/jscoverage.js
 
-## send it an FTP request
-#echo 400 > EXPECTED
-#! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 ftp://ftp.example.com 2> /dev/null > ACTUAL
-#diff EXPECTED ACTUAL
-#
-## nonexistent domain
-#echo 500 > EXPECTED
-#! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://nonexistent 2> /dev/null > ACTUAL
-#diff EXPECTED ACTUAL
+# send it an FTP request
+echo 400 > EXPECTED
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 ftp://ftp.example.com 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
+
+# nonexistent domain
+echo 504 > EXPECTED
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://nonexistent 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
 
 # 404 not found
 echo 404 > EXPECTED
