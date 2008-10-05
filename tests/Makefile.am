@@ -23,6 +23,7 @@ noinst_PROGRAMS = asprintf \
                   http-client-close-after-request \
                   http-server-bad-body \
                   http-server-bad-headers \
+                  http-server-charset \
                   http-server-chunked \
                   http-server-close-immediately \
                   json \
@@ -50,6 +51,9 @@ http_client_close_after_request_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_bad_body_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_bad_headers_LDADD = @EXTRA_SOCKET_LIBS@
+
+http_server_charset_SOURCES = http-server-charset.c ../stream.c ../util.c
+http_server_charset_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_chunked_SOURCES = http-server-chunked.c ../stream.c ../util.c
 http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
@@ -86,6 +90,7 @@ TESTS = encodings.sh \
         mkdirs.sh \
         recursive-dir-list.sh \
         streams.sh \
+        charset.sh \
         chunked.sh \
         gethostbyname.sh \
         json.sh \
@@ -97,6 +102,7 @@ TESTS = encodings.sh \
         proxy-no-server.sh \
         proxy-url.sh \
         server.sh \
+        server-bad-requests.sh \
         server-close-after-request.sh \
         server-content-types.sh \
         server-directory-listing.sh \
