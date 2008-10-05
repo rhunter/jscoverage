@@ -55,3 +55,7 @@ test -s ERR
 ! jscoverage-server --port 123456 > OUT 2> ERR
 test ! -s OUT
 test -s ERR
+
+! jscoverage-server --encoding > OUT 2> ERR
+test ! -s OUT
+test -s ERR
