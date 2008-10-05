@@ -21,6 +21,7 @@
 
 #include "http-server.h"
 
+#include <ctype.h>
 #include <string.h>
 
 #include "util.h"
@@ -81,8 +82,39 @@ int URL_parse_abs_path_and_query(const char * s, char ** abs_path, char ** query
   return 0;
 }
 
-
 int URL_parse(const char * url, char ** host, uint16_t * port, char ** abs_path, char ** query) {
+  /* check for invalid characters */
+  for (const char * p = url; *p != '\0'; p++) {
+    switch (*p) {
+    case ';':
+    case '/':
+    case '?':
+    case ':':
+    case '@':
+    case '&':
+    case '=':
+    case '+':
+    case '$':
+    case ',':
+    case '-':
+    case '_':
+    case '.':
+    case '!':
+    case '~':
+    case '*':
+    case '\'':
+    case '(':
+    case ')':
+    case '%':
+      break;
+    default:
+      if (! isalnum(*p)) {
+        return -1;
+      }
+      break;
+    }
+  }
+
   int result;
   if (strncasecmp(url, "http://", 7) == 0) {
     /* absoluteURI */
