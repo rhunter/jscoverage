@@ -242,10 +242,10 @@ static unsigned int hex_value(char c) {
     return c - '0';
   }
   else if ('A' <= c && c <= 'F') {
-    return c - 'A';
+    return c - 'A' + 10;
   }
   else if ('a' <= c && c <= 'f') {
-    return c - 'a';
+    return c - 'a' + 10;
   }
   else {
     return 0;
@@ -933,22 +933,25 @@ static void handle_local_request(HTTPExchange * exchange) {
   /* add the `Server' response-header (RFC 2616 14.38, 3.8) */
   HTTPExchange_add_response_header(exchange, HTTP_SERVER, "jscoverage-server/" VERSION);
 
+  char * decoded_path = NULL;
   char * filesystem_path = NULL;
 
   const char * abs_path = HTTPExchange_get_abs_path(exchange);
   assert(*abs_path != '\0');
 
-  if (str_starts_with(abs_path, "/jscoverage")) {
+  decoded_path = decode_uri_component(abs_path);
+
+  if (str_starts_with(decoded_path, "/jscoverage")) {
     handle_jscoverage_request(exchange);
     goto done;
   }
 
-  if (strstr(abs_path, "..") != NULL) {
+  if (strstr(decoded_path, "..") != NULL) {
     send_response(exchange, 403, "Forbidden\n");
     goto done;
   }
 
-  filesystem_path = make_path(document_root, abs_path + 1);
+  filesystem_path = make_path(document_root, decoded_path + 1);
   size_t filesystem_path_length = strlen(filesystem_path);
   if (filesystem_path_length > 0 && filesystem_path[filesystem_path_length - 1] == '/') {
     /* stat on Windows doesn't work with trailing slash */
@@ -1052,6 +1055,7 @@ static void handle_local_request(HTTPExchange * exchange) {
 
 done:
   free(filesystem_path);
+  free(decoded_path);
 }
 
 static void handler(HTTPExchange * exchange) {

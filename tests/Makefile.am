@@ -107,6 +107,7 @@ TESTS = encodings.sh \
         server-content-types.sh \
         server-directory-listing.sh \
         server-directory-redirect.sh \
+        server-encoded-url.sh \
         server-error.sh \
         server-help.sh \
         server-ip-address.sh \
