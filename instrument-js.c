@@ -1456,21 +1456,7 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
       file_coverage->id = id;
       file_coverage->num_coverage_lines = array->pn_count;
       file_coverage->coverage_lines = xnew(int, array->pn_count);
-      if (source == NULL) {
-        file_coverage->source_lines = NULL;
-      }
-      else {
-        file_coverage->num_source_lines = source->pn_count;
-        file_coverage->source_lines = xnew(char *, source->pn_count);
-        uint32 i = 0;
-        for (JSParseNode * element = source->pn_head; element != NULL; element = element->pn_next, i++) {
-          if (element->pn_type != TOK_STRING) {
-            return -1;
-          }
-          file_coverage->source_lines[i] = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(element->pn_atom)));
-        }
-        assert(i == source->pn_count);
-      }
+      file_coverage->source_lines = NULL;
 
       /* set coverage for all lines */
       uint32 i = 0;
@@ -1520,20 +1506,20 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
         }
       }
       assert(i == array->pn_count);
+    }
 
-      /* if this JSON file has source, use it */
-      if (file_coverage->source_lines == NULL && source != NULL) {
-        file_coverage->num_source_lines = source->pn_count;
-        file_coverage->source_lines = xnew(char *, source->pn_count);
-        uint32 i = 0;
-        for (JSParseNode * element = source->pn_head; element != NULL; element = element->pn_next, i++) {
-          if (element->pn_type != TOK_STRING) {
-            return -1;
-          }
-          file_coverage->source_lines[i] = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(element->pn_atom)));
+    /* if this JSON file has source, use it */
+    if (file_coverage->source_lines == NULL && source != NULL) {
+      file_coverage->num_source_lines = source->pn_count;
+      file_coverage->source_lines = xnew(char *, source->pn_count);
+      uint32 i = 0;
+      for (JSParseNode * element = source->pn_head; element != NULL; element = element->pn_next, i++) {
+        if (element->pn_type != TOK_STRING) {
+          return -1;
         }
-        assert(i == source->pn_count);
+        file_coverage->source_lines[i] = xstrdup(JS_GetStringBytes(ATOM_TO_STRING(element->pn_atom)));
       }
+      assert(i == source->pn_count);
     }
   }
 
