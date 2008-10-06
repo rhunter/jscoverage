@@ -46,8 +46,19 @@ server_port=8000
 
 sleep $delay
 
+if which netcat
+then
+  NETCAT=netcat
+elif which nc
+then
+  NETCAT=nc
+else
+  # skip test
+  exit 77
+fi
+
 bad_request() {
-  /bin/echo -ne "$1" | /bin/netcat 127.0.0.1 $server_port > OUT 2> ERR
+  /bin/echo -ne "$1" | $NETCAT 127.0.0.1 $server_port > OUT 2> ERR
   echo 'HTTP/1.1 400 Bad Request' > EXPECTED
   head -n 1 OUT > ACTUAL
   diff --strip-trailing-cr EXPECTED ACTUAL
