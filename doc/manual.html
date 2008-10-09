@@ -507,8 +507,8 @@ store a coverage report programmatically by having your test suite call the
 </p>
 
 <pre class="sh_javascript">
-if (top.jscoverage_report) {
-  top.jscoverage_report();
+if (window.jscoverage_report) {
+  jscoverage_report();
 }
 </pre>
 
@@ -518,7 +518,7 @@ passing the name as a parameter to the <code>jscoverage_report</code> function:
 </p>
 
 <pre class="sh_javascript">
-if (top.jscoverage_report) {
+if (window.jscoverage_report) {
   // determine the directory name based on the browser
   var directory;
   if (/MSIE/.test(navigator.userAgent)) {
@@ -527,7 +527,7 @@ if (top.jscoverage_report) {
   else {
     directory = 'other';
   }
-  top.jscoverage_report(directory);
+  jscoverage_report(directory);
 }
 </pre>
 
