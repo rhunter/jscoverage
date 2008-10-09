@@ -272,8 +272,8 @@ tabs
   cursor: pointer;
   margin-left: 0.5em;
   margin-right: 0.5em;
-  padding-left: 1em;
-  padding-right: 1em;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
   height: 2em;
   z-index: 1;
   line-height: 1.8em;
