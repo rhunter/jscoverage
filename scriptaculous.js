@@ -17,6 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+window.jscoverage_isServer = true;
+
 function initCoverageData() {
   var file = 'scriptaculous-data.js';
   window._$jscoverage[file] = [];
@@ -29,6 +31,44 @@ function initCoverageData() {
   source[99] = 'var foo = 1;';
   source[199] = 'var bar = 2;';
   window._$jscoverage[file].source = source;
+}
+
+function jsonEquals(json1, json2) {
+  if (json1 === null || json2 === null) {
+    return json1 === json2;
+  }
+  else if (json1.constructor === Array && json2.constructor === Array) {
+    if (json1.length !== json2.length) {
+      return false;
+    }
+    var length = json1.length;
+    for (var i = 0; i < length; i++) {
+      if (! jsonEquals(json1[i], json2[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  else if (typeof(json1) === 'object' && typeof(json2) === 'object') {
+    var i;
+    for (i in json1) {
+      if (! (i in json2)) {
+        return false;
+      }
+      if (! jsonEquals(json1[i], json2[i])) {
+        return false;
+      }
+    }
+    for (i in json2) {
+      if (! (i in json1)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  else {
+    return json1 === json2;
+  }
 }
 
 new Test.Unit.Runner({
@@ -126,6 +166,9 @@ new Test.Unit.Runner({
   },
 
   test_setSize: function() {
+    if (! /MSIE/.test(navigator.userAgent)) {
+      return;
+    }
     with (this) {
       // hide the extra tab stuff
       jscoverage_initTabControl();
@@ -402,13 +445,10 @@ new Test.Unit.Runner({
       this.assertIdentical(file, jscoverage_currentFile);
       var fileDiv = document.getElementById('fileDiv');
       this.assertIdentical(file, fileDiv.innerHTML);
-      var throbberImg = document.getElementById('throbberImg');
-      this.assertNotIdentical('visible', throbberImg.style.visibility);
       jscoverage_get(file);
       this.wait(500, function() {
         this.assertIdentical(file, jscoverage_currentFile);
         this.assertIdentical(file, fileDiv.innerHTML);
-        this.assertNotIdentical('visible', throbberImg.style.visibility);
       });
     });
   },
@@ -423,7 +463,6 @@ new Test.Unit.Runner({
           assertIdentical(file, jscoverage_currentFile);
           var fileDiv = document.getElementById('fileDiv');
           assertIdentical(file, fileDiv.innerHTML);
-          assertNotIdentical('visible', document.getElementById('throbberImg').style.visibility);
           var sourceDiv = document.getElementById('sourceDiv');
           var cell = document.getElementById('line-100');
           var offset = jscoverage_findPos(cell) - jscoverage_findPos(sourceDiv);
@@ -545,13 +584,155 @@ new Test.Unit.Runner({
     this.assertIdentical('"\\ufffc\\ufffd\\ufffe\\uffff"', jscoverage_quote('\ufffc\ufffd\ufffe\uffff'));
   },
 
+  test_serializeCoverageToJSON: function() {
+    _$jscoverage['foo'] = [];
+    _$jscoverage['foo'][1] = 100;
+    _$jscoverage['foo'][3] = 200;
+    _$jscoverage['foo'][4] = 0;
+    _$jscoverage['foo'][5] = 100;
+    _$jscoverage['bar'] = [];
+    _$jscoverage['bar'][10] = 1000;
+    var expected = {
+      'foo': [null, 100, null, 200, 0, 100],
+      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+    };
+    var actual = jscoverage_serializeCoverageToJSON();
+    actual = eval('(' + actual + ')');
+    this.assert(jsonEquals(expected['foo'], actual['foo']));
+    this.assert(jsonEquals(expected['bar'], actual['bar']));
+    delete _$jscoverage['foo'];
+    delete _$jscoverage['bar'];
+  },
+
+  test_storeButton_click: function() {
+    var original = jscoverage_createRequest;
+
+    var self = this;
+    var request = {};
+    jscoverage_createRequest = function() {
+      return request;
+    };
+    jscoverage_inLengthyOperation = true;
+    jscoverage_storeButton_click();
+    jscoverage_inLengthyOperation = false;
+
+    request = {
+      headers: {},
+      open: function(method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store', url);
+        self.assert(isAsync);
+      },
+      setRequestHeader: function(name, value) {
+        this.headers[name.toLowerCase()] = value;
+      },
+      send: function(content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = content;
+        this.readyState = 4;
+        this.status = 200;
+        this.onreadystatechange();
+      }
+    };
+    _$jscoverage['foo'] = [];
+    _$jscoverage['foo'][1] = 100;
+    _$jscoverage['foo'][3] = 200;
+    _$jscoverage['foo'][4] = 0;
+    _$jscoverage['foo'][5] = 100;
+    _$jscoverage['bar'] = [];
+    _$jscoverage['bar'][10] = 1000;
+    jscoverage_storeButton_click();
+    var expected = {
+      'foo': [null, 100, null, 200, 0, 100],
+      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+    };
+    var actual = request.responseText;
+    actual = eval('(' + actual + ')');
+    this.assert(jsonEquals(expected['foo'], actual['foo']));
+    this.assert(jsonEquals(expected['bar'], actual['bar']));
+
+    delete _$jscoverage['foo'];
+    delete _$jscoverage['bar'];
+    jscoverage_createRequest = original;
+  },
+
+  test_storeButton_click_fail: function() {
+    var original = jscoverage_createRequest;
+
+    var self = this;
+    var request = {
+      headers: {},
+      open: function(method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store', url);
+        self.assert(isAsync);
+      },
+      setRequestHeader: function(name, value) {
+        this.headers[name.toLowerCase()] = value;
+      },
+      send: function(content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = 'Internal Server Error';
+        this.readyState = 4;
+        this.status = 0;
+        this.onreadystatechange();
+      }
+    };
+    jscoverage_createRequest = function() {
+      return request;
+    };
+
+    jscoverage_storeButton_click();
+    this.assertMatch(/Could not connect to server/, document.getElementById('storeDiv').innerHTML);
+
+    jscoverage_createRequest = original;
+  },
+
+  test_storeButton_click_500: function() {
+    var original = jscoverage_createRequest;
+
+    var self = this;
+    var request = {
+      headers: {},
+      open: function(method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store', url);
+        self.assert(isAsync);
+      },
+      setRequestHeader: function(name, value) {
+        this.headers[name.toLowerCase()] = value;
+      },
+      send: function(content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = 'Internal Server Error';
+        this.readyState = 4;
+        this.status = 500;
+        this.onreadystatechange();
+      }
+    };
+    jscoverage_createRequest = function() {
+      return request;
+    };
+
+    jscoverage_storeButton_click();
+    this.assertMatch(/Internal Server Error/, document.getElementById('storeDiv').innerHTML);
+
+    jscoverage_createRequest = original;
+  },
+
   setup: function() {
-    var headingDiv = document.getElementById('headingDiv');
-    this.headingDivClone = headingDiv.cloneNode(true);
-    var tabs = document.getElementById('tabs');
-    this.tabsClone = tabs.cloneNode(true);
-    var tabPages = document.getElementById('tabPages');
-    this.tabPagesClone = tabPages.cloneNode(true);
+    if (! this.initialized) {
+      var headingDiv = document.getElementById('headingDiv');
+      this.headingDivClone = headingDiv.cloneNode(true);
+      var tabs = document.getElementById('tabs');
+      this.tabsClone = tabs.cloneNode(true);
+      var tabPages = document.getElementById('tabPages');
+      this.tabPagesClone = tabPages.cloneNode(true);
+      this.initialized = true;
+    }
 
     jscoverage_init(window);
     jscoverage_currentFile = null;
