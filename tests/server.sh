@@ -163,3 +163,29 @@ sleep $delay
 
 wget -q -O- http://127.0.0.1:8080/javascript-utf-8.js > OUT
 cat ../report.js javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff - OUT
+
+# kill $server_pid
+shutdown
+
+$VALGRIND jscoverage-server --port 8080 --encoding BOGUS --document-root javascript &
+server_pid=$!
+server_port=8080
+
+sleep $delay
+
+echo 500 > EXPECTED
+! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-iso-8859-1.js 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
+
+# kill $server_pid
+shutdown
+
+$VALGRIND jscoverage-server --port 8080 --encoding utf-8 --document-root javascript &
+server_pid=$!
+server_port=8080
+
+sleep $delay
+
+echo 500 > EXPECTED
+! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-iso-8859-1.js 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL
