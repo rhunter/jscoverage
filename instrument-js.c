@@ -27,6 +27,7 @@
 
 #include <jsapi.h>
 #include <jsatom.h>
+#include <jsexn.h>
 #include <jsfun.h>
 #include <jsinterp.h>
 #include <jsparse.h>
@@ -990,6 +991,10 @@ static bool characters_are_white_space(const jschar * characters, size_t line_st
   return true;
 }
 
+static void error_reporter(JSContext * context, const char * message, JSErrorReport * report) {
+  fprintf(stderr, "jscoverage: parse error: line %u: %s\n", report->lineno, message);
+}
+
 void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
   file_id = id;
 
@@ -1000,10 +1005,13 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   }
 
   /* parse the javascript */
+  JSErrorReporter old_error_reporter = JS_SetErrorReporter(context, error_reporter);
   JSParseNode * node = js_ParseTokenStream(context, global, token_stream);
   if (node == NULL) {
+    js_ReportUncaughtException(context);
     fatal("parse error in file: %s", file_id);
   }
+  JS_SetErrorReporter(context, old_error_reporter);
   num_lines = node->pn_pos.end.lineno;
   lines = xmalloc(num_lines);
   for (unsigned int i = 0; i < num_lines; i++) {
