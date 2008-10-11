@@ -47,3 +47,6 @@ sleep $delay
 
 wget --post-file=store-escaped-characters.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 js json-cmp.js store-escaped-characters.expected.json DIR/jscoverage.json
+wget --post-file=store-escaped-characters.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
+cat store-escaped-characters.expected.json | sed s/1/2/g > TMP
+js json-cmp.js TMP DIR/jscoverage.json
