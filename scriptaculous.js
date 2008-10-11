@@ -723,6 +723,53 @@ new Test.Unit.Runner({
     jscoverage_createRequest = original;
   },
 
+  test_report: function() {
+    var original = XMLHttpRequest;
+
+    var self = this;
+    var request;
+    XMLHttpRequest = function () {
+      this.headers = {};
+      this.open = function (method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store', url);
+        self.assert(! isAsync);
+      };
+      this.setRequestHeader = function (name, value) {
+        this.headers[name.toLowerCase()] = value;
+      };
+      this.send = function (content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = content;
+        this.readyState = 4;
+        this.status = 200;
+      };
+      request = this;
+    };
+
+    _$jscoverage['foo'] = [];
+    _$jscoverage['foo'][1] = 100;
+    _$jscoverage['foo'][3] = 200;
+    _$jscoverage['foo'][4] = 0;
+    _$jscoverage['foo'][5] = 100;
+    _$jscoverage['bar'] = [];
+    _$jscoverage['bar'][10] = 1000;
+    jscoverage_report();
+    var expected = {
+      'foo': [null, 100, null, 200, 0, 100],
+      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+    };
+    var actual = request.responseText;
+    actual = eval('(' + actual + ')');
+    this.assert(jsonEquals(expected['foo'], actual['foo']));
+    this.assert(jsonEquals(expected['bar'], actual['bar']));
+
+    delete _$jscoverage['foo'];
+    delete _$jscoverage['bar'];
+    window.XMLHttpRequest = original;
+  },
+
   setup: function() {
     if (! this.initialized) {
       var headingDiv = document.getElementById('headingDiv');
