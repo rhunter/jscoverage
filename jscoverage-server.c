@@ -1016,12 +1016,10 @@ static void handle_local_request(HTTPExchange * exchange) {
       Stream_delete(input_stream);
 
       if (result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED) {
-        free(characters);
         send_response(exchange, 500, "Encoding not supported\n");
         goto done;
       }
       else if (result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE) {
-        free(characters);
         send_response(exchange, 500, "Error decoding JavaScript file\n");
         goto done;
       }
