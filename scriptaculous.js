@@ -71,6 +71,26 @@ function jsonEquals(json1, json2) {
   }
 }
 
+function getSummaryTable() {
+  var result = {};
+  var summaryTable = document.getElementById('summaryTable');
+  var rows = summaryTable.getElementsByTagName('tr');
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows.item(i);
+    var cells = row.getElementsByTagName('td');
+    if (cells.length > 0) {
+      var links = cells.item(0).getElementsByTagName('a');
+      if (links.length > 0) {
+        var file = links.item(0).innerHTML;
+        result[file] = {};
+        result[file].statements = cells.item(1).innerHTML;
+        result[file].executed = cells.item(2).innerHTML;
+      }
+    }
+  }
+  return result;
+}
+
 new Test.Unit.Runner({
   test_init1: function() {
     var opener_$jscoverage = {};
@@ -230,12 +250,155 @@ new Test.Unit.Runner({
     this.assert(checkbox.checked);
   },
 
+  test_body_load: function() {
+    jscoverage_isReport = true;
+    var original = jscoverage_createRequest;
+    var runner = this;
+    var request = {
+      open: function (method, url, async) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertIdentical('GET', method);
+        runner.assertIdentical('jscoverage.json', url);
+        runner.assert(async);
+      },
+      send: function (content) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertNull(content);
+        this.readyState = 4;
+        this.status = 200;
+        this.responseText = '{"foo":{"coverage":[null,null,null,10],"source":["","",""]}}';
+        this.onreadystatechange();
+      }
+    };
+    jscoverage_createRequest = function () {
+      return request;
+    };
+
+    this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+    jscoverage_body_load();
+    this.wait(500, function() {
+      this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+      var summaryTable = getSummaryTable();
+      var foo = summaryTable['foo'];
+      this.assert(foo);
+      this.assertEqual(1, foo.statements);
+      this.assertEqual(1, foo.executed);
+
+      jscoverage_createRequest = original;
+      jscoverage_isReport = false;
+    });
+  },
+
+  test_body_load_404: function() {
+    jscoverage_isReport = true;
+    var original = jscoverage_createRequest;
+    var runner = this;
+    var request = {
+      open: function (method, url, async) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertIdentical('GET', method);
+        runner.assertIdentical('jscoverage.json', url);
+        runner.assert(async);
+      },
+      send: function (content) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertNull(content);
+        this.readyState = 4;
+        this.status = 404;
+        this.onreadystatechange();
+      }
+    };
+    jscoverage_createRequest = function () {
+      return request;
+    };
+
+    this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+    jscoverage_body_load();
+    this.wait(500, function() {
+      this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+      var summaryErrorDiv = document.getElementById('summaryErrorDiv');
+      this.assertIdentical('Error: 404', summaryErrorDiv.innerHTML);
+
+      jscoverage_createRequest = original;
+      jscoverage_isReport = false;
+    });
+  },
+
+  test_body_load_0: function() {
+    jscoverage_isReport = true;
+    var original = jscoverage_createRequest;
+    var runner = this;
+    var request = {
+      open: function (method, url, async) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertIdentical('GET', method);
+        runner.assertIdentical('jscoverage.json', url);
+        runner.assert(async);
+      },
+      send: function (content) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertNull(content);
+        this.readyState = 4;
+        this.status = 0;
+        this.responseText = '';
+        this.onreadystatechange();
+      }
+    };
+    jscoverage_createRequest = function () {
+      return request;
+    };
+
+    this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+    jscoverage_body_load();
+    this.wait(500, function() {
+      this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+      var summaryErrorDiv = document.getElementById('summaryErrorDiv');
+      this.assertIdentical('Error: 404', summaryErrorDiv.innerHTML);
+
+      jscoverage_createRequest = original;
+      jscoverage_isReport = false;
+    });
+  },
+
   test_updateBrowser: function() {
     with (this) {
       var input = document.getElementById("location");
       input.value = 'scriptaculous-data.html';
       assertEqual('scriptaculous-data.html', input.value);
       jscoverage_updateBrowser();
+      wait(500, function() {
+        with (this) {
+          assertMatch(/scriptaculous-data.html$/, input.value);
+          assertMatch(/scriptaculous-data.html$/, frames[0].location);
+        }
+      });
+    }
+  },
+
+  test_input_keypress: function() {
+    frames[0].location.href = 'about:blank';
+    var input = document.getElementById("location");
+    var s = 'scriptaculous-data.html';
+    var e = {};
+    input.value = '';
+    for (var i = 0; i < s.length; i++) {
+      e.keyCode = s.charCodeAt(i);
+      input.value = input.value + s[i];
+      jscoverage_input_keypress(e);
+    }
+    e.keyCode = 13;
+    jscoverage_input_keypress(e);
+    this.wait(1000, function () {
+      this.assertIdentical(frames[0].location.href, input.value);
+    });
+  },
+
+  test_button_click: function() {
+    with (this) {
+      var input = document.getElementById("location");
+      input.value = 'scriptaculous-data.html';
+      assertEqual('scriptaculous-data.html', input.value);
+      jscoverage_button_click();
       wait(500, function() {
         with (this) {
           assertMatch(/scriptaculous-data.html$/, input.value);
@@ -427,7 +590,7 @@ new Test.Unit.Runner({
     initCoverageData();
     var file = 'scriptaculous-data.js';
     jscoverage_get(file);
-    this.wait(1000, function() {
+    this.wait(1500, function() {
       jscoverage_currentLine = 100;
       jscoverage_scrollToLine();
       var sourceDiv = document.getElementById('sourceDiv');
@@ -449,6 +612,13 @@ new Test.Unit.Runner({
       this.wait(500, function() {
         this.assertIdentical(file, jscoverage_currentFile);
         this.assertIdentical(file, fileDiv.innerHTML);
+        jscoverage_inLengthyOperation = true;
+        jscoverage_get('other.js');
+        this.wait(500, function() {
+          this.assertIdentical(file, jscoverage_currentFile);
+          this.assertIdentical(file, fileDiv.innerHTML);
+          jscoverage_inLengthyOperation = false;
+        });
       });
     });
   },
@@ -527,6 +697,89 @@ new Test.Unit.Runner({
     jscoverage_tab_click(e);
     this.wait(500, function() {
       this.assertIdentical('selected', aboutTab.className);
+
+      var summaryTab = document.getElementById('summaryTab');
+      e = {target: summaryTab};
+      jscoverage_inLengthyOperation = true;
+      jscoverage_tab_click(e);
+      this.wait(500, function() {
+        this.assertIdentical('selected', aboutTab.className);
+        jscoverage_inLengthyOperation = false;
+      });
+    });
+  },
+
+  test_tab_click_summary: function() {
+    _$jscoverage['foo'] = [];
+    _$jscoverage['foo'][1] = 100;
+    _$jscoverage['foo'][3] = 200;
+    _$jscoverage['foo'][4] = 0;
+    _$jscoverage['foo'][5] = 0;
+    _$jscoverage['foo'][6] = 0;
+    _$jscoverage['foo'][7] = 0;
+    _$jscoverage['foo'][8] = 100;
+    _$jscoverage['bar'] = [];
+    _$jscoverage['bar'][10] = 1000;
+    _$jscoverage['foo'].source = ['','','','','','','',''];
+    _$jscoverage['foo'].conditionals = [];
+    _$jscoverage['foo'].conditionals[5] = 8;
+
+    var summaryTab = document.getElementById('summaryTab');
+    var e = {target: summaryTab};
+    jscoverage_tab_click(e);
+    this.wait(1000, function() {
+      this.assertIdentical('selected', summaryTab.className);
+      var summaryTable = document.getElementById('summaryTable');
+      var rows = summaryTable.getElementsByTagName('tr');
+      var fooLink = null;
+      var barLink = null;
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows.item(i);
+        var cells = row.getElementsByTagName('td');
+        if (cells.length > 0) {
+          var links = cells.item(0).getElementsByTagName('a');
+          if (links.length > 0) {
+            var file = links.item(0).innerHTML;
+            if (file === 'foo') {
+              fooLink = links.item(0);
+              this.assertIdentical('4', cells.item(1).innerHTML, 'number of statements');
+              this.assertIdentical('3', cells.item(2).innerHTML, 'number executed');
+            }
+            else if (file === 'bar') {
+              barLink = links.item(0);
+              this.assertIdentical('1', cells.item(1).innerHTML);
+              this.assertIdentical('1', cells.item(2).innerHTML);
+            }
+          }
+        }
+      }
+      this.assert(fooLink);
+      this.assert(barLink);
+
+      jscoverage_get('foo');
+      this.wait(1000, function() {
+        var sourceTab = document.getElementById('sourceTab');
+        this.assertIdentical('selected', sourceTab.className);
+        jscoverage_tab_click(e);
+        this.wait(1000, function() {
+          this.assertIdentical('selected', summaryTab.className);
+          e = {target: sourceTab};
+          jscoverage_tab_click(e);
+          this.wait(1000, function () {
+            this.assertIdentical('selected', sourceTab.className);
+            var sourceTable = document.getElementById('sourceTable');
+            var rows = sourceTable.getElementsByTagName('tr');
+            this.assertIdentical(8, rows.length);
+            this.assertIdentical('100', rows.item(0).getElementsByTagName('td').item(1).innerHTML);
+            this.assertIdentical('200', rows.item(2).getElementsByTagName('td').item(1).innerHTML);
+            this.assertIdentical('0', rows.item(3).getElementsByTagName('td').item(1).innerHTML);
+            this.assertIdentical('0', rows.item(4).getElementsByTagName('td').item(1).innerHTML);
+
+            delete _$jscoverage['foo'];
+            delete _$jscoverage['bar'];
+          });
+        });
+      });
     });
   },
 

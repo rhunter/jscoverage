@@ -72,6 +72,7 @@ function jscoverage_findPos(obj) {
 
 // http://www.quirksmode.org/viewport/compatibility.html
 function jscoverage_getViewportHeight() {
+//#JSCOVERAGE_IF /MSIE/.test(navigator.userAgent)
   if (self.innerHeight) {
     // all except Explorer
     return self.innerHeight;
@@ -87,6 +88,7 @@ function jscoverage_getViewportHeight() {
   else {
     throw "Couldn't calculate viewport height";
   }
+//#JSCOVERAGE_ENDIF
 }
 
 /**
@@ -103,18 +105,17 @@ function jscoverage_beginLengthyOperation() {
   progressLabel.style.visibility = 'visible';
 
   /* blacklist buggy browsers */
-  if (/Opera|WebKit/.test(navigator.userAgent)) {
-    return;
-  }
-
-  /*
-  Change the cursor style of each element.  Note that changing the class of the
-  element (to one with a busy cursor) is buggy in IE.
-  */
-  var tabs = document.getElementById('tabs').getElementsByTagName('div');
-  var i;
-  for (i = 0; i < tabs.length; i++) {
-    tabs.item(i).style.cursor = 'wait';
+//#JSCOVERAGE_IF
+  if (! /Opera|WebKit/.test(navigator.userAgent)) {
+    /*
+    Change the cursor style of each element.  Note that changing the class of the
+    element (to one with a busy cursor) is buggy in IE.
+    */
+    var tabs = document.getElementById('tabs').getElementsByTagName('div');
+    var i;
+    for (i = 0; i < tabs.length; i++) {
+      tabs.item(i).style.cursor = 'wait';
+    }
   }
 }
 
@@ -140,6 +141,7 @@ function jscoverage_endLengthyOperation() {
 }
 
 function jscoverage_setSize() {
+//#JSCOVERAGE_IF /MSIE/.test(navigator.userAgent)
   var viewportHeight = jscoverage_getViewportHeight();
 
   /*
@@ -179,6 +181,7 @@ function jscoverage_setSize() {
   if (storeDiv) {
     storeDiv.style.height = (viewportHeight - jscoverage_findPos(storeDiv) - 21) + 'px';
   }
+//#JSCOVERAGE_ENDIF
 }
 
 /**
@@ -261,7 +264,7 @@ function jscoverage_body_load() {
     var summaryThrobber = document.getElementById('summaryThrobber');
     summaryThrobber.style.visibility = 'hidden';
     var div = document.getElementById('summaryErrorDiv');
-    div.innerHTML = e;
+    div.innerHTML = 'Error: ' + e;
   }
 
   if (jscoverage_isReport) {
@@ -289,7 +292,6 @@ function jscoverage_body_load() {
               _$jscoverage[file].source = fileCoverage.source;
             }
             jscoverage_recalculateSummaryTab();
-            jscoverage_endLengthyOperation();
             summaryThrobber.style.visibility = 'hidden';
           }
           catch (e) {
@@ -322,10 +324,9 @@ function jscoverage_body_load() {
 }
 
 function jscoverage_body_resize() {
-  if (! /MSIE/.test(navigator.userAgent)) {
-    return;
+  if (/MSIE/.test(navigator.userAgent)) {
+    jscoverage_setSize();
   }
-  jscoverage_setSize();
 }
 
 // -----------------------------------------------------------------------------
@@ -816,7 +817,9 @@ function jscoverage_tabIndexOf(tab) {
       tabNum++;
     }
   }
+//#JSCOVERAGE_IF 0
   throw "Tab not found";
+//#JSCOVERAGE_ENDIF
 }
 
 function jscoverage_tab_click(e) {
@@ -824,6 +827,7 @@ function jscoverage_tab_click(e) {
     return;
   }
   var target;
+//#JSCOVERAGE_IF
   if (e) {
     target = e.target;
   }
