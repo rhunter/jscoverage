@@ -59,6 +59,18 @@ var jscoverage_isReport = false;
 
 jscoverage_init(window);
 
+function jscoverage_createRequest() {
+  // Note that the IE7 XMLHttpRequest does not support file URL's.
+  // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
+  // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
+  if (window.ActiveXObject) {
+    return new ActiveXObject("Microsoft.XMLHTTP");
+  }
+  else {
+    return new XMLHttpRequest();
+  }
+}
+
 // http://www.quirksmode.org/js/findpos.html
 function jscoverage_findPos(obj) {
   var result = 0;
@@ -653,18 +665,6 @@ function jscoverage_scrollToLine() {
   }
   jscoverage_currentLine = 0;
   jscoverage_endLengthyOperation();
-}
-
-function jscoverage_createRequest() {
-  // Note that the IE7 XMLHttpRequest does not support file URL's.
-  // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
-  // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
-  if (window.ActiveXObject) {
-    return new ActiveXObject("Microsoft.XMLHTTP");
-  }
-  else {
-    return new XMLHttpRequest();
-  }
 }
 
 /**
