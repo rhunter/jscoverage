@@ -148,6 +148,21 @@ new Test.Unit.Runner({
     this.assert(w._$jscoverage);
   },
 
+  test_createRequest: function() {
+    var status;
+    var request = jscoverage_createRequest();
+    request.open('GET', 'scriptaculous.html', true);
+    request.onreadystatechange = function(event) {
+      if (request.readyState === 4) {
+        status = request.status;
+      }
+    };
+    request.send(null);
+    this.wait(500, function() {
+      this.assert(status === 0 || status === 200);
+    });
+  },
+
   test_findPos: function() {
     with (this) {
       var body = document.getElementsByTagName('body').item(0);
@@ -250,7 +265,7 @@ new Test.Unit.Runner({
     this.assert(checkbox.checked);
   },
 
-  test_body_load: function() {
+  test_body_load_report: function() {
     jscoverage_isReport = true;
     var original = jscoverage_createRequest;
     var runner = this;
@@ -289,7 +304,7 @@ new Test.Unit.Runner({
     });
   },
 
-  test_body_load_404: function() {
+  test_body_load_report_404: function() {
     jscoverage_isReport = true;
     var original = jscoverage_createRequest;
     var runner = this;
@@ -324,7 +339,7 @@ new Test.Unit.Runner({
     });
   },
 
-  test_body_load_0: function() {
+  test_body_load_report_0: function() {
     jscoverage_isReport = true;
     var original = jscoverage_createRequest;
     var runner = this;
@@ -358,6 +373,59 @@ new Test.Unit.Runner({
       jscoverage_createRequest = original;
       jscoverage_isReport = false;
     });
+  },
+
+  test_body_load_report_exception: function() {
+    jscoverage_isReport = true;
+    var original = jscoverage_createRequest;
+    var runner = this;
+    var request = {
+      open: function (method, url, async) {
+        runner.assert(jscoverage_inLengthyOperation, 'in lengthy operation');
+        runner.assertIdentical('GET', method);
+        runner.assertIdentical('jscoverage.json', url);
+        runner.assert(async);
+        throw 'open';
+      }
+    };
+    jscoverage_createRequest = function () {
+      return request;
+    };
+
+    this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+    jscoverage_body_load();
+    this.wait(500, function() {
+      this.assert(! jscoverage_inLengthyOperation, 'not in lengthy operation');
+      var summaryErrorDiv = document.getElementById('summaryErrorDiv');
+      this.assertIdentical('Error: open', summaryErrorDiv.innerHTML);
+
+      jscoverage_createRequest = original;
+      jscoverage_isReport = false;
+    });
+  },
+
+  test_body_load_inverted: function() {
+    jscoverage_isInvertedMode = true;
+    jscoverage_body_load();
+    var tabs = document.getElementById('tabs').getElementsByTagName('div');
+    this.assertIdentical(4, tabs.length);
+    this.assertIdentical('summaryTab', tabs.item(0).id);
+    this.assertIdentical('sourceTab', tabs.item(1).id);
+    this.assertIdentical('storeTab', tabs.item(2).id);
+    this.assertIdentical('aboutTab', tabs.item(3).id);
+    jscoverage_isInvertedMode = false;
+  },
+
+  test_body_load_server: function() {
+    jscoverage_isServer = false;
+    jscoverage_body_load();
+    var tabs = document.getElementById('tabs').getElementsByTagName('div');
+    this.assertIdentical(4, tabs.length);
+    this.assertIdentical('browserTab', tabs.item(0).id);
+    this.assertIdentical('summaryTab', tabs.item(1).id);
+    this.assertIdentical('sourceTab', tabs.item(2).id);
+    this.assertIdentical('aboutTab', tabs.item(3).id);
+    jscoverage_isServer = true;
   },
 
   test_updateBrowser: function() {
@@ -656,6 +724,15 @@ new Test.Unit.Runner({
     });
   },
 
+  test_recalculateSourceTab_no_file: function() {
+    jscoverage_currentFile = null;
+    jscoverage_beginLengthyOperation();
+    jscoverage_recalculateSourceTab();
+    this.wait(500, function() {
+      this.assert(! jscoverage_inLengthyOperation);
+    });
+  },
+
   test_initTabControl: function() {
     with (this) {
       jscoverage_initTabControl();
@@ -698,13 +775,20 @@ new Test.Unit.Runner({
     this.wait(500, function() {
       this.assertIdentical('selected', aboutTab.className);
 
-      var summaryTab = document.getElementById('summaryTab');
-      e = {target: summaryTab};
-      jscoverage_inLengthyOperation = true;
+      // click the already-selected tab
       jscoverage_tab_click(e);
       this.wait(500, function() {
         this.assertIdentical('selected', aboutTab.className);
-        jscoverage_inLengthyOperation = false;
+
+        // click a tab while busy
+        var summaryTab = document.getElementById('summaryTab');
+        e = {target: summaryTab};
+        jscoverage_inLengthyOperation = true;
+        jscoverage_tab_click(e);
+        this.wait(500, function() {
+          this.assertIdentical('selected', aboutTab.className);
+          jscoverage_inLengthyOperation = false;
+        });
       });
     });
   },

@@ -63,6 +63,7 @@ function jscoverage_createRequest() {
   // Note that the IE7 XMLHttpRequest does not support file URL's.
   // http://xhab.blogspot.com/2006/11/ie7-support-for-xmlhttprequest.html
   // http://blogs.msdn.com/ie/archive/2006/12/06/file-uris-in-windows.aspx
+//#JSCOVERAGE_IF
   if (window.ActiveXObject) {
     return new ActiveXObject("Microsoft.XMLHTTP");
   }
@@ -399,7 +400,9 @@ function jscoverage_recalculateSummaryTab(cc) {
     cc = window._$jscoverage;
   }
   if (! cc) {
+//#JSCOVERAGE_IF 0
     throw "No coverage information found.";
+//#JSCOVERAGE_ENDIF
   }
 
   var tbody = document.getElementById("summaryTbody");
