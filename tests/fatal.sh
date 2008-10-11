@@ -96,7 +96,7 @@ rm -fr bar
 
 # huge JavaScript file
 mkdir -p DIR
-seq -f 'x = %g;' 1 65536 > DIR/big.js
+perl -e 'for (1 .. 65536) {print "x = $_\n";}' > DIR/big.js
 $VALGRIND jscoverage DIR DIR2 > OUT 2> ERR && exit 1
 echo 'jscoverage: big.js: script has more than 65,535 lines' | diff - ERR
 
