@@ -38,6 +38,7 @@
 #include "stream.h"
 #include "util.h"
 
+static const char * specified_encoding = NULL;
 const char * jscoverage_encoding = "ISO-8859-1";
 bool jscoverage_highlight = true;
 
@@ -868,6 +869,10 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
       if (is_hop_by_hop_header(h->name) || strcasecmp(h->name, HTTP_CONTENT_LENGTH) == 0) {
         continue;
       }
+      else if (strcasecmp(h->name, HTTP_CONTENT_TYPE) == 0) {
+        HTTPExchange_add_response_header(client_exchange, HTTP_CONTENT_TYPE, "text/javascript; charset=ISO-8859-1");
+        continue;
+      }
       HTTPExchange_add_response_header(client_exchange, h->name, h->value);
     }
     add_via_header(HTTPExchange_get_response_message(client_exchange), HTTPExchange_get_response_http_version(server_exchange));
@@ -1004,9 +1009,22 @@ static void handle_local_request(HTTPExchange * exchange) {
       goto done;
     }
 
+    /*
+    When do we send a charset with Content-Type?
+    if Content-Type is "text" or "application"
+      if instrumented JavaScript
+        use Content-Type: application/javascript; charset=ISO-8859-1
+      else if --encoding is given
+        use that encoding
+      else
+        send no charset
+    else
+      send no charset
+    */
     const char * content_type = get_content_type(filesystem_path);
-    HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, content_type);
     if (strcmp(content_type, "text/javascript") == 0 && ! is_no_instrument(abs_path)) {
+      HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, "text/javascript; charset=ISO-8859-1");
+
       Stream * input_stream = Stream_new(0);
       Stream_write_file_contents(input_stream, f);
 
@@ -1034,6 +1052,17 @@ static void handle_local_request(HTTPExchange * exchange) {
       Stream_delete(output_stream);
     }
     else {
+      /* send the Content-Type with charset if necessary */
+      if (specified_encoding != NULL && (str_starts_with(content_type, "text/") || str_starts_with(content_type, "application/"))) {
+        char * content_type_with_charset = NULL;
+        xasprintf(&content_type_with_charset, "%s; charset=%s", content_type, specified_encoding);
+        HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, content_type_with_charset);
+        free(content_type_with_charset);
+      }
+      else {
+        HTTPExchange_set_response_header(exchange, HTTP_CONTENT_TYPE, content_type);
+      }
+
       char buffer[8192];
       size_t bytes_read;
       while ((bytes_read = fread(buffer, 1, 8192, f)) > 0) {
@@ -1117,9 +1146,11 @@ int main(int argc, char ** argv) {
         fatal_command_line("--encoding: option requires an argument");
       }
       jscoverage_encoding = argv[i];
+      specified_encoding = jscoverage_encoding;
     }
     else if (strncmp(argv[i], "--encoding=", 11) == 0) {
       jscoverage_encoding = argv[i] + 11;
+      specified_encoding = jscoverage_encoding;
     }
 
     else if (strcmp(argv[i], "--ip-address") == 0) {
