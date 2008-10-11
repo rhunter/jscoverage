@@ -753,20 +753,107 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
-    _$jscoverage['bar'] = [];
-    _$jscoverage['bar'][10] = 1000;
+    var funnyName = '\b\f\n\r\t\v"\\\u0001';
+    _$jscoverage[funnyName] = [];
+    _$jscoverage[funnyName][10] = 1000;
     jscoverage_report();
     var expected = {
-      'foo': [null, 100, null, 200, 0, 100],
-      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+      'foo': [null, 100, null, 200, 0, 100]
     };
+    expected[funnyName] = [null, null, null, null, null, null, null, null, null, null, 1000];
     var actual = request.responseText;
     actual = eval('(' + actual + ')');
     this.assert(jsonEquals(expected['foo'], actual['foo']));
-    this.assert(jsonEquals(expected['bar'], actual['bar']));
+    this.assert(jsonEquals(expected[funnyName], actual[funnyName]));
 
     delete _$jscoverage['foo'];
-    delete _$jscoverage['bar'];
+    delete _$jscoverage[funnyName];
+    window.XMLHttpRequest = original;
+  },
+
+  test_report_dir: function() {
+    var original = XMLHttpRequest;
+    window.XMLHttpRequest = null;
+
+    var self = this;
+    var request;
+    window.ActiveXObject = function (s) {
+      self.assertIdentical('Microsoft.XMLHTTP', s);
+      this.headers = {};
+      this.open = function (method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store/dir', url);
+        self.assert(! isAsync);
+      };
+      this.setRequestHeader = function (name, value) {
+        this.headers[name.toLowerCase()] = value;
+      };
+      this.send = function (content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = content;
+        this.readyState = 4;
+        this.status = 200;
+      };
+      request = this;
+    };
+
+    _$jscoverage['foo'] = [];
+    _$jscoverage['foo'][1] = 100;
+    _$jscoverage['foo'][3] = 200;
+    _$jscoverage['foo'][4] = 0;
+    _$jscoverage['foo'][5] = 100;
+    var funnyName = '\b\f\n\r\t\v"\\\u0001';
+    _$jscoverage[funnyName] = [];
+    _$jscoverage[funnyName][10] = 1000;
+    jscoverage_report('dir');
+    var expected = {
+      'foo': [null, 100, null, 200, 0, 100]
+    };
+    expected[funnyName] = [null, null, null, null, null, null, null, null, null, null, 1000];
+    var actual = request.responseText;
+    actual = eval('(' + actual + ')');
+    this.assert(jsonEquals(expected['foo'], actual['foo']));
+    this.assert(jsonEquals(expected[funnyName], actual[funnyName]));
+
+    delete _$jscoverage['foo'];
+    delete _$jscoverage[funnyName];
+    window.XMLHttpRequest = original;
+  },
+
+  test_report_error: function() {
+    var original = XMLHttpRequest;
+
+    var self = this;
+    var request;
+    XMLHttpRequest = function () {
+      this.headers = {};
+      this.open = function (method, url, isAsync) {
+        self.assertIdentical('POST', method);
+        self.assertIdentical('/jscoverage-store', url);
+        self.assert(! isAsync);
+      };
+      this.setRequestHeader = function (name, value) {
+        this.headers[name.toLowerCase()] = value;
+      };
+      this.send = function (content) {
+        self.assertIdentical(this.headers['content-type'], 'application/json');
+        self.assertEqual(this.headers['content-length'], content.length);
+        this.responseText = 'Internal Server Error';
+        this.readyState = 4;
+        this.status = 500;
+      };
+      request = this;
+    };
+
+    try {
+      jscoverage_report();
+      this.fail();
+    }
+    catch (e) {
+      this.assertIdentical(500, e);
+    }
+
     window.XMLHttpRequest = original;
   },
 
