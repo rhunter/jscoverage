@@ -525,7 +525,7 @@ new Test.Unit.Runner({
     var aboutTab = document.getElementById('aboutTab');
     var e = {target: aboutTab};
     jscoverage_tab_click(e);
-    this.wait(1000, function() {
+    this.wait(500, function() {
       this.assertIdentical('selected', aboutTab.className);
     });
   },
