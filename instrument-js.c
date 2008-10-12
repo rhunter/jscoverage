@@ -540,13 +540,17 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       /* check whether this is a getter or setter */
       switch (p->pn_op) {
       case JSOP_GETTER:
-        Stream_write_string(f, "get ");
-        instrument_expression(p->pn_left, f);
-        instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
-        break;
       case JSOP_SETTER:
-        Stream_write_string(f, "set ");
+        if (p->pn_op == JSOP_GETTER) {
+          Stream_write_string(f, "get ");
+        }
+        else {
+          Stream_write_string(f, "set ");
+        }
         instrument_expression(p->pn_left, f);
+        if (p->pn_right->pn_type != TOK_FUNCTION) {
+          fatal("parse error: expected function");
+        }
         instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
         break;
       default:
