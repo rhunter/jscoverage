@@ -46,10 +46,10 @@ server_port=8000
 
 sleep $delay
 
-if `which netcat > /dev/null 2> /dev/null`
+if which netcat > /dev/null 2> /dev/null
 then
   NETCAT=netcat
-elif which nc
+elif which nc > /dev/null 2> /dev/null
 then
   NETCAT=nc
 else
