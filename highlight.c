@@ -335,6 +335,9 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_INC:
     case TOK_DEC:
+      class = CLASS_SYMBOL;
+      /* token_stream->flags does not change w.r.t. TSF_OPERAND */
+      break;
     case TOK_DOT:
     case TOK_LB:
       class = CLASS_SYMBOL;
