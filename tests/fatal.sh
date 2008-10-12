@@ -38,6 +38,13 @@ diff --strip-trailing-cr javascript-invalid.expected.err ERR
 
 rm -fr DIR
 
+$VALGRIND jscoverage javascript-setter DIR > OUT 2> ERR && exit 1
+test ! -s OUT
+test -s ERR
+diff --strip-trailing-cr javascript-setter.expected.err ERR
+
+rm -fr DIR
+
 $VALGRIND jscoverage 1 2 3 > OUT 2> ERR && exit 1
 test ! -s OUT
 test -s ERR
