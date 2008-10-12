@@ -22,6 +22,7 @@
 #include "encoding.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #ifdef HAVE_ICONV_H
