@@ -300,7 +300,7 @@ int jscoverage_bytes_to_characters(const char * encoding, const uint8_t * bytes,
 
   jschar * c = xnew(jschar, num_bytes);
   for (size_t i = 0; i < num_bytes; i++) {
-    if (bytes[i]) > 127) {
+    if (bytes[i] > 127) {
       free(c);
       return JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED;
     }
