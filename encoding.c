@@ -278,7 +278,7 @@ int jscoverage_bytes_to_characters(const char * encoding, const uint8_t * bytes,
 
   *characters = xnew(jschar, num_bytes);
 
-  int result = MultiByteToWideChar(code_page, 0, bytes, num_bytes, *characters, num_bytes);
+  int result = MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, bytes, num_bytes, *characters, num_bytes);
   if (result == 0) {
     free(*characters);
     return JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE;
