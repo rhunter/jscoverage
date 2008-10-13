@@ -53,8 +53,7 @@ elif which nc > /dev/null 2> /dev/null
 then
   NETCAT=nc
 else
-  # skip test
-  exit 77
+  NETCAT='perl netcat.pl';
 fi
 
 bad_request() {
