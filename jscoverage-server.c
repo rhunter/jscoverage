@@ -711,7 +711,7 @@ static void handle_jscoverage_request(HTTPExchange * exchange) {
       return;
     }
     if (strcmp(abs_path, "/jscoverage.js") == 0) {
-      const char * s = "jscoverage_isServer = true;\r\n";
+      const char * s = "jscoverage_isServer = true;\n";
       if (HTTPExchange_write_response(exchange, s, strlen(s)) != 0) {
         HTTPServer_log_err("Warning: error writing to client\n");
       }
