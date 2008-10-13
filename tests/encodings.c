@@ -17,6 +17,8 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <config.h>
+
 #include <assert.h>
 #include <string.h>
 
@@ -81,7 +83,7 @@ int main(void) {
 
   free(characters);
 
-#ifndef _WIN32
+#ifdef HAVE_ICONV
   uint8_t utf16be[] = {
     0, 'e',
     0, 0xe8,
@@ -164,7 +166,7 @@ int main(void) {
 
   assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
 
-#ifndef _WIN32
+#ifdef HAVE_ICONV
   /* malformed US-ASCII */
   /* NOTE: Windows simply discards the high bit */
   uint8_t malformed_ascii[] = {
