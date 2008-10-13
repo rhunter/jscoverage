@@ -22,10 +22,28 @@ trap 'rm -fr DIR' 1 2 3 15
 
 export PATH=.:..:$PATH
 
+if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
+then
+  character_encoding_support=yes
+else
+  character_encoding_support=no
+fi
+
 rm -fr DIR
-$VALGRIND jscoverage --encoding ISO-8859-1 javascript DIR
+case "$character_encoding_support" in
+  yes)
+    $VALGRIND jscoverage --encoding ISO-8859-1 javascript DIR
+    ;;
+  *)
+    $VALGRIND jscoverage --exclude=javascript-iso-8859-1.js javascript DIR
+    ;;
+esac
 for i in javascript/*.js
 do
+  if [ $character_encoding_support = no -a $i = javascript/javascript-iso-8859-1.js ]
+  then
+    continue
+  fi
   FILE=${i##javascript/}
   EXPECTED=javascript.expected/${FILE}
   ACTUAL=DIR/${FILE}

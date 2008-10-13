@@ -43,6 +43,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-8", utf8, 7, &characters, &num_characters);
 
+#if HAVE_ICONV || HAVE_MULTIBYTETOWIDECHAR
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -51,6 +52,9 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
   /*
   BOM is 0xfeff
@@ -74,6 +78,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-8", utf8_with_bom, 10, &characters, &num_characters);
 
+#if HAVE_ICONV || HAVE_MULTIBYTETOWIDECHAR
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -82,8 +87,10 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
-#ifdef HAVE_ICONV
   uint8_t utf16be[] = {
     0, 'e',
     0, 0xe8,
@@ -93,6 +100,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-16BE", utf16be, 8, &characters, &num_characters);
 
+#ifdef HAVE_ICONV
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -101,6 +109,9 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
   uint8_t utf16be_with_bom[] = {
     0xfe, 0xff,
@@ -112,6 +123,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-16BE", utf16be_with_bom, 10, &characters, &num_characters);
 
+#ifdef HAVE_ICONV
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -120,6 +132,9 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
   uint8_t utf16le[] = {
     'e', 0,
@@ -130,6 +145,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-16LE", utf16le, 8, &characters, &num_characters);
 
+#ifdef HAVE_ICONV
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -138,6 +154,9 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
   uint8_t utf16le_with_bom[] = {
     0xff, 0xfe,
@@ -149,6 +168,7 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-16LE", utf16le_with_bom, 10, &characters, &num_characters);
 
+#ifdef HAVE_ICONV
   assert(result == 0);
   assert(num_characters == 4);
   assert(characters[0] == 'e');
@@ -157,6 +177,8 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
 #endif
 
   /* bogus encoding */
@@ -191,7 +213,11 @@ int main(void) {
 
   result = jscoverage_bytes_to_characters("UTF-8", malformed_utf8, 4, &characters, &num_characters);
 
+#if HAVE_ICONV || HAVE_MULTIBYTETOWIDECHAR
   assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
+#else
+  assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
+#endif
 
   return 0;
 }

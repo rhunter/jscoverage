@@ -40,6 +40,13 @@ else
   delay=2
 fi
 
+if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
+then
+  character_encoding_support=yes
+else
+  character_encoding_support=no
+fi
+
 rm -fr EXPECTED ACTUAL DIR OUT
 mkdir DIR
 $VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR &
@@ -149,8 +156,17 @@ server_port=8080
 
 sleep $delay
 
-wget -q -O- http://127.0.0.1:8080/javascript-iso-8859-1.js > OUT
-cat ../report.js javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/\/javascript-iso-8859-1.js/g' | diff --strip-trailing-cr - OUT
+case "$character_encoding_support" in
+  yes)
+    wget -q -O- http://127.0.0.1:8080/javascript-iso-8859-1.js > OUT
+    cat ../report.js javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/\/javascript-iso-8859-1.js/g' | diff --strip-trailing-cr - OUT
+    ;;
+  *)
+    echo 500 > EXPECTED
+    ! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-iso-8859-1.js 2> /dev/null > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+esac
 
 # kill $server_pid
 shutdown
@@ -161,8 +177,17 @@ server_port=8080
 
 sleep $delay
 
-wget -q -O- http://127.0.0.1:8080/javascript-utf-8.js > OUT
-cat ../report.js javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff --strip-trailing-cr - OUT
+case "$character_encoding_support" in
+  yes)
+    wget -q -O- http://127.0.0.1:8080/javascript-utf-8.js > OUT
+    cat ../report.js javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff --strip-trailing-cr - OUT
+    ;;
+  *)
+    echo 500 > EXPECTED
+    ! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-utf-8.js 2> /dev/null > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+esac
 
 # kill $server_pid
 shutdown

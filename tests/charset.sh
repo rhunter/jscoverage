@@ -39,6 +39,13 @@ else
   delay=2
 fi
 
+if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
+then
+  character_encoding_support=yes
+else
+  character_encoding_support=no
+fi
+
 $VALGRIND jscoverage-server --proxy --no-highlight > OUT 2> ERR &
 proxy_server_pid=$!
 proxy_server_port=8080
@@ -48,10 +55,19 @@ origin_server_pid=$!
 
 sleep $delay
 
-cat ../report.js > EXPECTED
-cat javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/http:\/\/127.0.0.1:8000\/utf-8.js/g' >> EXPECTED
-curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/utf-8.js > ACTUAL
-diff EXPECTED ACTUAL
+case "$character_encoding_support" in
+  yes)
+    cat ../report.js > EXPECTED
+    cat javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/http:\/\/127.0.0.1:8000\/utf-8.js/g' >> EXPECTED
+    curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/utf-8.js > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+  *)
+    echo 500 > EXPECTED
+    ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/utf-8.js 2> /dev/null > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+esac
 
 shutdown
 
@@ -61,17 +77,34 @@ proxy_server_port=8080
 
 sleep $delay
 
-cat ../report.js > EXPECTED
-cat javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/http:\/\/127.0.0.1:8000\/iso-8859-1.js/g' >> EXPECTED
-curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/iso-8859-1.js > ACTUAL
-diff EXPECTED ACTUAL
+case "$character_encoding_support" in
+  yes)
+    cat ../report.js > EXPECTED
+    cat javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/http:\/\/127.0.0.1:8000\/iso-8859-1.js/g' >> EXPECTED
+    curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/iso-8859-1.js > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+  *)
+    echo 500 > EXPECTED
+    ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/iso-8859-1.js 2> /dev/null > ACTUAL
+    diff EXPECTED ACTUAL
+    ;;
+esac
 
 # bogus charset
-echo 502 > EXPECTED
+echo 500 > EXPECTED
 ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/bogus.js 2> /dev/null > ACTUAL
 diff EXPECTED ACTUAL
 
 # malformed encoding
-echo 502 > EXPECTED
+case "$character_encoding_support" in
+  yes)
+    status=502
+    ;;
+  *)
+    status=500
+    ;;
+esac
+echo $status > EXPECTED
 ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:8000/malformed.js 2> /dev/null > ACTUAL
 diff EXPECTED ACTUAL
