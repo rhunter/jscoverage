@@ -81,6 +81,7 @@ int main(void) {
 
   free(characters);
 
+#ifndef _WIN32
   uint8_t utf16be[] = {
     0, 'e',
     0, 0xe8,
@@ -154,6 +155,7 @@ int main(void) {
   assert(characters[3] == 0xea);
 
   free(characters);
+#endif
 
   /* bogus encoding */
   uint8_t bogus[] = {'b', 'o', 'g', 'u', 's'};
@@ -162,7 +164,9 @@ int main(void) {
 
   assert(result == JSCOVERAGE_ERROR_ENCODING_NOT_SUPPORTED);
 
+#ifndef _WIN32
   /* malformed US-ASCII */
+  /* NOTE: Windows simply discards the high bit */
   uint8_t malformed_ascii[] = {
     'e',
     0xe8,
@@ -175,6 +179,7 @@ int main(void) {
   assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
 
   /* malformed UTF-8 */
+  /* NOTE: Windows simply decodes as many bytes as it can, then it stops */
   uint8_t malformed_utf8[] = {
     'e',
     0xe8,
@@ -185,6 +190,7 @@ int main(void) {
   result = jscoverage_bytes_to_characters("UTF-8", malformed_utf8, 4, &characters, &num_characters);
 
   assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
+#endif
 
   return 0;
 }
