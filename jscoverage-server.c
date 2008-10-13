@@ -1111,8 +1111,7 @@ int main(int argc, char ** argv) {
       exit(EXIT_SUCCESS);
     }
     else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--version") == 0) {
-      printf("jscoverage-server %s\n", VERSION);
-      exit(EXIT_SUCCESS);
+      version();
     }
     else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
       verbose = 1;

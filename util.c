@@ -61,6 +61,19 @@ void fatal_command_line(const char * format, ...) {
   exit(EXIT_FAILURE);
 }
 
+void version(void) {
+  printf("%s %s\n", program, VERSION);
+  printf("Character encoding support: ");
+#if HAVE_ICONV
+  printf("iconv\n");
+#elif HAVE_MULTIBYTETOWIDECHAR
+  printf("MultiByteToWideChar\n");
+#else
+  printf("none\n");
+#endif
+  exit(EXIT_SUCCESS);
+}
+
 size_t addst(size_t x, size_t y) {
   if (SIZE_MAX - x < y) {
     fatal("integer overflow");
