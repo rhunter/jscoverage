@@ -22,12 +22,18 @@
 #include "http-server.h"
 
 #include <assert.h>
-#include <errno.h>
 #include <string.h>
 
 #include "util.h"
 
 #define CONNECTION_BUFFER_CAPACITY 8192
+
+#ifdef _WIN32
+#define ERRNO (WSAGetLastError())
+#else
+#include <errno.h>
+#define ERRNO errno
+#endif
 
 struct HTTPConnection {
   SOCKET s;
@@ -83,7 +89,8 @@ HTTPConnection * HTTPConnection_new_server(SOCKET s) {
 int HTTPConnection_delete(HTTPConnection * connection) {
   int result = 0;
   if (closesocket(connection->s) == -1) {
-    result = errno;
+    result = ERRNO;
+    assert(result != 0);
   }
   free(connection);
   return result;
@@ -93,7 +100,8 @@ int HTTPConnection_get_peer(HTTPConnection * connection, struct sockaddr_in * pe
   int result = 0;
   socklen_t length = sizeof(struct sockaddr_in);
   if (getpeername(connection->s, (struct sockaddr *) peer, &length) == -1) {
-    result = errno;
+    result = ERRNO;
+    assert(result != 0);
   }
   return result;
 }
@@ -102,7 +110,9 @@ int HTTPConnection_read_octet(HTTPConnection * connection, int * octet) {
   if (connection->input_buffer_offset >= connection->input_buffer_length) {
     ssize_t bytes_received = recv(connection->s, connection->input_buffer, CONNECTION_BUFFER_CAPACITY, 0);
     if (bytes_received == -1) {
-      return errno;
+      int result = ERRNO;
+      assert(result != 0);
+      return result;
     }
     else if (bytes_received == 0) {
       /* orderly shutdown */
@@ -143,7 +153,9 @@ int HTTPConnection_write(HTTPConnection * connection, const void * p, size_t siz
       /* buffer full */
       ssize_t bytes_sent = send(connection->s, connection->output_buffer, CONNECTION_BUFFER_CAPACITY, 0);
       if (bytes_sent == -1) {
-        return errno;
+        int result = ERRNO;
+        assert(result != 0);
+        return result;
       }
       connection->output_buffer_length = 0;
     }
@@ -170,7 +182,9 @@ int HTTPConnection_flush(HTTPConnection * connection) {
   if (connection->output_buffer_length > 0) {
     ssize_t bytes_sent = send(connection->s, connection->output_buffer, connection->output_buffer_length, 0);
     if (bytes_sent == -1) {
-      return errno;
+      int result = ERRNO;
+      assert(result != 0);
+      return result;
     }
     connection->output_buffer_length = 0;
   }
