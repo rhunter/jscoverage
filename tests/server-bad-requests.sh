@@ -28,6 +28,13 @@ cleanup() {
   rm -fr EXPECTED ACTUAL OUT ERR
 }
 
+bad_request() {
+  /bin/echo -ne "$1" | $NETCAT 127.0.0.1 $server_port > OUT 2> ERR
+  echo 'HTTP/1.1 400 Bad Request' > EXPECTED
+  head -n 1 OUT > ACTUAL
+  diff --strip-trailing-cr EXPECTED ACTUAL
+}
+
 trap 'cleanup' 0 1 2 3 15
 
 export PATH=.:..:$PATH
@@ -39,13 +46,6 @@ else
   delay=2
 fi
 
-rm -fr EXPECTED ACTUAL OUT ERR
-$VALGRIND jscoverage-server --port 8000 > /dev/null 2> /dev/null &
-server_pid=$!
-server_port=8000
-
-sleep $delay
-
 if which netcat > /dev/null 2> /dev/null
 then
   NETCAT=netcat
@@ -56,12 +56,12 @@ else
   NETCAT='perl netcat.pl';
 fi
 
-bad_request() {
-  /bin/echo -ne "$1" | $NETCAT 127.0.0.1 $server_port > OUT 2> ERR
-  echo 'HTTP/1.1 400 Bad Request' > EXPECTED
-  head -n 1 OUT > ACTUAL
-  diff --strip-trailing-cr EXPECTED ACTUAL
-}
+rm -fr EXPECTED ACTUAL OUT ERR
+$VALGRIND jscoverage-server --port 8000 > /dev/null 2> /dev/null &
+server_pid=$!
+server_port=8000
+
+sleep $delay
 
 # send NUL in Request-Line
 bad_request 'GET \0000 HTTP/1.1\r\n\r\n'
