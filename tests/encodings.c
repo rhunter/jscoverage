@@ -177,9 +177,9 @@ int main(void) {
   result = jscoverage_bytes_to_characters("US-ASCII", malformed_ascii, 4, &characters, &num_characters);
 
   assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
+#endif
 
   /* malformed UTF-8 */
-  /* NOTE: Windows simply decodes as many bytes as it can, then it stops */
   uint8_t malformed_utf8[] = {
     'e',
     0xe8,
@@ -190,7 +190,6 @@ int main(void) {
   result = jscoverage_bytes_to_characters("UTF-8", malformed_utf8, 4, &characters, &num_characters);
 
   assert(result == JSCOVERAGE_ERROR_INVALID_BYTE_SEQUENCE);
-#endif
 
   return 0;
 }
