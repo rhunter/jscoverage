@@ -21,8 +21,6 @@
 
 #include "http-server.h"
 
-#include <errno.h>
-
 #include "util.h"
 
 int xgethostbyname(const char * host, struct in_addr * a) {
