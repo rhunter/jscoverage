@@ -147,9 +147,12 @@ static void print_string(JSString * s, Stream * f) {
       case 0xa:
         Stream_write_string(f, "\\n");
         break;
+      /* IE doesn't support this */
+      /*
       case 0xb:
         Stream_write_string(f, "\\v");
         break;
+      */
       case 0xc:
         Stream_write_string(f, "\\f");
         break;
@@ -1177,10 +1180,12 @@ void jscoverage_write_source(const char * id, const jschar * characters, size_t 
           /* line feed (new line) */
           done = true;
           break;
+        /* IE doesn't support this */
+        /*
         case 0xb:
-          /* vertical tab */
           Stream_write_string(output, "\\v");
           break;
+        */
         case 0xc:
           /* form feed */
           Stream_write_string(output, "\\f");
@@ -1235,10 +1240,12 @@ void jscoverage_write_source(const char * id, const jschar * characters, size_t 
           /* line feed (new line) */
           done = true;
           break;
+        /* IE doesn't support this */
+        /*
         case 0xb:
-          /* vertical tab */
           Stream_write_string(output, "\\v");
           break;
+        */
         case 0xc:
           /* form feed */
           Stream_write_string(output, "\\f");

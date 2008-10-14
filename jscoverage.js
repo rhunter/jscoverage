@@ -921,8 +921,11 @@ function jscoverage_quote(s) {
       return '\\r';
     case '\t':
       return '\\t';
+    // IE doesn't support this
+    /*
     case '\v':
       return '\\v';
+    */
     case '"':
       return '\\"';
     case '\\':

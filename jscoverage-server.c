@@ -444,9 +444,12 @@ static void write_js_quoted_string(FILE * f, char * data, size_t length) {
     case '\t':
       fputs("\\t", f);
       break;
+    /* IE doesn't support this */
+    /*
     case '\v':
       fputs("\\v", f);
       break;
+    */
     case '"':
       fputs("\\\"", f);
       break;

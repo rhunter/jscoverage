@@ -26,8 +26,11 @@ if (! window.jscoverage_report) {
           return '\\r';
         case '\t':
           return '\\t';
+        // IE doesn't support this
+        /*
         case '\v':
           return '\\v';
+        */
         case '"':
           return '\\"';
         case '\\':
