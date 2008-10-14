@@ -1065,7 +1065,7 @@ new Test.Unit.Runner({
 
     var self = this;
     var request;
-    XMLHttpRequest = function () {
+    window.XMLHttpRequest = function () {
       this.headers = {};
       this.open = function (method, url, isAsync) {
         self.assertIdentical('POST', method);
@@ -1163,7 +1163,7 @@ new Test.Unit.Runner({
 
     var self = this;
     var request;
-    XMLHttpRequest = function () {
+    window.XMLHttpRequest = function () {
       this.headers = {};
       this.open = function (method, url, isAsync) {
         self.assertIdentical('POST', method);
