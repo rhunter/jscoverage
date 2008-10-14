@@ -208,9 +208,11 @@ new Test.Unit.Runner({
       // hide the extra tab stuff
       jscoverage_initTabControl();
       jscoverage_setSize();
-      var body = document.getElementById('body');
-      var tabPages = document.getElementById('tabPages');
-      assertEqual(jscoverage_getViewportHeight() - jscoverage_findPos(tabPages) - 12, tabPages.clientHeight);
+      var body = document.getElementsByTagName('body').item(0);
+      var browserTabPage = document.getElementById('tabPages').getElementsByTagName('div').item(0);
+      var tabPagesPos = (jscoverage_findPos(browserTabPage) + 1);
+      var expectedHeight = jscoverage_getViewportHeight() - tabPagesPos - 12;
+      assertEqual(expectedHeight, browserTabPage.clientHeight);
     }
   },
 
