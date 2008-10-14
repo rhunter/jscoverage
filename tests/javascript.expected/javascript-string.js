@@ -27,7 +27,7 @@ x = "\"";
 _$jscoverage['javascript-string.js'][6]++;
 x = "'";
 _$jscoverage['javascript-string.js'][7]++;
-x = "\b\t\n\v\f\r\"'\\";
+x = "\b\t\n\u000b\f\r\"'\\";
 _$jscoverage['javascript-string.js'][8]++;
 x = new RegExp("x\\(\\)\\\\\\/");
 _$jscoverage['javascript-string.js'].source = ["x <span class=\"k\">=</span> <span class=\"s\">\"\"</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">''</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">\"x\"</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">'x'</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">\"</span><span class=\"t\">\\\"</span><span class=\"s\">\"</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">'</span><span class=\"t\">\\'</span><span class=\"s\">'</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"s\">\"</span><span class=\"t\">\\b\\t\\n\\v\\f\\r\\\"\\'\\\\</span><span class=\"s\">\"</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> <span class=\"k\">new</span> RegExp<span class=\"k\">(</span><span class=\"s\">'x</span><span class=\"t\">\\\\</span><span class=\"s\">(</span><span class=\"t\">\\\\</span><span class=\"s\">)</span><span class=\"t\">\\\\\\\\\\\\</span><span class=\"s\">/'</span><span class=\"k\">);</span>"];
