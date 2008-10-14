@@ -884,7 +884,7 @@ new Test.Unit.Runner({
   test_quote: function() {
     this.assertIdentical('"\\u0000\\u0001\\u0002\\u0003"', jscoverage_quote('\u0000\u0001\u0002\u0003'));
     this.assertIdentical('"\\u0004\\u0005\\u0006\\u0007"', jscoverage_quote('\u0004\u0005\u0006\u0007'));
-    this.assertIdentical('"\\b\\t\\n\\v"', jscoverage_quote('\u0008\u0009\u000a\u000b'));
+    this.assertIdentical('"\\b\\t\\n\\u000b"', jscoverage_quote('\u0008\u0009\u000a\u000b'));
     this.assertIdentical('"\\f\\r\\u000e\\u000f"', jscoverage_quote('\u000c\u000d\u000e\u000f'));
     this.assertIdentical('"\\u0010\\u0011\\u0012\\u0013"', jscoverage_quote('\u0010\u0011\u0012\u0013'));
     this.assertIdentical('"\\u0014\\u0015\\u0016\\u0017"', jscoverage_quote('\u0014\u0015\u0016\u0017'));
@@ -1090,7 +1090,7 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
-    var funnyName = '\b\f\n\r\t\v"\\\u0001';
+    var funnyName = '\b\f\n\r\t"\\\u0001';
     _$jscoverage[funnyName] = [];
     _$jscoverage[funnyName][10] = 1000;
     jscoverage_report();
@@ -1140,7 +1140,7 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
-    var funnyName = '\b\f\n\r\t\v"\\\u0001';
+    var funnyName = '\b\f\n\r\t"\\\u0001';
     _$jscoverage[funnyName] = [];
     _$jscoverage[funnyName][10] = 1000;
     jscoverage_report('dir');
