@@ -451,7 +451,7 @@ new Test.Unit.Runner({
     input.value = '';
     for (var i = 0; i < s.length; i++) {
       e.keyCode = s.charCodeAt(i);
-      input.value = input.value + s[i];
+      input.value = input.value + s.charAt(i);
       jscoverage_input_keypress(e);
     }
     e.keyCode = 13;
