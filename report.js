@@ -1,5 +1,5 @@
 if (! window.jscoverage_report) {
-  window.jscoverage_report = function (dir) {
+  window.jscoverage_report = function jscoverage_report(dir) {
     var createRequest = function () {
       if (window.XMLHttpRequest) {
         return new XMLHttpRequest();
