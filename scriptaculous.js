@@ -1063,7 +1063,7 @@ new Test.Unit.Runner({
   },
 
   test_report: function() {
-    var original = XMLHttpRequest;
+    var original = window.XMLHttpRequest;
 
     var self = this;
     var request;
@@ -1111,7 +1111,7 @@ new Test.Unit.Runner({
   },
 
   test_report_dir: function() {
-    var original = XMLHttpRequest;
+    var original = window.XMLHttpRequest;
     window.XMLHttpRequest = null;
 
     var self = this;
@@ -1161,7 +1161,7 @@ new Test.Unit.Runner({
   },
 
   test_report_error: function() {
-    var original = XMLHttpRequest;
+    var original = window.XMLHttpRequest;
 
     var self = this;
     var request;
