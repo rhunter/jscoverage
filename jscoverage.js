@@ -363,7 +363,11 @@ function jscoverage_button_click() {
 function jscoverage_browser_load() {
   /* update the input box */
   var input = document.getElementById("location");
-  input.value = frames[0].location;
+
+  /* sometimes IE seems to fire this after the tab has been removed */
+  if (input) {
+    input.value = frames[0].location;
+  }
 }
 
 // -----------------------------------------------------------------------------
