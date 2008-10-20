@@ -4,41 +4,6 @@
   margin-right: 10px;
 }
 
-h1 {
-  display: block;
-  float: left;
-  padding-bottom: 0.5em;
-}
-
-.ProgressBar {
-  display: block;
-  float: left;
-  margin-top: 0.8em;
-}
-
-.ProgressPercentage {
-  display: block;
-  float: left;
-}
-
-.ProgressGraph {
-  display: block;
-  float: left;
-  margin-top: 0.2em;
-  overflow: hidden;
-}
-
-.ProgressCovered {
-  overflow: hidden;
-}
-
-#progressLabel {
-  display: block;
-  float: left;
-  margin-top: 0.8em;
-  margin-left: 0.2em;
-}
-
 #tabs {
   clear: all;
   position: static;
