@@ -3,17 +3,17 @@
 <head>
 <title>JSCoverage user manual</title>
 <link rel="stylesheet" type="text/css" href="sh_nedit.min.css">
-<script src="sh_main.min.js"></script>
-<script src="sh_html.min.js"></script>
-<script src="sh_javascript.min.js"></script>
 <link rel="stylesheet" type="text/css" href="doc.css">
+<script type="text/javascript" src="sh_main.min.js"></script>
+<script type="text/javascript" src="sh_html.min.js"></script>
+<script type="text/javascript" src="sh_javascript.min.js"></script>
 </head>
 <body onload="sh_highlightDocument();">
 
 <h1>JSCoverage user manual</h1>
 
 <p>
-JSCoverage is a tool that measures code coverage in JavaScript programs.
+JSCoverage is a tool that measures code coverage for JavaScript programs.
 </p>
 
 <p>
@@ -78,7 +78,15 @@ the <code>jscoverage-server</code> executable to a suitable location in your
 <h2>Using the <code>jscoverage</code> program</h2>
 
 <p>
-Using the <code>jscoverage</code> program involves the following steps:
+To demonstrate how the <code>jscoverage</code> program works, we will use the
+trivial example JavaScript code located in the
+<code>doc/example/</code> directory of the JSCoverage distribution.  You can run
+this example by viewing the file <code>doc/example/index.html</code> in your web browser.
+</p>
+
+<p>
+Generating code coverage statistics for this example using the
+<code>jscoverage</code> program involves the following steps:
 </p>
 
 <h3>1. Instrumenting code</h3>
@@ -102,7 +110,7 @@ any files ending with a <code>.js</code> extension.
 </p>
 
 <p>
-For example, if you have a file
+The directory structure under <var>SOURCE-DIRECTORY</var> is preserved, so that if you have a file
 <code><var>SOURCE-DIRECTORY</var>/dir/index.html</code> referencing the script
 <code><var>SOURCE-DIRECTORY</var>/dir/script.js</code>, then
 <code>jscoverage</code> will create a copy of the HTML file at
@@ -136,10 +144,44 @@ In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html
 which is used to execute the instrumented code.
 </p>
 
+<p>
+To instrument the code in the <code>doc/example/</code> directory, execute the
+following command from the top-level directory of the JSCoverage distribution:
+</p>
+
+<pre>
+jscoverage doc/example doc/instrumented
+</pre>
+
+<p>
+This will create the directory <code>doc/instrumented/</code> and place an
+instrumented copy of the code from <code>doc/example/</code> in
+<code>doc/instrumented/</code>.
+</p>
+
+<table>
+<tr>
+<td><pre>
+doc/example/
+  index.html
+  script.js
+
+</pre></td>
+<td class="arrow">&rarr;</td>
+<td><pre>
+doc/instrumented/
+  index.html
+  script.js [instrumented]
+  jscoverage.html
+</pre></td>
+</tr>
+</table>
+
 <h3>2. Executing the instrumented code in a web browser</h3>
 
 <p>
-Open <code>jscoverage.html</code> in your web browser.
+Open the generated <code>jscoverage.html</code> file
+(<code>doc/instrumented/jscoverage.html</code>) in your web browser.
 The page contains a tabbed user interface:
 </p>
 
@@ -156,79 +198,29 @@ each line of code was executed.
 <p>
 The "Browser" tab contains an <code>&lt;iframe&gt;</code>, which is initially empty.
 You can load a page into this frame by
-entering its URL into the "URL" input field.  For example, to load
-the file <code><var>DESTINATION-DIRECTORY</var>/dir/index.html</code>, you can
-enter the relative URL <code>dir/index.html</code> into the input field.
+entering its URL into the "URL" input field.
 You can load any page located in <code><var>DESTINATION-DIRECTORY</var>/</code>
 or a subdirectory underneath <code><var>DESTINATION-DIRECTORY</var>/</code>; loading a page
 from outside <code><var>DESTINATION-DIRECTORY</var>/</code>, or from a foreign web
 server, will give unexpected results.
 </p>
 
-<h3>3. Generating a coverage report</h3>
-
 <p>
-Once the JavaScript code in the page in the "Browser" tab has been executed, click on
-the "Summary" tab.  This will display the current code coverage statistics.
+For example, you can load the file <code>doc/instrumented/index.html</code> by typing
+<code>index.html</code> in the "URL" input field (relative URLs are acceptable).
 </p>
 
 <p>
-As long as you do not reload the
-<code>jscoverage.html</code> page, the coverage report statistics are
-cumulative.  If you execute more JavaScript in the frame in the "Browser" tab (e.g., by clicking on a link to
-another scripted page, or by reloading the frame containing a scripted
-page) and switch to the "Summary" tab again,
-the coverage report will combine the statistics from the previous report with any newly generated statistics.
-Reloading <code>jscoverage.html</code> resets all code coverage statistics to zero.
+Alternatively, you can load a page into the <code>&lt;iframe&gt;</code> by
+appending the page URL to the query string of the <code>jscoverage.html</code> URL.
+For example, appending <code>?index.html</code> to the <code>jscoverage.html</code> URL
+will cause the <code>index.html</code> file to be loaded automatically.
 </p>
-
-<h2>Example</h2>
-
-<p>
-The JSCoverage distribution comes with a trivial example program in the <code>doc/example</code> directory.
-You can view the file <code>doc/example/index.html</code> in your web browser to run the (uninstrumented) program.
-To instrument this program, follow these steps:
-</p>
-
-<h3>1. Instrumenting code</h3>
-
-<p>
-From the main distribution directory, execute the command:
-</p>
-
-<pre>
-jscoverage doc/example doc/instrumented
-</pre>
-
-<p>
-This will create the directory <code>doc/instrumented</code> and
-place an instrumented copy of the code from <code>doc/example</code> in <code>doc/instrumented</code>.
-</p>
-
-<h3>2. Executing the instrumented code in a web browser</h3>
-
-<p>
-You can load the file <code>doc/instrumented/jscoverage.html</code> in your web browser and type
-the URL for the instrumented code in the "URL" input field.  Since a relative URL is accepted, you
-can simply type <code>index.html</code> to load the page.
-</p>
-
-<p>
-Alternatively, you can append the URL to the query string of the
-<code>jscoverage.html</code> URL; for example, if you are in the main JSCoverage
-directory and the Firefox executable is in your <code>PATH</code>, you can load
-the <code>jscoverage.html</code> frameset and the <code>index.html</code> page
-all in one command line:
-</p>
-
-<pre>
-firefox "doc/instrumented/jscoverage.html?index.html"
-</pre>
 
 <p><img src="screenshot2.png" alt="Screenshot"></p>
 
 <p>
-For this particular page, the JavaScript does not execute automatically:
+For this example, the JavaScript does not execute automatically:
 you have to select one of the radio buttons to execute the code.
 </p>
 
@@ -237,8 +229,8 @@ you have to select one of the radio buttons to execute the code.
 <h3>3. Generating a coverage report</h3>
 
 <p>
-Once you have executed the JavaScript code, you are instructed to click on the
-"Summary" tab.
+Once the JavaScript code in the page in the "Browser" tab has been executed, click on
+the "Summary" tab.  This will display the current code coverage statistics.
 </p>
 
 <p><img src="screenshot4.png" alt="Screenshot"></p>
@@ -254,6 +246,16 @@ You can click one of the links to get a detailed view of a JavaScript source fil
 </p>
 
 <p><img src="screenshot6.png" alt="Screenshot"></p>
+
+<p>
+As long as you do not reload the
+<code>jscoverage.html</code> page, the coverage report statistics are
+cumulative.  If you execute more JavaScript in the frame in the "Browser" tab (e.g., by clicking on a link to
+another scripted page, or by reloading the frame containing a scripted
+page) and switch to the "Summary" tab again,
+the coverage report will combine the statistics from the previous report with any newly generated statistics.
+Reloading <code>jscoverage.html</code> resets all code coverage statistics to zero.
+</p>
 
 <h2>Inverted mode</h2>
 
@@ -299,15 +301,16 @@ link to <code>jscoverage.html</code> is not sufficient.
 
 <p>
 An example is located in the <code>doc/example-inverted</code> directory.
-You can instrument the code and launch the <code>index.html</code> page:
+You can instrument the code with the <code>jscoverage</code> program:
 </p>
 
 <pre>
 jscoverage doc/example-inverted doc/instrumented-inverted
-firefox "doc/instrumented-inverted/index.html"
 </pre>
 
 <p>
+You can load the page <code>doc/instrumented-inverted/index.html</code>
+directly in your web browser.
 From this page, you select one of the radio buttons and then click the "Coverage
 report" button to launch the JSCoverage report.
 </p>
