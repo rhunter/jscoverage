@@ -463,7 +463,9 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     }
 
-    assert(t.pos.begin.lineno == t.pos.end.lineno);
+    if (t.pos.begin.lineno != t.pos.end.lineno) {
+      fatal("%s: line %u: token spans multiple lines", id, t.pos.begin.lineno);
+    }
     if (t.pos.begin.index > t.pos.end.index) {
       fatal("%s: script contains line with more than 65,535 characters", id);
     }
