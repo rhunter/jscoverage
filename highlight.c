@@ -227,47 +227,13 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
   current_class = CLASS_NONE;
 
   /* tokenize the JavaScript */
-  JSTokenStream * token_stream = js_NewTokenStream(context, characters, num_characters, NULL, 1, NULL);
-  if (token_stream == NULL) {
+  JSTokenStream token_stream;
+  if (! js_InitTokenStream(context, &token_stream, characters, num_characters, NULL, NULL, 1)) {
     fatal("cannot create token stream from JavaScript file %s", id);
   }
 
-    /* see js_ParseTokenStream in jsparse.c */
-    JSObject * chain = NULL;
-    JSContext * cx = context;
-    JSStackFrame *fp, frame;
-
-    /*
-     * Push a compiler frame if we have no frames, or if the top frame is a
-     * lightweight function activation, or if its scope chain doesn't match
-     * the one passed to us.
-     */
-    fp = cx->fp;
-    if (!fp || !fp->varobj || fp->scopeChain != chain) {
-        memset(&frame, 0, sizeof frame);
-        frame.varobj = frame.scopeChain = chain;
-        if (cx->options & JSOPTION_VAROBJFIX) {
-            while ((chain = JS_GetParent(cx, chain)) != NULL)
-                frame.varobj = chain;
-        }
-        frame.down = fp;
-        if (fp)
-            frame.flags = fp->flags & (JSFRAME_SPECIAL | JSFRAME_COMPILE_N_GO);
-        cx->fp = &frame;
-    }
-
-    /*
-     * Protect atoms from being collected by a GC activation, which might
-     * - nest on this thread due to out of memory (the so-called "last ditch"
-     *   GC attempted within js_NewGCThing), or
-     * - run for any reason on another thread if this thread is suspended on
-     *   an object lock before it finishes generating bytecode into a script
-     *   protected from the GC by a root or a stack frame reference.
-     */
-    JS_KEEP_ATOMS(cx->runtime);
-
   for (;;) {
-    JSTokenType tt = js_GetToken(context, token_stream);
+    JSTokenType tt = js_GetToken(context, &token_stream);
 
     if (tt == TOK_ERROR) {
       fatal("JavaScript parse error: %s: line = %d, col = %d\n", id, line_num, column_num);
@@ -279,7 +245,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     }
 
     /* mark the chars before the token */
-    JSToken t = CURRENT_TOKEN(token_stream);
+    JSToken t = CURRENT_TOKEN(&token_stream);
     mark_nontoken_chars(t.pos.begin.lineno, t.pos.begin.index);
 
     /* mark the token */
@@ -290,7 +256,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       abort();
     case TOK_EOL:
       class = CLASS_NONE;
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_SEMI:
     case TOK_COMMA:
@@ -310,7 +276,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_STAR:
     case TOK_DIVOP:
       class = CLASS_SYMBOL;
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_UNARYOP:
       switch (t.t_op) {
@@ -319,15 +285,15 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       case JSOP_NOT:
       case JSOP_BITNOT:
         class = CLASS_SYMBOL;
-        token_stream->flags |= TSF_OPERAND;
+        token_stream.flags |= TSF_OPERAND;
         break;
       case JSOP_TYPEOF:
         class = CLASS_KEYWORD;
-        token_stream->flags |= TSF_OPERAND;
+        token_stream.flags |= TSF_OPERAND;
         break;
       case JSOP_VOID:
         class = CLASS_TYPE;
-        token_stream->flags |= TSF_OPERAND;
+        token_stream.flags |= TSF_OPERAND;
         break;
       default:
         abort();
@@ -336,52 +302,52 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_INC:
     case TOK_DEC:
       class = CLASS_SYMBOL;
-      /* token_stream->flags does not change w.r.t. TSF_OPERAND */
+      /* token_stream.flags does not change w.r.t. TSF_OPERAND */
       break;
     case TOK_DOT:
     case TOK_LB:
       class = CLASS_SYMBOL;
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RB:
       class = CLASS_SYMBOL;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_LC:
       class = CLASS_CBRACKET;
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RC:
       class = CLASS_CBRACKET;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_LP:
       class = CLASS_SYMBOL;
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RP:
       class = CLASS_SYMBOL;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_NAME:
       class = CLASS_NONE;
-      token_stream->flags &= ~TSF_OPERAND;
-      if (js_PeekToken(context, token_stream) == TOK_LP) {
+      token_stream.flags &= ~TSF_OPERAND;
+      if (js_PeekToken(context, &token_stream) == TOK_LP) {
         /* function */
         class = CLASS_NONE;
       }
       break;
     case TOK_NUMBER:
       class = CLASS_NUMBER;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_STRING:
       class = CLASS_STRING;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
-    case TOK_OBJECT:
+    case TOK_REGEXP:
       class = CLASS_REGEXP;
-      token_stream->flags &= ~TSF_OPERAND;
+      token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_PRIMARY:
       switch (t.t_op) {
@@ -390,7 +356,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       case JSOP_NULL:
       case JSOP_THIS:
         class = CLASS_KEYWORD;
-        token_stream->flags &= ~TSF_OPERAND;
+        token_stream.flags &= ~TSF_OPERAND;
         break;
       default:
         abort();
@@ -398,11 +364,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_FUNCTION:
       class = CLASS_KEYWORD;
-      token_stream->flags |= TSF_OPERAND;
-      break;
-    case TOK_EXPORT:
-    case TOK_IMPORT:
-      abort();
+      token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_IF:
     case TOK_ELSE:
@@ -420,7 +382,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_RETURN:
     case TOK_NEW:
     case TOK_DELETE:
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       class = CLASS_KEYWORD;
       break;
     case TOK_DEFSHARP:
@@ -433,7 +395,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_THROW:
     case TOK_INSTANCEOF:
     case TOK_DEBUGGER:
-      token_stream->flags |= TSF_OPERAND;
+      token_stream.flags |= TSF_OPERAND;
       class = CLASS_KEYWORD;
       break;
     case TOK_XMLSTAGO:
@@ -495,7 +457,5 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     output_character('\n', CLASS_NONE);
   }
 
-  /* cleanup */
-  JS_UNKEEP_ATOMS(cx->runtime);
-  context->fp = fp;
+  js_CloseTokenStream(context, &token_stream);
 }
