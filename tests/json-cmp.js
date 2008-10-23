@@ -55,26 +55,11 @@ function json_equals(json1, json2) {
   }
 }
 
-if (arguments.length !== 2) {
-  print("Usage: json-cmp.js JSON1 JSON2");
-  quit(1);
-}
-
-function parse_json(file) {
-  var f = new File(file);
-  f.open('read', 'text');
-  var contents = f.readAll().join('\n');
-  f.close();
-  return eval('(' + contents + ')');
-}
-
-var json1 = parse_json(arguments[0]);
-var json2 = parse_json(arguments[1]);
-if (json_equals(json1, json2)) {
+if (json_equals(EXPECTED, ACTUAL)) {
   quit(0);
 }
 else {
-  print(json1.toSource());
-  print(json2.toSource());
+  print(EXPECTED.toSource());
+  print(ACTUAL.toSource());
   quit(1);
 }

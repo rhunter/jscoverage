@@ -18,6 +18,8 @@
 
 set -e
 
+. common.sh
+
 shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
   wait $server_pid
@@ -54,12 +56,12 @@ sleep $delay
 cat store.json | sed "s/@PREFIX@/\\//g" > TMP
 wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/\\//g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 cat store.json | sed "s/@PREFIX@/\\//g" > TMP
 wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/\\//g" | sed "s/,1/,2/g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 # try invalid method
 echo 405 > EXPECTED
@@ -70,7 +72,7 @@ diff EXPECTED ACTUAL
 cat store.json | sed "s/@PREFIX@/\\//g" > TMP
 wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store/DIR > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/\\//g" > TMP
-js json-cmp.js TMP DIR/DIR/jscoverage.json
+json_cmp TMP DIR/DIR/jscoverage.json
 
 shutdown
 
@@ -90,19 +92,19 @@ sleep $delay
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" | sed "s/,1/,2/g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 # test cached source
 rm -fr DIR
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 shutdown
 
@@ -116,7 +118,7 @@ sleep $delay
 # store JSON with bad source URLs
 cat store.json | sed "s/@PREFIX@//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
-js json-cmp.js store-bad-source-urls.expected.json DIR/jscoverage.json
+json_cmp store-bad-source-urls.expected.json DIR/jscoverage.json
 sort ERR -o ERR
 diff --strip-trailing-cr store-bad-source-urls.expected.err ERR
 
@@ -132,6 +134,6 @@ sleep $delay
 # store JSON with unreachable source URLs
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:1\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
-js json-cmp.js store-unreachable-source-urls.expected.json DIR/jscoverage.json
+json_cmp store-unreachable-source-urls.expected.json DIR/jscoverage.json
 sort ERR -o ERR
 diff --strip-trailing-cr store-unreachable-source-urls.expected.err ERR

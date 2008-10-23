@@ -18,6 +18,8 @@
 
 set -e
 
+. common.sh
+
 shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
   wait $server_pid
@@ -53,6 +55,6 @@ sleep $delay
 
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
-js json-cmp.js store-source-urls.expected.json DIR/jscoverage.json
+json_cmp store-source-urls.expected.json DIR/jscoverage.json
 sort ERR -o ERR
 diff --strip-trailing-cr store-source-urls.expected.err ERR

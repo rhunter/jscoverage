@@ -18,6 +18,8 @@
 
 set -e
 
+. common.sh
+
 # skip on windows
 uname=`uname`
 case "$uname" in
@@ -56,7 +58,7 @@ sleep $delay
 cat store.json | sed "s/@PREFIX@/\\//g" > TMP
 wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 cat store.expected.json | sed "s/@PREFIX@/\\//g" > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json
 
 chmod -r DIR/jscoverage.json
 

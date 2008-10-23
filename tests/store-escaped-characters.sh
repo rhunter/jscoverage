@@ -18,6 +18,8 @@
 
 set -e
 
+. common.sh
+
 shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
   wait $server_pid
@@ -46,7 +48,7 @@ server_port=8080
 sleep $delay
 
 wget --post-file=store-escaped-characters.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
-js json-cmp.js store-escaped-characters.expected.json DIR/jscoverage.json
+json_cmp store-escaped-characters.expected.json DIR/jscoverage.json
 wget --post-file=store-escaped-characters.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 cat store-escaped-characters.expected.json | sed s/1,/2,/g > TMP
-js json-cmp.js TMP DIR/jscoverage.json
+json_cmp TMP DIR/jscoverage.json

@@ -34,7 +34,7 @@ noinst_PROGRAMS = asprintf \
 asprintf_SOURCES = asprintf.c ../util.c
 
 encodings_SOURCES = encodings.c ../encoding.c ../util.c
-encodings_CPPFLAGS = -I../js/src
+encodings_CPPFLAGS = -DXP_UNIX -I../js
 encodings_LDADD = @LIBICONV@
 
 gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
@@ -61,9 +61,8 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
-json_CPPFLAGS = -DXP_UNIX -I../js/src
-json_LDFLAGS = -static
-json_LDADD = ../js/libjs.la -lm @LIBICONV@
+json_CPPFLAGS = -DXP_UNIX -I../js
+json_LDADD = ../js/libjs.a -lm @LIBICONV@
 
 mkdirs_SOURCES = mkdirs.c ../util.c
 
