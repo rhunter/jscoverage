@@ -544,7 +544,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       instrument_expression(node->pn_kid, f);
       break;
     default:
-      abort();
+      fatal("%s: unknown operator (%d) in file", file_id, node->pn_op);
       break;
     }
     break;
