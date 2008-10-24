@@ -264,6 +264,18 @@ enum FunctionType {
   FUNCTION_GETTER_OR_SETTER
 };
 
+static void output_for_in(JSParseNode * node, Stream * f) {
+  assert(node->pn_type == TOK_FOR);
+  assert(node->pn_arity == PN_BINARY);
+  Stream_write_string(f, "for ");
+  if (node->pn_iflags & JSITER_FOREACH) {
+    Stream_write_string(f, "each ");
+  }
+  Stream_write_char(f, '(');
+  instrument_expression(node->pn_left, f);
+  Stream_write_char(f, ')');
+}
+
 static void instrument_function(JSParseNode * node, Stream * f, int indent, enum FunctionType type) {
   assert(node->pn_type == TOK_FUNCTION);
   assert(node->pn_arity == PN_FUNC);
@@ -320,15 +332,56 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
 }
 
 static void instrument_function_call(JSParseNode * node, Stream * f) {
-  instrument_expression(node->pn_head, f);
-  Stream_write_char(f, '(');
-  for (struct JSParseNode * p = node->pn_head->pn_next; p != NULL; p = p->pn_next) {
-    if (p != node->pn_head->pn_next) {
-      Stream_write_string(f, ", ");
+  if (node->pn_head->pn_type == TOK_FUNCTION) {
+    /* it's a generator expression */
+    JSParseNode * function_node = node->pn_head;
+    JSParseNode * lexical_scope_node = function_node->pn_body;
+    assert(lexical_scope_node->pn_type == TOK_LEXICALSCOPE);
+    assert(lexical_scope_node->pn_arity == PN_NAME);
+    JSParseNode * for_node = lexical_scope_node->pn_body;
+    assert(for_node->pn_type == TOK_FOR);
+    assert(for_node->pn_arity == PN_BINARY);
+    JSParseNode * if_node = NULL;
+    JSParseNode * semi_node;
+    switch (for_node->pn_right->pn_type) {
+    case TOK_SEMI:
+      semi_node = for_node->pn_right;
+      break;
+    case TOK_IF:
+      if_node = for_node->pn_right;
+      assert(if_node->pn_arity == PN_TERNARY);
+      semi_node = if_node->pn_kid2;
+      assert(semi_node->pn_type == TOK_SEMI);
+      break;
+    default:
+      abort();
+      break;
     }
-    instrument_expression(p, f);
+    assert(semi_node->pn_arity == PN_UNARY);
+    JSParseNode * yield_node = semi_node->pn_kid;
+    assert(yield_node->pn_type == TOK_YIELD);
+    Stream_write_char(f, '(');
+    instrument_expression(yield_node->pn_kid, f);
+    Stream_write_char(f, ' ');
+    output_for_in(for_node, f);
+    if (if_node) {
+      Stream_write_string(f, " if (");
+      instrument_expression(if_node->pn_kid1, f);
+      Stream_write_char(f, ')');
+    }
+    Stream_write_char(f, ')');
   }
-  Stream_write_char(f, ')');
+  else {
+    instrument_expression(node->pn_head, f);
+    Stream_write_char(f, '(');
+    for (struct JSParseNode * p = node->pn_head->pn_next; p != NULL; p = p->pn_next) {
+      if (p != node->pn_head->pn_next) {
+        Stream_write_string(f, ", ");
+      }
+      instrument_expression(p, f);
+    }
+    Stream_write_char(f, ')');
+  }
 }
 
 static void instrument_declarations(JSParseNode * list, Stream * f) {
@@ -357,18 +410,6 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
       break;
     }
   }
-}
-
-static void output_for_in(JSParseNode * node, Stream * f) {
-  assert(node->pn_type == TOK_FOR);
-  assert(node->pn_arity == PN_BINARY);
-  Stream_write_string(f, "for ");
-  if (node->pn_iflags & JSITER_FOREACH) {
-    Stream_write_string(f, "each ");
-  }
-  Stream_write_char(f, '(');
-  instrument_expression(node->pn_left, f);
-  Stream_write_char(f, ')');
 }
 
 /*
@@ -711,8 +752,8 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       JSParseNode * for_node = block_node->pn_expr;
       assert(for_node->pn_type == TOK_FOR);
       assert(for_node->pn_arity == PN_BINARY);
-      JSParseNode * push_node;
       JSParseNode * if_node = NULL;
+      JSParseNode * push_node;
       switch (for_node->pn_right->pn_type) {
       case TOK_ARRAYPUSH:
         push_node = for_node->pn_right;
