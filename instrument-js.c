@@ -583,15 +583,27 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     assert(ATOM_IS_STRING(node->pn_atom));
     {
       JSString * s = ATOM_TO_STRING(node->pn_atom);
-      bool is_keyword = (js_CheckKeyword(JSSTRING_CHARS(s), JSSTRING_LENGTH(s)) != TOK_EOF);
-      if (! is_keyword && js_IsIdentifier(s)) {
-        Stream_write_char(f, '.');
-        print_string_atom(node->pn_atom, f);
+      bool must_quote;
+      if (JSSTRING_LENGTH(s) == 0) {
+        must_quote = true;
+      }
+      else if (js_CheckKeyword(JSSTRING_CHARS(s), JSSTRING_LENGTH(s)) != TOK_EOF) {
+        must_quote = true;
+      }
+      else if (! js_IsIdentifier(s)) {
+        must_quote = true;
       }
       else {
+        must_quote = false;
+      }
+      if (must_quote) {
         Stream_write_char(f, '[');
         print_quoted_string_atom(node->pn_atom, f);
         Stream_write_char(f, ']');
+      }
+      else {
+        Stream_write_char(f, '.');
+        print_string_atom(node->pn_atom, f);
       }
     }
     break;
