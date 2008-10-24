@@ -761,8 +761,11 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     break;
   case TOK_YIELD:
     assert(node->pn_arity == PN_UNARY);
-    Stream_write_string(f, "yield ");
-    instrument_expression(node->pn_kid, f);
+    Stream_write_string(f, "yield");
+    if (node->pn_kid != NULL) {
+      Stream_write_char(f, ' ');
+      instrument_expression(node->pn_kid, f);
+    }
     break;
   case TOK_ARRAYCOMP:
     assert(node->pn_arity == PN_LIST);
