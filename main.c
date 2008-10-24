@@ -95,6 +95,16 @@ int main(int argc, char ** argv) {
     else if (strncmp(argv[i], "--encoding=", 11) == 0) {
       jscoverage_encoding = argv[i] + 11;
     }
+    else if (strcmp(argv[i], "--js-version") == 0) {
+      i++;
+      if (i == argc) {
+        fatal_command_line("--js-version: option requires an argument");
+      }
+      jscoverage_set_js_version(argv[i]);
+    }
+    else if (strncmp(argv[i], "--js-version=", 13) == 0) {
+      jscoverage_set_js_version(argv[i] + 13);
+    }
     else if (strncmp(argv[i], "-", 1) == 0) {
       fatal_command_line("unrecognized option `%s'", argv[i]);
     }

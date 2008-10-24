@@ -1166,6 +1166,17 @@ int main(int argc, char ** argv) {
       ip_address = argv[i] + 13;
     }
 
+    else if (strcmp(argv[i], "--js-version") == 0) {
+      i++;
+      if (i == argc) {
+        fatal_command_line("--js-version: option requires an argument");
+      }
+      jscoverage_set_js_version(argv[i]);
+    }
+    else if (strncmp(argv[i], "--js-version=", 13) == 0) {
+      jscoverage_set_js_version(argv[i] + 13);
+    }
+
     else if (strcmp(argv[i], "--no-highlight") == 0) {
       jscoverage_highlight = false;
     }

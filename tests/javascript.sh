@@ -32,10 +32,10 @@ fi
 rm -fr DIR
 case "$character_encoding_support" in
   yes)
-    $VALGRIND jscoverage --encoding ISO-8859-1 javascript DIR
+    $VALGRIND jscoverage --js-version 180 --encoding ISO-8859-1 javascript DIR
     ;;
   *)
-    $VALGRIND jscoverage --exclude=javascript-iso-8859-1.js javascript DIR
+    $VALGRIND jscoverage --js-version=180 --exclude=javascript-iso-8859-1.js javascript DIR
     ;;
 esac
 for i in javascript/*.js

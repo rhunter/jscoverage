@@ -31,6 +31,7 @@
 #include <jsexn.h>
 #include <jsfun.h>
 #include <jsinterp.h>
+#include <jsiter.h>
 #include <jsparse.h>
 #include <jsregexp.h>
 #include <jsscope.h>
@@ -55,6 +56,7 @@ static bool * exclusive_directives = NULL;
 static JSRuntime * runtime = NULL;
 static JSContext * context = NULL;
 static JSObject * global = NULL;
+static JSVersion js_version = JSVERSION_ECMA_3;
 
 /*
 JSParseNode objects store line numbers starting from 1.
@@ -63,6 +65,10 @@ The lines array stores line numbers starting from 0.
 static const char * file_id = NULL;
 static char * lines = NULL;
 static uint16_t num_lines = 0;
+
+void jscoverage_set_js_version(const char * version) {
+  js_version = atoi(version);
+}
 
 void jscoverage_init(void) {
   runtime = JS_NewRuntime(8L * 1024L * 1024L);
@@ -74,6 +80,8 @@ void jscoverage_init(void) {
   if (context == NULL) {
     fatal("cannot create context");
   }
+
+  JS_SetVersion(context, js_version);
 
   global = JS_NewObject(context, NULL, NULL, NULL);
   if (global == NULL) {
@@ -763,7 +771,11 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
   case TOK_FOR:
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
-    Stream_write_string(f, "for (");
+    Stream_write_string(f, "for ");
+    if (node->pn_iflags & JSITER_FOREACH) {
+      Stream_write_string(f, "each ");
+    }
+    Stream_write_char(f, '(');
     switch (node->pn_left->pn_type) {
     case TOK_IN:
       /* for/in */
