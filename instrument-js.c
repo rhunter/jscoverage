@@ -1105,6 +1105,10 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       break;
     }
     break;
+  case TOK_DEBUGGER:
+    Stream_printf(f, "%*s", indent, "");
+    Stream_write_string(f, "debugger;\n");
+    break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
   }
