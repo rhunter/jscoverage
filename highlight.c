@@ -91,6 +91,10 @@ static uint16_t column_num;
 static enum Class current_class;
 
 static void output_character(jschar c, enum Class class) {
+  if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
+    class = CLASS_NONE;
+  }
+
   if (class != current_class) {
     /* output the end tag */
     if (current_class != CLASS_NONE) {
@@ -105,6 +109,10 @@ static void output_character(jschar c, enum Class class) {
     }
   }
 
+  if (column_num == UINT16_MAX) {
+    fatal("%s: script contains a line with more than 65,535 columns", g_id);
+  }
+  column_num++;
   switch (c) {
   case '&':
     Stream_write_string(g_output, "&amp;");
@@ -116,8 +124,21 @@ static void output_character(jschar c, enum Class class) {
     Stream_write_string(g_output, "&gt;");
     break;
   case '\t':
-  case '\n':
     Stream_write_char(g_output, c);
+    break;
+  case '\r':
+  case '\n':
+  case 0x2028:
+  case 0x2029:
+    if (c == '\r' && character_offset + 1 < g_num_characters && g_characters[character_offset + 1] == '\n') {
+      break;
+    }
+    Stream_write_char(g_output, '\n');
+    column_num = 0;
+    if (line_num == UINT16_MAX) {
+      fatal("%s: script contains more than 65,535 lines", g_id);
+    }
+    line_num++;
     break;
   default:
     if (32 <= c && c <= 126) {
@@ -128,6 +149,7 @@ static void output_character(jschar c, enum Class class) {
     }
     break;
   }
+  character_offset++;
 }
 
 static void mark_nontoken_chars(uint16_t end_line, uint16_t end_column) {
@@ -160,11 +182,6 @@ static void mark_nontoken_chars(uint16_t end_line, uint16_t end_column) {
         state = STATE_MULTILINE_COMMENT;
         output_character('/', CLASS_COMMENT);
         output_character('*', CLASS_COMMENT);
-        character_offset += 2;
-        if (column_num >= UINT16_MAX - 1) {
-          fatal("%s: script contains line with more than 65,535 characters", g_id);
-        }
-        column_num += 2;
         continue;
       }
       break;
@@ -178,39 +195,16 @@ static void mark_nontoken_chars(uint16_t end_line, uint16_t end_column) {
         output_character('*', CLASS_COMMENT);
         output_character('/', CLASS_COMMENT);
         state = STATE_NORMAL;
-        character_offset += 2;
-        if (column_num >= UINT16_MAX - 1) {
-          fatal("%s: script contains line with more than 65,535 characters", g_id);
-        }
-        column_num += 2;
         continue;
       }
       break;
     }
 
-    character_offset++;
-    if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
-      if (line_num == UINT16_MAX) {
-        fatal("%s: script contains more than 65,535 lines", g_id);
-      }
-      line_num++;
-      column_num = 0;
-      if (c == '\r' && character_offset < g_num_characters && g_characters[character_offset] == '\n') {
-        character_offset++;
-      }
-      output_character('\n', CLASS_NONE);
+    if (state == STATE_NORMAL) {
+      output_character(c, CLASS_NONE);
     }
     else {
-      if (column_num == UINT16_MAX) {
-        fatal("%s: script contains line with more than 65,535 characters", g_id);
-      }
-      column_num++;
-      if (state == STATE_NORMAL) {
-        output_character(c, CLASS_NONE);
-      }
-      else {
-        output_character(c, CLASS_COMMENT);
-      }
+      output_character(c, CLASS_COMMENT);
     }
   }
 }
@@ -441,32 +435,38 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     }
 
-    if (t.pos.begin.lineno != t.pos.end.lineno) {
-      fatal("%s: line %u: token spans multiple lines", id, t.pos.begin.lineno);
-    }
-    if (t.pos.begin.index > t.pos.end.index) {
+    uint16_t start_line = t.pos.begin.lineno;
+    uint16_t end_line = t.pos.end.lineno;
+    uint16_t start_column = t.pos.begin.index;
+    uint16_t end_column = t.pos.end.index;
+    assert(line_num == start_line);
+    assert(column_num == start_column);
+    if (start_line == end_line && start_column >= end_column) {
       fatal("%s: script contains line with more than 65,535 characters", id);
     }
-    for (uint16_t i = t.pos.begin.index; i < t.pos.end.index; i++) {
+    for (;;) {
       assert(character_offset < num_characters);
       jschar c = characters[character_offset];
       if (tt == TOK_STRING && c == '\\') {
         output_character(c, CLASS_SPECIALCHAR);
-        character_offset++;
-        i++;
         assert(character_offset < num_characters);
         c = characters[character_offset];
         output_character(c, CLASS_SPECIALCHAR);
-        character_offset++;
       }
       else {
         output_character(c, class);
-        character_offset++;
+      }
+
+      if (line_num > end_line) {
+        break;
+      }
+      else if (line_num == end_line && column_num >= end_column) {
+        break;
       }
     }
 
-    line_num = t.pos.end.lineno;
-    column_num = t.pos.end.index;
+    assert(line_num == end_line);
+    assert(column_num = end_column);
   }
 
   if (current_class != CLASS_NONE) {
