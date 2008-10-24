@@ -352,6 +352,18 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
   }
 }
 
+static void output_for_in(JSParseNode * node, Stream * f) {
+  assert(node->pn_type == TOK_FOR);
+  assert(node->pn_arity == PN_BINARY);
+  Stream_write_string(f, "for ");
+  if (node->pn_iflags & JSITER_FOREACH) {
+    Stream_write_string(f, "each ");
+  }
+  Stream_write_char(f, '(');
+  instrument_expression(node->pn_left, f);
+  Stream_write_char(f, ')');
+}
+
 /*
 See <Expressions> in jsparse.h.
 TOK_FUNCTION is handled as a statement and as an expression.
@@ -672,23 +684,67 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     Stream_write_string(f, "yield ");
     instrument_expression(node->pn_kid, f);
     break;
+  case TOK_ARRAYCOMP:
+    assert(node->pn_arity == PN_LIST);
+    {
+      JSParseNode * block_node;
+      switch (node->pn_count) {
+      case 1:
+        block_node = node->pn_head;
+        break;
+      case 2:
+        block_node = node->pn_head->pn_next;
+        break;
+      default:
+        abort();
+        break;
+      }
+      assert(block_node->pn_type == TOK_LEXICALSCOPE);
+      assert(block_node->pn_arity == PN_NAME);
+      JSParseNode * for_node = block_node->pn_expr;
+      assert(for_node->pn_type == TOK_FOR);
+      assert(for_node->pn_arity == PN_BINARY);
+      JSParseNode * push_node;
+      JSParseNode * if_node = NULL;
+      switch (for_node->pn_right->pn_type) {
+      case TOK_ARRAYPUSH:
+        push_node = for_node->pn_right;
+        assert(push_node->pn_arity == PN_UNARY);
+        break;
+      case TOK_IF:
+        if_node = for_node->pn_right;
+        assert(if_node->pn_arity == PN_TERNARY);
+        push_node = if_node->pn_kid2;
+        break;
+      default:
+        abort();
+        break;
+      }
+      Stream_write_char(f, '[');
+      instrument_expression(push_node->pn_kid, f);
+      Stream_write_char(f, ' ');
+      output_for_in(for_node, f);
+      if (if_node) {
+        Stream_write_string(f, " if (");
+        instrument_expression(if_node->pn_kid1, f);
+        Stream_write_char(f, ')');
+      }
+      Stream_write_char(f, ']');
+    }
+    break;
+  case TOK_VAR:
+    assert(node->pn_arity == PN_LIST);
+    Stream_write_string(f, "var ");
+    instrument_declarations(node, f);
+    break;
+  case TOK_LET:
+    assert(node->pn_arity == PN_LIST);
+    Stream_write_string(f, "let ");
+    instrument_declarations(node, f);
+    break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
   }
-}
-
-static void instrument_var_statement(JSParseNode * node, Stream * f, int indent) {
-  assert(node->pn_arity == PN_LIST);
-  Stream_printf(f, "%*s", indent, "");
-  Stream_write_string(f, "var ");
-  instrument_declarations(node, f);
-}
-
-static void instrument_let_definition(JSParseNode * node, Stream * f, int indent) {
-  assert(node->pn_arity == PN_LIST);
-  Stream_printf(f, "%*s", indent, "");
-  Stream_write_string(f, "let ");
-  instrument_declarations(node, f);
 }
 
 static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
@@ -811,54 +867,18 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
   case TOK_FOR:
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
-    Stream_write_string(f, "for ");
-    if (node->pn_iflags & JSITER_FOREACH) {
-      Stream_write_string(f, "each ");
-    }
-    Stream_write_char(f, '(');
     switch (node->pn_left->pn_type) {
     case TOK_IN:
       /* for/in */
       assert(node->pn_left->pn_arity == PN_BINARY);
-      switch (node->pn_left->pn_left->pn_type) {
-      case TOK_VAR:
-        instrument_var_statement(node->pn_left->pn_left, f, 0);
-        break;
-      case TOK_LET:
-        instrument_let_definition(node->pn_left->pn_left, f, 0);
-        break;
-      case TOK_NAME:
-        instrument_expression(node->pn_left->pn_left, f);
-        break;
-      default:
-        /* this is undocumented: for (x.value in y) */
-        instrument_expression(node->pn_left->pn_left, f);
-        break;
-/*
-      default:
-        fprintf(stderr, "unexpected node type: %d\n", node->pn_left->pn_left->pn_type);
-        abort();
-        break;
-*/
-      }
-      Stream_write_string(f, " in ");
-      instrument_expression(node->pn_left->pn_right, f);
+      output_for_in(node, f);
       break;
     case TOK_RESERVED:
       /* for (;;) */
       assert(node->pn_left->pn_arity == PN_TERNARY);
+      Stream_write_string(f, "for (");
       if (node->pn_left->pn_kid1) {
-        switch (node->pn_left->pn_kid1->pn_type) {
-        case TOK_VAR:
-          instrument_var_statement(node->pn_left->pn_kid1, f, 0);
-          break;
-        case TOK_LET:
-          instrument_let_definition(node->pn_left->pn_kid1, f, 0);
-          break;
-        default:
-          instrument_expression(node->pn_left->pn_kid1, f);
-          break;
-        }
+        instrument_expression(node->pn_left->pn_kid1, f);
       }
       Stream_write_string(f, ";");
       if (node->pn_left->pn_kid2) {
@@ -870,12 +890,13 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
         Stream_write_char(f, ' ');
         instrument_expression(node->pn_left->pn_kid3, f);
       }
+      Stream_write_char(f, ')');
       break;
     default:
       abort();
       break;
     }
-    Stream_write_string(f, ") {\n");
+    Stream_write_string(f, " {\n");
     instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_write_string(f, "}\n");
     break;
@@ -950,7 +971,8 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, "}\n");
     break;
   case TOK_VAR:
-    instrument_var_statement(node, f, indent);
+    Stream_printf(f, "%*s", indent, "");
+    instrument_expression(node, f);
     Stream_write_string(f, ";\n");
     break;
   case TOK_RETURN:
@@ -1026,7 +1048,8 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       break;
     case PN_LIST:
       /* let definition */
-      instrument_let_definition(node, f, indent);
+      Stream_printf(f, "%*s", indent, "");
+      instrument_expression(node, f);
       Stream_write_string(f, ";\n");
       break;
     default:
