@@ -14,3 +14,5 @@ function handleResults( results ) {
     ;
 }
 handleResults( i for ( i in obj ) if ( i > 3 ) );
+
+it = (1 for(a in x) for(b in y));
