@@ -653,7 +653,9 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
   case TOK_RC:
     Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
-      assert(p->pn_type == TOK_COLON);
+      if (p->pn_type != TOK_COLON) {
+        fatal("unsupported node type in file %s: %d", file_id, p->pn_type);
+      }
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
       }
