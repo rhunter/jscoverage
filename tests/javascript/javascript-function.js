@@ -20,3 +20,15 @@ function x(a, b) {
 x = function() {
   x();
 };
+
+(function () {
+  print('x');
+})();
+
+(function (a) {
+  print('x');
+})(1);
+
+(function (a, b) {
+  print('x');
+})(1, 2);

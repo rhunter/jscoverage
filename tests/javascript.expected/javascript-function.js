@@ -17,6 +17,12 @@ if (! _$jscoverage['javascript-function.js']) {
   _$jscoverage['javascript-function.js'][17] = 0;
   _$jscoverage['javascript-function.js'][20] = 0;
   _$jscoverage['javascript-function.js'][21] = 0;
+  _$jscoverage['javascript-function.js'][24] = 0;
+  _$jscoverage['javascript-function.js'][25] = 0;
+  _$jscoverage['javascript-function.js'][28] = 0;
+  _$jscoverage['javascript-function.js'][29] = 0;
+  _$jscoverage['javascript-function.js'][32] = 0;
+  _$jscoverage['javascript-function.js'][33] = 0;
 }
 _$jscoverage['javascript-function.js'][1]++;
 function x() {
@@ -49,4 +55,22 @@ x = function() {
   x();
 }
 ;
-_$jscoverage['javascript-function.js'].source = ["<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","  <span class=\"k\">return</span> <span class=\"s\">'x'</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">,</span> b<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","x <span class=\"k\">=</span> <span class=\"k\">function</span><span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span><span class=\"k\">;</span>"];
+_$jscoverage['javascript-function.js'][24]++;
+(function() {
+  _$jscoverage['javascript-function.js'][25]++;
+  print("x");
+}
+)();
+_$jscoverage['javascript-function.js'][28]++;
+(function(a) {
+  _$jscoverage['javascript-function.js'][29]++;
+  print("x");
+}
+)(1);
+_$jscoverage['javascript-function.js'][32]++;
+(function(a, b) {
+  _$jscoverage['javascript-function.js'][33]++;
+  print("x");
+}
+)(1, 2);
+_$jscoverage['javascript-function.js'].source = ["<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","  <span class=\"k\">return</span> <span class=\"s\">'x'</span><span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">function</span> x<span class=\"k\">(</span>a<span class=\"k\">,</span> b<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","x <span class=\"k\">=</span> <span class=\"k\">function</span><span class=\"k\">()</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span><span class=\"k\">;</span>","","<span class=\"k\">(</span><span class=\"k\">function</span> <span class=\"k\">()</span> <span class=\"k\">{</span>","  print<span class=\"k\">(</span><span class=\"s\">'x'</span><span class=\"k\">);</span>","<span class=\"k\">}</span><span class=\"k\">)();</span>","","<span class=\"k\">(</span><span class=\"k\">function</span> <span class=\"k\">(</span>a<span class=\"k\">)</span> <span class=\"k\">{</span>","  print<span class=\"k\">(</span><span class=\"s\">'x'</span><span class=\"k\">);</span>","<span class=\"k\">}</span><span class=\"k\">)(</span><span class=\"s\">1</span><span class=\"k\">);</span>","","<span class=\"k\">(</span><span class=\"k\">function</span> <span class=\"k\">(</span>a<span class=\"k\">,</span> b<span class=\"k\">)</span> <span class=\"k\">{</span>","  print<span class=\"k\">(</span><span class=\"s\">'x'</span><span class=\"k\">);</span>","<span class=\"k\">}</span><span class=\"k\">)(</span><span class=\"s\">1</span><span class=\"k\">,</span> <span class=\"s\">2</span><span class=\"k\">);</span>"];
