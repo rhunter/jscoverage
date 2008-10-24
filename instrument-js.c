@@ -257,6 +257,7 @@ static const char * get_op(uint8 op) {
 
 static void instrument_expression(JSParseNode * node, Stream * f);
 static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
+static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 
 enum FunctionType {
   FUNCTION_NORMAL,
@@ -307,7 +308,13 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   Stream_write_string(f, ") {\n");
 
   /* function body */
-  instrument_statement(node->pn_body, f, indent + 2, false);
+  if (function->flags & JSFUN_EXPR_CLOSURE) {
+    /* expression closure */
+    output_statement(node->pn_body, f, indent + 2, false);
+  }
+  else {
+    instrument_statement(node->pn_body, f, indent + 2, false);
+  }
 
   Stream_write_string(f, "}\n");
 }

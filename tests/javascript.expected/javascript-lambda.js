@@ -9,7 +9,6 @@ if (! _$jscoverage['javascript-lambda.js']) {
 }
 _$jscoverage['javascript-lambda.js'][3]++;
 var square = function(x) {
-  _$jscoverage['javascript-lambda.js'][3]++;
   return x * x;
 }
 ;
