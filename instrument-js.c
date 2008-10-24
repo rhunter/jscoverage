@@ -315,6 +315,9 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
       Stream_write_string(f, ", ");
     }
     JSAtom * param = JS_LOCAL_NAME_TO_ATOM(local_names[i]);
+    if (param == NULL) {
+      fatal("unsupported parameter type for function: %s", file_id);
+    }
     print_string_atom(param, f);
   }
   JS_FinishArenaPool(&pool);
