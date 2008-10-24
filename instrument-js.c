@@ -880,22 +880,28 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, "switch (");
     instrument_expression(node->pn_left, f);
     Stream_write_string(f, ") {\n");
-    for (struct JSParseNode * p = node->pn_right->pn_head; p != NULL; p = p->pn_next) {
-      Stream_printf(f, "%*s", indent, "");
-      switch (p->pn_type) {
-      case TOK_CASE:
-        Stream_write_string(f, "case ");
-        instrument_expression(p->pn_left, f);
-        Stream_write_string(f, ":\n");
-        break;
-      case TOK_DEFAULT:
-        Stream_write_string(f, "default:\n");
-        break;
-      default:
-        abort();
-        break;
+    {
+      JSParseNode * list = node->pn_right;
+      if (list->pn_type == TOK_LEXICALSCOPE) {
+        list = list->pn_expr;
       }
-      instrument_statement(p->pn_right, f, indent + 2, false);
+      for (struct JSParseNode * p = list->pn_head; p != NULL; p = p->pn_next) {
+        Stream_printf(f, "%*s", indent, "");
+        switch (p->pn_type) {
+        case TOK_CASE:
+          Stream_write_string(f, "case ");
+          instrument_expression(p->pn_left, f);
+          Stream_write_string(f, ":\n");
+          break;
+        case TOK_DEFAULT:
+          Stream_write_string(f, "default:\n");
+          break;
+        default:
+          abort();
+          break;
+        }
+        instrument_statement(p->pn_right, f, indent + 2, false);
+      }
     }
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "}\n");

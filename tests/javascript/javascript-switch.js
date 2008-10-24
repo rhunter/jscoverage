@@ -10,3 +10,12 @@ default:
   x = 0;
   break;
 }
+
+switch (x) {
+case 1:
+  let y = 1;
+  f(y);
+  break;
+case 2:
+  break;
+}
