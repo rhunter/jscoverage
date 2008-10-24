@@ -324,6 +324,22 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
   Stream_write_char(f, ')');
 }
 
+static void instrument_declarations(JSParseNode * list, Stream * f) {
+  assert(list->pn_arity == PN_LIST);
+  for (JSParseNode * p = list->pn_head; p != NULL; p = p->pn_next) {
+    assert(p->pn_type == TOK_NAME);
+    assert(p->pn_arity == PN_NAME);
+    if (p != list->pn_head) {
+      Stream_write_string(f, ", ");
+    }
+    print_string_atom(p->pn_atom, f);
+    if (p->pn_expr != NULL) {
+      Stream_write_string(f, " = ");
+      instrument_expression(p->pn_expr, f);
+    }
+  }
+}
+
 /*
 See <Expressions> in jsparse.h.
 TOK_FUNCTION is handled as a statement and as an expression.
@@ -628,6 +644,17 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     Stream_write_string(f, " in ");
     instrument_expression(node->pn_right, f);
     break;
+  case TOK_LEXICALSCOPE:
+    assert(node->pn_arity == PN_NAME);
+    assert(node->pn_expr->pn_type == TOK_LET);
+    assert(node->pn_expr->pn_arity == PN_BINARY);
+    Stream_write_string(f, "let(");
+    assert(node->pn_expr->pn_left->pn_type == TOK_LP);
+    assert(node->pn_expr->pn_left->pn_arity == PN_LIST);
+    instrument_declarations(node->pn_expr->pn_left, f);
+    Stream_write_string(f, ") ");
+    instrument_expression(node->pn_expr->pn_right, f);
+    break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
   }
@@ -637,18 +664,14 @@ static void instrument_var_statement(JSParseNode * node, Stream * f, int indent)
   assert(node->pn_arity == PN_LIST);
   Stream_printf(f, "%*s", indent, "");
   Stream_write_string(f, "var ");
-  for (struct JSParseNode * p = node->pn_u.list.head; p != NULL; p = p->pn_next) {
-    assert(p->pn_type == TOK_NAME);
-    assert(p->pn_arity == PN_NAME);
-    if (p != node->pn_head) {
-      Stream_write_string(f, ", ");
-    }
-    print_string_atom(p->pn_atom, f);
-    if (p->pn_expr != NULL) {
-      Stream_write_string(f, " = ");
-      instrument_expression(p->pn_expr, f);
-    }
-  }
+  instrument_declarations(node, f);
+}
+
+static void instrument_let_definition(JSParseNode * node, Stream * f, int indent) {
+  assert(node->pn_arity == PN_LIST);
+  Stream_printf(f, "%*s", indent, "");
+  Stream_write_string(f, "let ");
+  instrument_declarations(node, f);
 }
 
 static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
@@ -784,6 +807,9 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       case TOK_VAR:
         instrument_var_statement(node->pn_left->pn_left, f, 0);
         break;
+      case TOK_LET:
+        instrument_let_definition(node->pn_left->pn_left, f, 0);
+        break;
       case TOK_NAME:
         instrument_expression(node->pn_left->pn_left, f);
         break;
@@ -805,11 +831,16 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       /* for (;;) */
       assert(node->pn_left->pn_arity == PN_TERNARY);
       if (node->pn_left->pn_kid1) {
-        if (node->pn_left->pn_kid1->pn_type == TOK_VAR) {
+        switch (node->pn_left->pn_kid1->pn_type) {
+        case TOK_VAR:
           instrument_var_statement(node->pn_left->pn_kid1, f, 0);
-        }
-        else {
+          break;
+        case TOK_LET:
+          instrument_let_definition(node->pn_left->pn_kid1, f, 0);
+          break;
+        default:
           instrument_expression(node->pn_left->pn_kid1, f);
+          break;
         }
       }
       Stream_write_string(f, ";");
@@ -933,6 +964,55 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     */
     output_statement(node->pn_expr, f, indent, false);
     break;
+  case TOK_LEXICALSCOPE:
+    /* let statement */
+    assert(node->pn_arity == PN_NAME);
+    switch (node->pn_expr->pn_type) {
+    case TOK_LET:
+      /* let statement */
+      assert(node->pn_expr->pn_arity == PN_BINARY);
+      instrument_statement(node->pn_expr, f, indent, false);
+      break;
+    case TOK_LC:
+      /* block */
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "{\n");
+      instrument_statement(node->pn_expr, f, indent + 2, false);
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "}\n");
+      break;
+    case TOK_FOR:
+      instrument_statement(node->pn_expr, f, indent, false);
+      break;
+    default:
+      abort();
+      break;
+    }
+    break;
+  case TOK_LET:
+    switch (node->pn_arity) {
+    case PN_BINARY:
+      /* let statement */
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "let (");
+      assert(node->pn_left->pn_type == TOK_LP);
+      assert(node->pn_left->pn_arity == PN_LIST);
+      instrument_declarations(node->pn_left, f);
+      Stream_write_string(f, ") {\n");
+      instrument_statement(node->pn_right, f, indent + 2, false);
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "}\n");
+      break;
+    case PN_LIST:
+      /* let definition */
+      instrument_let_definition(node, f, indent);
+      Stream_write_string(f, ";\n");
+      break;
+    default:
+      abort();
+      break;
+    }
+    break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
   }
@@ -944,7 +1024,7 @@ TOK_FUNCTION is handled as a statement and as an expression.
 TOK_EXPORT, TOK_IMPORT are not handled.
 */
 static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
-  if (node->pn_type != TOK_LC) {
+  if (node->pn_type != TOK_LC && node->pn_type != TOK_LEXICALSCOPE) {
     uint16_t line = node->pn_pos.begin.lineno;
     if (line > num_lines) {
       fatal("%s: script contains more than 65,535 lines", file_id);

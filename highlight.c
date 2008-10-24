@@ -416,6 +416,28 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_FILTER:
     case TOK_XMLELEM:
     case TOK_XMLLIST:
+      abort();
+      break;
+    case TOK_YIELD:
+      token_stream.flags |= TSF_OPERAND;
+      class = CLASS_KEYWORD;
+      break;
+    case TOK_ARRAYCOMP:
+      fatal("token type %d not supported", tt);
+      break;
+    case TOK_ARRAYPUSH:
+      fatal("token type %d not supported", tt);
+      break;
+    case TOK_LEXICALSCOPE:
+      fatal("token type %d not supported", tt);
+      break;
+    case TOK_LET:
+      token_stream.flags |= TSF_OPERAND;
+      class = CLASS_KEYWORD;
+      break;
+    case TOK_BODY:
+      fatal("token type %d not supported", tt);
+      break;
     case TOK_RESERVED:
     case TOK_LIMIT:
       abort();
