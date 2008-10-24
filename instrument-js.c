@@ -327,15 +327,27 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
 static void instrument_declarations(JSParseNode * list, Stream * f) {
   assert(list->pn_arity == PN_LIST);
   for (JSParseNode * p = list->pn_head; p != NULL; p = p->pn_next) {
-    assert(p->pn_type == TOK_NAME);
-    assert(p->pn_arity == PN_NAME);
-    if (p != list->pn_head) {
-      Stream_write_string(f, ", ");
-    }
-    print_string_atom(p->pn_atom, f);
-    if (p->pn_expr != NULL) {
-      Stream_write_string(f, " = ");
-      instrument_expression(p->pn_expr, f);
+    switch (p->pn_type) {
+    case TOK_NAME:
+      assert(p->pn_arity == PN_NAME);
+      if (p != list->pn_head) {
+        Stream_write_string(f, ", ");
+      }
+      print_string_atom(p->pn_atom, f);
+      if (p->pn_expr != NULL) {
+        Stream_write_string(f, " = ");
+        instrument_expression(p->pn_expr, f);
+      }
+      break;
+    case TOK_ASSIGN:
+    case TOK_RB:
+    case TOK_RC:
+      /* destructuring */
+      instrument_expression(p, f);
+      break;
+    default:
+      abort();
+      break;
     }
   }
 }
@@ -883,8 +895,12 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
         assert(catch->pn_type == TOK_CATCH);
         Stream_printf(f, "%*s", indent, "");
         Stream_write_string(f, "catch (");
+        /* this may not be a name - destructuring assignment */
+        /*
         assert(catch->pn_kid1->pn_arity == PN_NAME);
         print_string_atom(catch->pn_kid1->pn_atom, f);
+        */
+        instrument_expression(catch->pn_kid1, f);
         if (catch->pn_kid2) {
           Stream_write_string(f, " if ");
           instrument_expression(catch->pn_kid2, f);

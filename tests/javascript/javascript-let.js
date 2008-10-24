@@ -74,3 +74,6 @@ document.write(this.x + "<br>\n");
 var i=0;
 for ( let i=i ; i < 10 ; i++ )
   document.write(i + "<br>\n");
+
+for ( let [name,value] in obj )
+  document.write("Name: " + name + ", Value: " + value + "<br>\n");
