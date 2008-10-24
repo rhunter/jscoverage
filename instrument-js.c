@@ -277,6 +277,43 @@ static void output_for_in(JSParseNode * node, Stream * f) {
   Stream_write_char(f, ')');
 }
 
+static void output_array_comprehension_or_generator_expression(JSParseNode * node, Stream * f) {
+  assert(node->pn_type == TOK_LEXICALSCOPE);
+  assert(node->pn_arity == PN_NAME);
+  JSParseNode * for_node = node->pn_expr;
+  assert(for_node->pn_type == TOK_FOR);
+  assert(for_node->pn_arity == PN_BINARY);
+  JSParseNode * p = for_node;
+  while (p->pn_type == TOK_FOR) {
+    p = p->pn_right;
+  }
+  JSParseNode * if_node = NULL;
+  if (p->pn_type == TOK_IF) {
+    if_node = p;
+    assert(if_node->pn_arity == PN_TERNARY);
+    p = if_node->pn_kid2;
+  }
+  assert(p->pn_arity == PN_UNARY);
+  p = p->pn_kid;
+  if (p->pn_type == TOK_YIELD) {
+    /* for generator expressions */
+    p = p->pn_kid;
+  }
+
+  instrument_expression(p, f);
+  p = for_node;
+  while (p->pn_type == TOK_FOR) {
+    Stream_write_char(f, ' ');
+    output_for_in(p, f);
+    p = p->pn_right;
+  }
+  if (if_node) {
+    Stream_write_string(f, " if (");
+    instrument_expression(if_node->pn_kid1, f);
+    Stream_write_char(f, ')');
+  }
+}
+
 static void instrument_function(JSParseNode * node, Stream * f, int indent, enum FunctionType type) {
   assert(node->pn_type == TOK_FUNCTION);
   assert(node->pn_arity == PN_FUNC);
@@ -346,40 +383,8 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
 
     if (function_node->pn_flags & TCF_GENEXP_LAMBDA) {
       /* it's a generator expression */
-      JSParseNode * lexical_scope_node = function_node->pn_body;
-      assert(lexical_scope_node->pn_type == TOK_LEXICALSCOPE);
-      assert(lexical_scope_node->pn_arity == PN_NAME);
-      JSParseNode * for_node = lexical_scope_node->pn_body;
-      assert(for_node->pn_type == TOK_FOR);
-      assert(for_node->pn_arity == PN_BINARY);
-      JSParseNode * if_node = NULL;
-      JSParseNode * semi_node;
-      switch (for_node->pn_right->pn_type) {
-      case TOK_SEMI:
-        semi_node = for_node->pn_right;
-        break;
-      case TOK_IF:
-        if_node = for_node->pn_right;
-        assert(if_node->pn_arity == PN_TERNARY);
-        semi_node = if_node->pn_kid2;
-        assert(semi_node->pn_type == TOK_SEMI);
-        break;
-      default:
-        abort();
-        break;
-      }
-      assert(semi_node->pn_arity == PN_UNARY);
-      JSParseNode * yield_node = semi_node->pn_kid;
-      assert(yield_node->pn_type == TOK_YIELD);
       Stream_write_char(f, '(');
-      instrument_expression(yield_node->pn_kid, f);
-      Stream_write_char(f, ' ');
-      output_for_in(for_node, f);
-      if (if_node) {
-        Stream_write_string(f, " if (");
-        instrument_expression(if_node->pn_kid1, f);
-        Stream_write_char(f, ')');
-      }
+      output_array_comprehension_or_generator_expression(function_node->pn_body, f);
       Stream_write_char(f, ')');
       return;
     }
@@ -782,45 +787,8 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
         abort();
         break;
       }
-      assert(block_node->pn_type == TOK_LEXICALSCOPE);
-      assert(block_node->pn_arity == PN_NAME);
-      JSParseNode * for_node = block_node->pn_expr;
-      assert(for_node->pn_type == TOK_FOR);
-      assert(for_node->pn_arity == PN_BINARY);
-      JSParseNode * p = for_node;
-      while (p->pn_type == TOK_FOR) {
-        p = p->pn_right;
-      }
-      JSParseNode * if_node = NULL;
-      JSParseNode * push_node;
-      switch (p->pn_type) {
-      case TOK_ARRAYPUSH:
-        push_node = p;
-        assert(push_node->pn_arity == PN_UNARY);
-        break;
-      case TOK_IF:
-        if_node = p;
-        assert(if_node->pn_arity == PN_TERNARY);
-        push_node = if_node->pn_kid2;
-        assert(push_node->pn_arity == PN_UNARY);
-        break;
-      default:
-        abort();
-        break;
-      }
       Stream_write_char(f, '[');
-      instrument_expression(push_node->pn_kid, f);
-      p = for_node;
-      while (p->pn_type == TOK_FOR) {
-        Stream_write_char(f, ' ');
-        output_for_in(p, f);
-        p = p->pn_right;
-      }
-      if (if_node) {
-        Stream_write_string(f, " if (");
-        instrument_expression(if_node->pn_kid1, f);
-        Stream_write_char(f, ')');
-      }
+      output_array_comprehension_or_generator_expression(block_node, f);
       Stream_write_char(f, ']');
     }
     break;
