@@ -7,3 +7,5 @@ function range(begin, end) {
 }
 var ten_squares = [i * i for each (i in range(0, 10))];
 var evens = [i for each (i in range(0, 21)) if (i % 2 == 0)];
+
+[i for each (a in x) for each (b in y)]

@@ -787,17 +787,22 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       JSParseNode * for_node = block_node->pn_expr;
       assert(for_node->pn_type == TOK_FOR);
       assert(for_node->pn_arity == PN_BINARY);
+      JSParseNode * p = for_node;
+      while (p->pn_type == TOK_FOR) {
+        p = p->pn_right;
+      }
       JSParseNode * if_node = NULL;
       JSParseNode * push_node;
-      switch (for_node->pn_right->pn_type) {
+      switch (p->pn_type) {
       case TOK_ARRAYPUSH:
-        push_node = for_node->pn_right;
+        push_node = p;
         assert(push_node->pn_arity == PN_UNARY);
         break;
       case TOK_IF:
-        if_node = for_node->pn_right;
+        if_node = p;
         assert(if_node->pn_arity == PN_TERNARY);
         push_node = if_node->pn_kid2;
+        assert(push_node->pn_arity == PN_UNARY);
         break;
       default:
         abort();
@@ -805,8 +810,12 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       }
       Stream_write_char(f, '[');
       instrument_expression(push_node->pn_kid, f);
-      Stream_write_char(f, ' ');
-      output_for_in(for_node, f);
+      p = for_node;
+      while (p->pn_type == TOK_FOR) {
+        Stream_write_char(f, ' ');
+        output_for_in(p, f);
+        p = p->pn_right;
+      }
       if (if_node) {
         Stream_write_string(f, " if (");
         instrument_expression(if_node->pn_kid1, f);
