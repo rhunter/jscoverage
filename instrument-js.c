@@ -667,6 +667,11 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     Stream_write_string(f, ") ");
     instrument_expression(node->pn_expr->pn_right, f);
     break;
+  case TOK_YIELD:
+    assert(node->pn_arity == PN_UNARY);
+    Stream_write_string(f, "yield ");
+    instrument_expression(node->pn_kid, f);
+    break;
   default:
     fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
   }
