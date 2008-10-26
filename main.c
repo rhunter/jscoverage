@@ -61,6 +61,10 @@ int main(int argc, char ** argv) {
     else if (strcmp(argv[i], "--no-highlight") == 0) {
       jscoverage_highlight = false;
     }
+    else if (strcmp(argv[i], "--mozilla") == 0) {
+      jscoverage_mozilla = true;
+      jscoverage_set_js_version("180");
+    }
     else if (strcmp(argv[i], "--no-instrument") == 0) {
       i++;
       if (i == argc) {

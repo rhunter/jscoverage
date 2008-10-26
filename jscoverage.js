@@ -23,6 +23,13 @@ function called in the page.
 @param  w  this should always be the global window object
 */
 function jscoverage_init(w) {
+  try {
+    Components.utils.import('resource://gre/modules/jscoverage.jsm');
+    jscoverage_isInvertedMode = true;
+    return;
+  }
+  catch (e) {}
+
   if (w.opener && w.opener.top._$jscoverage) {
     // we are in inverted mode
     jscoverage_isInvertedMode = true;

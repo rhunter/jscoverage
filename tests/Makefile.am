@@ -31,10 +31,11 @@ noinst_PROGRAMS = asprintf \
                   recursive-dir-list \
                   streams
 
+AM_CFLAGS = -DXP_UNIX -I../js -I../js/build
+
 asprintf_SOURCES = asprintf.c ../util.c
 
 encodings_SOURCES = encodings.c ../encoding.c ../util.c
-encodings_CPPFLAGS = -DXP_UNIX -I../js
 encodings_LDADD = @LIBICONV@
 
 gethostbyname_SOURCES = gethostbyname.c ../http-host.c ../util.c
@@ -61,8 +62,7 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
-json_CPPFLAGS = -DXP_UNIX -I../js
-json_LDADD = ../js/libjs.a -lm @LIBICONV@
+json_LDADD = ../js/build/libjs.a -lm @LIBICONV@
 
 mkdirs_SOURCES = mkdirs.c ../util.c
 

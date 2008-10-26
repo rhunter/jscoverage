@@ -19,9 +19,10 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = js
 
-AM_CFLAGS = -Ijs -DXP_UNIX
+AM_CFLAGS = -Ijs -Ijs/build -DXP_UNIX
 
 resources = help.txt jscoverage-server-help.txt \
+            jscoverage.jsm jscoverage.manifest jscoverage.xul jscoverage-overlay.js \
             jscoverage.html \
             jscoverage.css jscoverage-ie.css jscoverage-highlight.css \
             jscoverage.js report.js \
@@ -37,7 +38,7 @@ jscoverage_SOURCES = encoding.c encoding.h \
                      stream.c stream.h \
                      util.c util.h \
                      $(resources)
-jscoverage_LDADD = js/libjs.a -lm @LIBICONV@
+jscoverage_LDADD = js/build/libjs.a -lm @LIBICONV@
 jscoverage_server_SOURCES = http-connection.c \
                             http-exchange.c \
                             http-host.c \
@@ -52,7 +53,7 @@ jscoverage_server_SOURCES = http-connection.c \
                             stream.c stream.h \
                             util.c util.h \
                             $(resources)
-jscoverage_server_LDADD = js/libjs.a -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@
+jscoverage_server_LDADD = js/build/libjs.a -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

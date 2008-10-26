@@ -31,6 +31,8 @@ enum FileType {
   FILE_TYPE_OTHER
 };
 
+extern bool jscoverage_mozilla;
+
 void jscoverage_set_js_version(const char * version);
 
 void jscoverage_init(void);

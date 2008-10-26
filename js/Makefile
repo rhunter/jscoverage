@@ -1,8 +1,7 @@
+MAKEFLAGS = DISABLE_JIT=1 OBJROOT=build BUILD_OPT=1
+
 all:
-	make -f Makefile.ref DISABLE_JIT=1
-	cp *.OBJ/js .
-	cp *.OBJ/libjs.a .
-	cp *.OBJ/jsautocfg.h .
+	$(MAKE) -f Makefile.ref
 
 clean:
-	make -f Makefile.ref clean
+	$(MAKE) -f Makefile.ref clean
