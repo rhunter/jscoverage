@@ -29,7 +29,10 @@ find EXPECTED -name .svn | xargs rm -fr
 cat recursive.expected/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
 cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
 cat recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
-cp ../jscoverage*.css ../jscoverage*.gif ../jscoverage*.html ../jscoverage*.js EXPECTED
+cp ../jscoverage.css ../jscoverage-highlight.css ../jscoverage-ie.css \
+   ../jscoverage-throbber.gif \
+   ../jscoverage.html \
+   ../jscoverage.js EXPECTED
 
 $VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive DIR
 test -d DIR
