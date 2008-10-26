@@ -62,7 +62,7 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.c ../resource-manager.c ../stream.c ../util.c
-json_LDADD = ../js/build/libjs.a -lm @LIBICONV@
+json_LDADD = ../js/build/libjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 
 mkdirs_SOURCES = mkdirs.c ../util.c
 
