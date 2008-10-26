@@ -426,6 +426,7 @@ static struct DirListEntry * recursive_dir_list(const char * root, const char * 
       head = recursive_dir_list(root, entry_wrt_root, head);
       free(entry_wrt_root);
     }
+#ifndef _WIN32
     else if (S_ISLNK(buf.st_mode)) {
       /* check what it points to */
       xstat(entry, &buf);
@@ -439,6 +440,7 @@ static struct DirListEntry * recursive_dir_list(const char * root, const char * 
         fatal("refusing to follow symbolic link: %s", entry);
       }
     }
+#endif
     else {
       fatal("unknown file type: %s", entry);
     }

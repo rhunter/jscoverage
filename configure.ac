@@ -51,14 +51,17 @@ AC_LINK_IFELSE(
 
 AC_SUBST([EXTRA_SOCKET_LIBS])
 AC_SUBST([EXTRA_THREAD_LIBS])
+AC_SUBST([EXTRA_TIMER_LIBS])
 case "$host_os" in
   mingw*)
     EXTRA_SOCKET_LIBS='-lws2_32'
     EXTRA_THREAD_LIBS=''
+    EXTRA_TIMER_LIBS='-lwinmm'
     ;;
   *)
     EXTRA_SOCKET_LIBS=''
     EXTRA_THREAD_LIBS='-lpthread'
+    EXTRA_TIMER_LIBS=''
     ;;
 esac
 
