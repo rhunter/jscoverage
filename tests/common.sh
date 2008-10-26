@@ -1,3 +1,5 @@
+export PATH=.:..:../js/build:$PATH
+
 json_cmp() {
   echo 'EXPECTED = ' | cat - $1 > EXPECTED
   echo 'ACTUAL = ' | cat - $2 > ACTUAL

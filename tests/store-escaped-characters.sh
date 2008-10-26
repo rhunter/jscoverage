@@ -31,8 +31,6 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:../js:$PATH
-
 if [ -z "$VALGRIND" ]
 then
   delay=0.2
