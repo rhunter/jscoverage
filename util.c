@@ -375,6 +375,15 @@ void copy_file(const char * source_file, const char * destination_file) {
 
   copy_stream(source, destination);
 
+#ifndef _WIN32
+  /* copy permissions */
+  struct stat buf;
+  if (fstat(fileno(source), &buf) == -1) {
+    fatal("cannot stat file: %s", source_file);
+  }
+  fchmod(fileno(destination), buf.st_mode);
+#endif
+
   fclose(source);
   fclose(destination);
 }
@@ -416,6 +425,19 @@ static struct DirListEntry * recursive_dir_list(const char * root, const char * 
     else if (S_ISDIR(buf.st_mode)) {
       head = recursive_dir_list(root, entry_wrt_root, head);
       free(entry_wrt_root);
+    }
+    else if (S_ISLNK(buf.st_mode)) {
+      /* check what it points to */
+      xstat(entry, &buf);
+      if (S_ISREG(buf.st_mode)) {
+        struct DirListEntry * p = xmalloc(sizeof(struct DirListEntry));
+        p->name = entry_wrt_root;
+        p->next = head;
+        head = p;
+      }
+      else {
+        fatal("refusing to follow symbolic link: %s", entry);
+      }
     }
     else {
       fatal("unknown file type: %s", entry);
