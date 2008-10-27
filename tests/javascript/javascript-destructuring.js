@@ -26,3 +26,10 @@ function g() {
     return null;
   var [, protocol, fullhost, fullpath] = parsedURL;
 }
+
+function h(a, [b, c], {foo: d, 'bar': e}) {
+  f();
+  g();
+}
+
+x = function([a, b]) a + b;

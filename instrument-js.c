@@ -357,26 +357,61 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
       fatal("out of memory");
     }
   }
+  bool destructuring = false;
   for (int i = 0; i < function->nargs; i++) {
     if (i > 0) {
       Stream_write_string(f, ", ");
     }
     JSAtom * param = JS_LOCAL_NAME_TO_ATOM(local_names[i]);
     if (param == NULL) {
-      fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported parameter type for function");
+      destructuring = true;
+      JSParseNode * expression = NULL;
+      assert(node->pn_body->pn_type == TOK_LC || node->pn_body->pn_type == TOK_BODY);
+      JSParseNode * semi = node->pn_body->pn_head;
+      assert(semi->pn_type == TOK_SEMI);
+      JSParseNode * comma = semi->pn_kid;
+      assert(comma->pn_type == TOK_COMMA);
+      for (JSParseNode * p = comma->pn_head; p != NULL; p = p->pn_next) {
+        assert(p->pn_type == TOK_ASSIGN);
+        JSParseNode * rhs = p->pn_right;
+        assert(JSSTRING_LENGTH(ATOM_TO_STRING(rhs->pn_atom)) == 0);
+        if (rhs->pn_slot == i) {
+          expression = p->pn_left;
+          break;
+        }
+      }
+      assert(expression != NULL);
+      instrument_expression(expression, f);
     }
-    print_string_atom(param, f);
+    else {
+      print_string_atom(param, f);
+    }
   }
   JS_FinishArenaPool(&pool);
   Stream_write_string(f, ") {\n");
 
   /* function body */
   if (function->flags & JSFUN_EXPR_CLOSURE) {
-    /* expression closure */
-    output_statement(node->pn_body, f, indent + 2, false);
+    /* expression closure - use output_statement instead of instrument_statement */
+    if (node->pn_body->pn_type == TOK_BODY) {
+      assert(node->pn_body->pn_arity == PN_LIST);
+      assert(node->pn_body->pn_count == 2);
+      output_statement(node->pn_body->pn_head->pn_next, f, indent + 2, false);
+    }
+    else {
+      output_statement(node->pn_body, f, indent + 2, false);
+    }
   }
   else {
-    instrument_statement(node->pn_body, f, indent + 2, false);
+    assert(node->pn_body->pn_type == TOK_LC);
+    assert(node->pn_body->pn_arity == PN_LIST);
+    JSParseNode * p = node->pn_body->pn_head;
+    if (destructuring) {
+      p = p->pn_next;
+    }
+    for (; p != NULL; p = p->pn_next) {
+      instrument_statement(p, f, indent + 2, false);
+    }
   }
 
   Stream_write_string(f, "}\n");
