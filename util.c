@@ -71,6 +71,15 @@ void fatal_source(const char * source_file, unsigned int line_number, const char
   exit(EXIT_FAILURE);
 }
 
+void warn_source(const char * source_file, unsigned int line_number, const char * format, ...) {
+  fprintf(stderr, "%s:%s:%u: ", program, source_file, line_number);
+  va_list ap;
+  va_start(ap, format);
+  vfprintf(stderr, format, ap);
+  va_end(ap);
+  fputc('\n', stderr);
+}
+
 void version(void) {
   printf("%s %s\n", program, VERSION);
   printf("Character encoding support: ");

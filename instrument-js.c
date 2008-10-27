@@ -1199,7 +1199,7 @@ static bool characters_are_white_space(const jschar * characters, size_t line_st
 }
 
 static void error_reporter(JSContext * context, const char * message, JSErrorReport * report) {
-  fatal_source(file_id, report->lineno, message);
+  warn_source(file_id, report->lineno, "%s", message);
 }
 
 void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
