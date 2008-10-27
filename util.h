@@ -39,6 +39,10 @@ void fatal_command_line(const char * format, ...)
   __attribute__((__noreturn__))
   __attribute__((__format__(printf, 1, 2)));
 
+void fatal_source(const char * source_file, unsigned int line_number, const char * format, ...)
+  __attribute__((__noreturn__))
+  __attribute__((__format__(printf, 3, 4)));
+
 void version(void)
   __attribute__((__noreturn__));
 

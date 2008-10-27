@@ -77,7 +77,7 @@ void jscoverage_set_js_version(const char * version) {
 
   char * end;
   js_version = (JSVersion) strtol(version, &end, 10);
-  if (end - version != strlen(version)) {
+  if ((size_t) (end - version) != strlen(version)) {
     fatal("invalid version: %s", version);
   }
 }
@@ -364,7 +364,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
     }
     JSAtom * param = JS_LOCAL_NAME_TO_ATOM(local_names[i]);
     if (param == NULL) {
-      fatal("unsupported parameter type for function: %s", file_id);
+      fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported parameter type for function");
     }
     print_string_atom(param, f);
   }
@@ -560,7 +560,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       instrument_expression(node->pn_kid, f);
       break;
     default:
-      fatal("%s: unknown operator (%d) in file", file_id, node->pn_op);
+      fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%d)", node->pn_op);
       break;
     }
     break;
@@ -670,7 +670,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p->pn_type != TOK_COLON) {
-        fatal("unsupported node type in file %s: %d", file_id, p->pn_type);
+        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%d)", p->pn_type);
       }
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
@@ -688,7 +688,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
         }
         instrument_expression(p->pn_left, f);
         if (p->pn_right->pn_type != TOK_FUNCTION) {
-          fatal("parse error: expected function");
+          fatal_source(file_id, p->pn_pos.begin.lineno, "expected function");
         }
         instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
         break;
@@ -814,7 +814,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     instrument_declarations(node, f);
     break;
   default:
-    fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
   }
 }
 
@@ -843,7 +843,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     uint16_t line = node->pn_pos.begin.lineno;
     if (! is_jscoverage_if) {
       if (line > num_lines) {
-        fatal("%s: script contains more than 65,535 lines", file_id);
+        fatal("file %s contains more than 65,535 lines", file_id);
       }
       if (line >= 2 && exclusive_directives[line - 2]) {
         is_jscoverage_if = true;
@@ -1139,7 +1139,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, "debugger;\n");
     break;
   default:
-    fatal("unsupported node type in file %s: %d", file_id, node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
   }
 }
 
@@ -1152,7 +1152,7 @@ static void instrument_statement(JSParseNode * node, Stream * f, int indent, boo
   if (node->pn_type != TOK_LC && node->pn_type != TOK_LEXICALSCOPE) {
     uint16_t line = node->pn_pos.begin.lineno;
     if (line > num_lines) {
-      fatal("%s: script contains more than 65,535 lines", file_id);
+      fatal("file %s contains more than 65,535 lines", file_id);
     }
 
     /* the root node has line number 0 */
@@ -1200,7 +1200,7 @@ static bool characters_are_white_space(const jschar * characters, size_t line_st
 }
 
 static void error_reporter(JSContext * context, const char * message, JSErrorReport * report) {
-  fprintf(stderr, "jscoverage: parse error: line %u: %s\n", report->lineno, message);
+  fatal_source(file_id, report->lineno, message);
 }
 
 void jscoverage_instrument_js(const char * id, const uint16_t * characters, size_t num_characters, Stream * output) {
@@ -1209,13 +1209,13 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   /* parse the javascript */
   JSParseContext parse_context;
   if (! js_InitParseContext(context, &parse_context, NULL, NULL, characters, num_characters, NULL, NULL, 1)) {
-    fatal("cannot create token stream from file: %s", file_id);
+    fatal("cannot create token stream from file %s", file_id);
   }
   JSErrorReporter old_error_reporter = JS_SetErrorReporter(context, error_reporter);
   JSParseNode * node = js_ParseScript(context, global, &parse_context);
   if (node == NULL) {
     js_ReportUncaughtException(context);
-    fatal("parse error in file: %s", file_id);
+    fatal("parse error in file %s", file_id);
   }
   JS_SetErrorReporter(context, old_error_reporter);
   num_lines = node->pn_pos.end.lineno;
@@ -1236,7 +1236,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   size_t i = 0;
   while (i < num_characters) {
     if (line_number == UINT16_MAX) {
-      fatal("%s: script has more than 65,535 lines", file_id);
+      fatal("file %s contains more than 65,535 lines", file_id);
     }
     line_number++;
     size_t line_start = i;

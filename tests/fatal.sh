@@ -105,6 +105,6 @@ rm -fr bar
 mkdir -p DIR
 perl -e 'for (1 .. 65536) {print "x = $_\n";}' > DIR/big.js
 $VALGRIND jscoverage DIR DIR2 > OUT 2> ERR && exit 1
-echo 'jscoverage: big.js: script has more than 65,535 lines' | diff --strip-trailing-cr - ERR
+echo 'jscoverage: file big.js contains more than 65,535 lines' | diff --strip-trailing-cr - ERR
 
 rm -fr DIR DIR2 OUT ERR
