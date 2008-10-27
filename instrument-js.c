@@ -468,6 +468,11 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
       }
       break;
     case TOK_ASSIGN:
+      /* destructuring */
+      instrument_expression(p->pn_left, f);
+      Stream_write_string(f, " = ");
+      instrument_expression(p->pn_right, f);
+      break;
     case TOK_RB:
     case TOK_RC:
       /* destructuring */
@@ -507,7 +512,15 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     }
     break;
   case TOK_ASSIGN:
-    instrument_expression(node->pn_left, f);
+    if (node->pn_left->pn_type == TOK_RC) {
+      /* destructuring assignment with object literal must be in parentheses */
+      Stream_write_char(f, '(');
+      instrument_expression(node->pn_left, f);
+      Stream_write_char(f, ')');
+    }
+    else {
+      instrument_expression(node->pn_left, f);
+    }
     Stream_write_char(f, ' ');
     switch (node->pn_op) {
     case JSOP_ADD:

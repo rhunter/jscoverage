@@ -33,3 +33,10 @@ function h(a, [b, c], {foo: d, 'bar': e}) {
 }
 
 x = function([a, b]) a + b;
+
+({x: x0, y: y0}) = point;
+var {x: x0, y: y0} = point;
+let ({x: x0, y: y0} = point) {
+  print(x0);
+  print(y0);
+}
