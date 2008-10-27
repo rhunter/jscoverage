@@ -70,7 +70,16 @@ static char * lines = NULL;
 static uint16_t num_lines = 0;
 
 void jscoverage_set_js_version(const char * version) {
-  js_version = atoi(version);
+  js_version = JS_StringToVersion(version);
+  if (js_version != JSVERSION_UNKNOWN) {
+    return;
+  }
+
+  char * end;
+  js_version = (JSVersion) strtol(version, &end, 10);
+  if (end - version != strlen(version)) {
+    fatal("invalid version: %s", version);
+  }
 }
 
 void jscoverage_init(void) {
