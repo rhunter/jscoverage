@@ -50,25 +50,25 @@ function x(a, b) {
   x();
 }
 _$jscoverage['javascript-function.js'][20]++;
-x = function() {
+x = function () {
   _$jscoverage['javascript-function.js'][21]++;
   x();
 }
 ;
 _$jscoverage['javascript-function.js'][24]++;
-(function() {
+(function () {
   _$jscoverage['javascript-function.js'][25]++;
   print("x");
 }
 )();
 _$jscoverage['javascript-function.js'][28]++;
-(function(a) {
+(function (a) {
   _$jscoverage['javascript-function.js'][29]++;
   print("x");
 }
 )(1);
 _$jscoverage['javascript-function.js'][32]++;
-(function(a, b) {
+(function (a, b) {
   _$jscoverage['javascript-function.js'][33]++;
   print("x");
 }

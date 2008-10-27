@@ -335,12 +335,11 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   assert(object == &function->object);
   Stream_printf(f, "%*s", indent, "");
   if (type == FUNCTION_NORMAL) {
-    Stream_write_string(f, "function");
+    Stream_write_string(f, "function ");
   }
 
   /* function name */
   if (function->atom) {
-    Stream_write_char(f, ' ');
     print_string_atom(function->atom, f);
   }
 
@@ -348,7 +347,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   function parameters - see JS_DecompileFunction in jsapi.cpp, which calls
   js_DecompileFunction in jsopcode.cpp
   */
-  Stream_write_string(f, "(");
+  Stream_write_char(f, '(');
   JSArenaPool pool;
   JS_INIT_ARENA_POOL(&pool, "instrument_function", 256, 1, &context->scriptStackQuota);
   jsuword * local_names = NULL;
