@@ -8,5 +8,5 @@ Copyright (C) 2007, 2008 siliconforks.com
 JSCoverage is free software, distributed under the GNU General Public License. 
 The license is included in the file COPYING.
 
-This program contains a copy of OSSP js, a distribution of Mozilla's JavaScript
-implementation.  See the file js/README for details.
+This program contains a copy of SpiderMonkey, Mozilla's JavaScript
+implementation.  See the file js/README.html for details.
