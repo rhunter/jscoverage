@@ -10,7 +10,7 @@ if (! _$jscoverage['javascript-in.js']) {
   _$jscoverage['javascript-in.js'][3] = 0;
 }
 _$jscoverage['javascript-in.js'][1]++;
-var x = {};
+var x = ({});
 _$jscoverage['javascript-in.js'][2]++;
 if ("a" in x) {
   _$jscoverage['javascript-in.js'][3]++;

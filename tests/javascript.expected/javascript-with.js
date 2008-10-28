@@ -16,7 +16,7 @@ _$jscoverage['javascript-with.js'][1]++;
 function f() {
 }
 _$jscoverage['javascript-with.js'][2]++;
-var x = {};
+var x = ({});
 _$jscoverage['javascript-with.js'][4]++;
 with (x) {
   _$jscoverage['javascript-with.js'][5]++;
