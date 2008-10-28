@@ -655,12 +655,20 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     instrument_expression(node->pn_kid, f);
     break;
   case TOK_DOT:
+    /* numeric literals must be parenthesized */
+    if (node->pn_expr->pn_type == TOK_NUMBER) {
+      Stream_write_char(f, '(');
+      instrument_expression(node->pn_expr, f);
+      Stream_write_char(f, ')');
+    }
+    else {
+      instrument_expression(node->pn_expr, f);
+    }
     /*
     This may have originally been x['foo-bar'].  Because the string 'foo-bar'
     contains illegal characters, we have to use the subscript syntax instead of
     the dot syntax.
     */
-    instrument_expression(node->pn_expr, f);
     assert(ATOM_IS_STRING(node->pn_atom));
     {
       JSString * s = ATOM_TO_STRING(node->pn_atom);
