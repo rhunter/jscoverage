@@ -655,14 +655,17 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     instrument_expression(node->pn_kid, f);
     break;
   case TOK_DOT:
-    /* numeric literals must be parenthesized */
-    if (node->pn_expr->pn_type == TOK_NUMBER) {
+    /* numeric literals, object literals must be parenthesized */
+    switch (node->pn_expr->pn_type) {
+    case TOK_NUMBER:
+    case TOK_RC:
       Stream_write_char(f, '(');
       instrument_expression(node->pn_expr, f);
       Stream_write_char(f, ')');
-    }
-    else {
+      break;
+    default:
       instrument_expression(node->pn_expr, f);
+      break;
     }
     /*
     This may have originally been x['foo-bar'].  Because the string 'foo-bar'

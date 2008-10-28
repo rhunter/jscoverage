@@ -5,3 +5,4 @@ x['2y'] = y['var'];
 x[''] = y[""];
 
 print(123.0.toString());
+({}.toString());
