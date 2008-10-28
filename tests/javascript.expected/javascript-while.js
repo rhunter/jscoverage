@@ -19,6 +19,11 @@ if (! _$jscoverage['javascript-while.js']) {
   _$jscoverage['javascript-while.js'][21] = 0;
   _$jscoverage['javascript-while.js'][23] = 0;
   _$jscoverage['javascript-while.js'][24] = 0;
+  _$jscoverage['javascript-while.js'][28] = 0;
+  _$jscoverage['javascript-while.js'][29] = 0;
+  _$jscoverage['javascript-while.js'][30] = 0;
+  _$jscoverage['javascript-while.js'][31] = 0;
+  _$jscoverage['javascript-while.js'][32] = 0;
 }
 _$jscoverage['javascript-while.js'][1]++;
 while (x) {
@@ -57,4 +62,18 @@ while (x) {
     continue label;
   }
 }
-_$jscoverage['javascript-while.js'].source = ["<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  x<span class=\"k\">();</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  <span class=\"k\">;</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span><span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>","","label<span class=\"k\">:</span>","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span> label<span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>"];
+_$jscoverage['javascript-while.js'][28]++;
+label2:
+{
+  _$jscoverage['javascript-while.js'][29]++;
+  f();
+  _$jscoverage['javascript-while.js'][30]++;
+  while (x) {
+    _$jscoverage['javascript-while.js'][31]++;
+    if (x) {
+      _$jscoverage['javascript-while.js'][32]++;
+      break label2;
+    }
+}
+}
+_$jscoverage['javascript-while.js'].source = ["<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  x<span class=\"k\">();</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">;</span>","<span class=\"k\">}</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  x<span class=\"k\">();</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span>","  <span class=\"k\">;</span>","","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span><span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>","","label<span class=\"k\">:</span>","<span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","  <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">continue</span> label<span class=\"k\">;</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>","","label2<span class=\"k\">:</span> <span class=\"k\">{</span>","  f<span class=\"k\">();</span>","  <span class=\"k\">while</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","    <span class=\"k\">if</span> <span class=\"k\">(</span>x<span class=\"k\">)</span> <span class=\"k\">{</span>","      <span class=\"k\">break</span> label2<span class=\"k\">;</span>","    <span class=\"k\">}</span>","  <span class=\"k\">}</span>","<span class=\"k\">}</span>"];

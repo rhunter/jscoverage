@@ -1126,19 +1126,33 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, ";\n");
     break;
   case TOK_COLON:
+  {
     assert(node->pn_arity == PN_NAME);
-    /*
-    This one is tricky: can't output instrumentation between the label and the
-    statement it's supposed to label ...
-    */
     Stream_printf(f, "%*s", indent < 2? 0: indent - 2, "");
     print_string_atom(node->pn_atom, f);
     Stream_write_string(f, ":\n");
-    /*
-    ... use output_statement instead of instrument_statement.
-    */
-    output_statement(node->pn_expr, f, indent, false);
+    JSParseNode * labelled = node->pn_expr;
+    if (labelled->pn_type == TOK_LEXICALSCOPE) {
+      labelled = labelled->pn_expr;
+    }
+    if (labelled->pn_type == TOK_LC) {
+      /* labelled block */
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "{\n");
+      instrument_statement(labelled, f, indent + 2, false);
+      Stream_printf(f, "%*s", indent, "");
+      Stream_write_string(f, "}\n");
+    }
+    else {
+      /*
+      This one is tricky: can't output instrumentation between the label and the
+      statement it's supposed to label, so use output_statement instead of
+      instrument_statement.
+      */
+      output_statement(labelled, f, indent, false);
+    }
     break;
+  }
   case TOK_LEXICALSCOPE:
     /* let statement */
     assert(node->pn_arity == PN_NAME);

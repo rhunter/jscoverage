@@ -24,3 +24,12 @@ while (x) {
     continue label;
   }
 }
+
+label2: {
+  f();
+  while (x) {
+    if (x) {
+      break label2;
+    }
+  }
+}
