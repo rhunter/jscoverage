@@ -267,7 +267,7 @@ static const char * get_op(uint8 op) {
   }
 }
 
-static void instrument_expression(JSParseNode * node, Stream * f);
+static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals);
 static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 
@@ -284,7 +284,7 @@ static void output_for_in(JSParseNode * node, Stream * f) {
     Stream_write_string(f, "each ");
   }
   Stream_write_char(f, '(');
-  instrument_expression(node->pn_left, f);
+  output_expression(node->pn_left, f, false);
   Stream_write_char(f, ')');
 }
 
@@ -311,7 +311,7 @@ static void output_array_comprehension_or_generator_expression(JSParseNode * nod
     p = p->pn_kid;
   }
 
-  instrument_expression(p, f);
+  output_expression(p, f, false);
   p = for_node;
   while (p->pn_type == TOK_FOR) {
     Stream_write_char(f, ' ');
@@ -320,60 +320,8 @@ static void output_array_comprehension_or_generator_expression(JSParseNode * nod
   }
   if (if_node) {
     Stream_write_string(f, " if (");
-    instrument_expression(if_node->pn_kid1, f);
+    output_expression(if_node->pn_kid1, f, false);
     Stream_write_char(f, ')');
-  }
-}
-
-static void output_destructuring_expression(JSParseNode * node, Stream * f) {
-  switch (node->pn_type) {
-  case TOK_NAME:
-    assert(node->pn_arity == PN_NAME);
-    print_string_atom(node->pn_atom, f);
-    if (node->pn_expr != NULL) {
-      Stream_write_string(f, " = ");
-      instrument_expression(node->pn_expr, f);
-    }
-    break;
-  case TOK_RB:
-    Stream_write_char(f, '[');
-    for (JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
-      if (p != node->pn_head) {
-        Stream_write_string(f, ", ");
-      }
-      /* TOK_COMMA is a special case: a hole in the array */
-      if (p->pn_type != TOK_COMMA) {
-        output_destructuring_expression(p, f);
-      }
-    }
-    if (node->pn_extra == PNX_ENDCOMMA) {
-      Stream_write_char(f, ',');
-    }
-    Stream_write_char(f, ']');
-    break;
-  case TOK_RC:
-    Stream_write_char(f, '{');
-    for (JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
-      if (p != node->pn_head) {
-        Stream_write_string(f, ", ");
-      }
-      if (p->pn_type != TOK_COLON) {
-        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%d)", p->pn_type);
-      }
-      instrument_expression(p->pn_left, f);
-      Stream_write_string(f, ": ");
-      output_destructuring_expression(p->pn_right, f);
-    }
-    Stream_write_char(f, '}');
-    break;
-  case TOK_ASSIGN:
-    output_destructuring_expression(node->pn_left, f);
-    Stream_write_string(f, " = ");
-    instrument_expression(node->pn_right, f);
-    break;
-  default:
-    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
-    break;
   }
 }
 
@@ -433,7 +381,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
         }
       }
       assert(expression != NULL);
-      output_destructuring_expression(expression, f);
+      output_expression(expression, f, false);
     }
     else {
       print_string_atom(param, f);
@@ -487,19 +435,19 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
     }
     else {
       Stream_write_char(f, '(');
-      instrument_expression(function_node, f);
+      output_expression(function_node, f, false);
       Stream_write_char(f, ')');
     }
   }
   else {
-    instrument_expression(function_node, f);
+    output_expression(function_node, f, false);
   }
   Stream_write_char(f, '(');
   for (struct JSParseNode * p = function_node->pn_next; p != NULL; p = p->pn_next) {
     if (p != node->pn_head->pn_next) {
       Stream_write_string(f, ", ");
     }
-    instrument_expression(p, f);
+    output_expression(p, f, false);
   }
   Stream_write_char(f, ')');
 }
@@ -510,7 +458,7 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
     if (p != list->pn_head) {
       Stream_write_string(f, ", ");
     }
-    output_destructuring_expression(p, f);
+    output_expression(p, f, false);
   }
 }
 
@@ -527,7 +475,7 @@ There seem to be some undocumented expressions:
 TOK_INSTANCEOF  binary
 TOK_IN          binary
 */
-static void instrument_expression(JSParseNode * node, Stream * f) {
+static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
     instrument_function(node, f, 0, FUNCTION_NORMAL);
@@ -537,23 +485,11 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
       }
-      instrument_expression(p, f);
+      output_expression(p, f, parenthesize_object_literals);
     }
     break;
   case TOK_ASSIGN:
-    switch (node->pn_left->pn_type) {
-    case TOK_RB:
-      output_destructuring_expression(node->pn_left, f);
-      break;
-    case TOK_RC:
-      Stream_write_char(f, '(');
-      output_destructuring_expression(node->pn_left, f);
-      Stream_write_char(f, ')');
-      break;
-    default:
-      instrument_expression(node->pn_left, f);
-      break;
-    }
+    output_expression(node->pn_left, f, parenthesize_object_literals);
     Stream_write_char(f, ' ');
     switch (node->pn_op) {
     case JSOP_ADD:
@@ -574,14 +510,14 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       break;
     }
     Stream_write_string(f, "= ");
-    instrument_expression(node->pn_right, f);
+    output_expression(node->pn_right, f, false);
     break;
   case TOK_HOOK:
-    instrument_expression(node->pn_kid1, f);
+    output_expression(node->pn_kid1, f, parenthesize_object_literals);
     Stream_write_string(f, "? ");
-    instrument_expression(node->pn_kid2, f);
+    output_expression(node->pn_kid2, f, false);
     Stream_write_string(f, ": ");
-    instrument_expression(node->pn_kid3, f);
+    output_expression(node->pn_kid3, f, false);
     break;
   case TOK_OR:
   case TOK_AND:
@@ -597,16 +533,19 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
   case TOK_DIVOP:
     switch (node->pn_arity) {
     case PN_BINARY:
-      instrument_expression(node->pn_left, f);
+      output_expression(node->pn_left, f, parenthesize_object_literals);
       Stream_printf(f, " %s ", get_op(node->pn_op));
-      instrument_expression(node->pn_right, f);
+      output_expression(node->pn_right, f, false);
       break;
     case PN_LIST:
       for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
-        if (p != node->pn_head) {
-          Stream_printf(f, " %s ", get_op(node->pn_op));
+        if (p == node->pn_head) {
+          output_expression(p, f, parenthesize_object_literals);
         }
-        instrument_expression(p, f);
+        else {
+          Stream_printf(f, " %s ", get_op(node->pn_op));
+          output_expression(p, f, false);
+        }
       }
       break;
     default:
@@ -617,27 +556,27 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     switch (node->pn_op) {
     case JSOP_NEG:
       Stream_write_char(f, '-');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_POS:
       Stream_write_char(f, '+');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_NOT:
       Stream_write_char(f, '!');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_BITNOT:
       Stream_write_char(f, '~');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_TYPEOF:
       Stream_write_string(f, "typeof ");
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_VOID:
       Stream_write_string(f, "void ");
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     default:
       fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%d)", node->pn_op);
@@ -654,24 +593,24 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     case JSOP_INCPROP:
     case JSOP_INCELEM:
       Stream_write_string(f, "++");
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_DECNAME:
     case JSOP_DECPROP:
     case JSOP_DECELEM:
       Stream_write_string(f, "--");
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, false);
       break;
     case JSOP_NAMEINC:
     case JSOP_PROPINC:
     case JSOP_ELEMINC:
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, parenthesize_object_literals);
       Stream_write_string(f, "++");
       break;
     case JSOP_NAMEDEC:
     case JSOP_PROPDEC:
     case JSOP_ELEMDEC:
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, parenthesize_object_literals);
       Stream_write_string(f, "--");
       break;
     default:
@@ -685,18 +624,18 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     break;
   case TOK_DELETE:
     Stream_write_string(f, "delete ");
-    instrument_expression(node->pn_kid, f);
+    output_expression(node->pn_kid, f, false);
     break;
   case TOK_DOT:
     /* numeric literals must be parenthesized */
     switch (node->pn_expr->pn_type) {
     case TOK_NUMBER:
       Stream_write_char(f, '(');
-      instrument_expression(node->pn_expr, f);
+      output_expression(node->pn_expr, f, false);
       Stream_write_char(f, ')');
       break;
     default:
-      instrument_expression(node->pn_expr, f);
+      output_expression(node->pn_expr, f, true);
       break;
     }
     /*
@@ -732,9 +671,9 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     }
     break;
   case TOK_LB:
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, false);
     Stream_write_char(f, '[');
-    instrument_expression(node->pn_right, f);
+    output_expression(node->pn_right, f, false);
     Stream_write_char(f, ']');
     break;
   case TOK_LP:
@@ -748,7 +687,7 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
       }
       /* TOK_COMMA is a special case: a hole in the array */
       if (p->pn_type != TOK_COMMA) {
-        instrument_expression(p, f);
+        output_expression(p, f, false);
       }
     }
     if (node->pn_extra == PNX_ENDCOMMA) {
@@ -757,7 +696,9 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     Stream_write_char(f, ']');
     break;
   case TOK_RC:
-    Stream_write_char(f, '(');
+    if (parenthesize_object_literals) {
+      Stream_write_char(f, '(');
+    }
     Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p->pn_type != TOK_COLON) {
@@ -777,29 +718,35 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
         else {
           Stream_write_string(f, "set ");
         }
-        instrument_expression(p->pn_left, f);
+        output_expression(p->pn_left, f, false);
         if (p->pn_right->pn_type != TOK_FUNCTION) {
           fatal_source(file_id, p->pn_pos.begin.lineno, "expected function");
         }
         instrument_function(p->pn_right, f, 0, FUNCTION_GETTER_OR_SETTER);
         break;
       default:
-        instrument_expression(p->pn_left, f);
+        output_expression(p->pn_left, f, false);
         Stream_write_string(f, ": ");
-        instrument_expression(p->pn_right, f);
+        output_expression(p->pn_right, f, false);
         break;
       }
     }
     Stream_write_char(f, '}');
-    Stream_write_char(f, ')');
+    if (parenthesize_object_literals) {
+      Stream_write_char(f, ')');
+    }
     break;
   case TOK_RP:
     Stream_write_char(f, '(');
-    instrument_expression(node->pn_kid, f);
+    output_expression(node->pn_kid, f, false);
     Stream_write_char(f, ')');
     break;
   case TOK_NAME:
     print_string_atom(node->pn_atom, f);
+    if (node->pn_expr != NULL) {
+      Stream_write_string(f, " = ");
+      output_expression(node->pn_expr, f, false);
+    }
     break;
   case TOK_STRING:
     print_quoted_string_atom(node->pn_atom, f);
@@ -847,14 +794,14 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     }
     break;
   case TOK_INSTANCEOF:
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, parenthesize_object_literals);
     Stream_write_string(f, " instanceof ");
-    instrument_expression(node->pn_right, f);
+    output_expression(node->pn_right, f, false);
     break;
   case TOK_IN:
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, false);
     Stream_write_string(f, " in ");
-    instrument_expression(node->pn_right, f);
+    output_expression(node->pn_right, f, false);
     break;
   case TOK_LEXICALSCOPE:
     assert(node->pn_arity == PN_NAME);
@@ -865,14 +812,14 @@ static void instrument_expression(JSParseNode * node, Stream * f) {
     assert(node->pn_expr->pn_left->pn_arity == PN_LIST);
     instrument_declarations(node->pn_expr->pn_left, f);
     Stream_write_string(f, ") ");
-    instrument_expression(node->pn_expr->pn_right, f);
+    output_expression(node->pn_expr->pn_right, f, true);
     break;
   case TOK_YIELD:
     assert(node->pn_arity == PN_UNARY);
     Stream_write_string(f, "yield");
     if (node->pn_kid != NULL) {
       Stream_write_char(f, ' ');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, true);
     }
     break;
   case TOK_ARRAYCOMP:
@@ -944,7 +891,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
 
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "if (");
-    instrument_expression(node->pn_kid1, f);
+    output_expression(node->pn_kid1, f, false);
     Stream_write_string(f, ") {\n");
     if (is_jscoverage_if && node->pn_kid3) {
       uint16_t else_start = node->pn_kid3->pn_pos.begin.lineno;
@@ -981,7 +928,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "switch (");
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, false);
     Stream_write_string(f, ") {\n");
     {
       JSParseNode * list = node->pn_right;
@@ -993,7 +940,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
         switch (p->pn_type) {
         case TOK_CASE:
           Stream_write_string(f, "case ");
-          instrument_expression(p->pn_left, f);
+          output_expression(p->pn_left, f, false);
           Stream_write_string(f, ":\n");
           break;
         case TOK_DEFAULT:
@@ -1017,7 +964,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "while (");
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, false);
     Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_write_string(f, "}\n");
@@ -1030,7 +977,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, "}\n");
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "while (");
-    instrument_expression(node->pn_right, f);
+    output_expression(node->pn_right, f, false);
     Stream_write_string(f, ");\n");
     break;
   case TOK_FOR:
@@ -1047,17 +994,17 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       assert(node->pn_left->pn_arity == PN_TERNARY);
       Stream_write_string(f, "for (");
       if (node->pn_left->pn_kid1) {
-        instrument_expression(node->pn_left->pn_kid1, f);
+        output_expression(node->pn_left->pn_kid1, f, false);
       }
       Stream_write_string(f, ";");
       if (node->pn_left->pn_kid2) {
         Stream_write_char(f, ' ');
-        instrument_expression(node->pn_left->pn_kid2, f);
+        output_expression(node->pn_left->pn_kid2, f, false);
       }
       Stream_write_string(f, ";");
       if (node->pn_left->pn_kid3) {
         Stream_write_char(f, ' ');
-        instrument_expression(node->pn_left->pn_kid3, f);
+        output_expression(node->pn_left->pn_kid3, f, false);
       }
       Stream_write_char(f, ')');
       break;
@@ -1073,7 +1020,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_UNARY);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "throw ");
-    instrument_expression(node->pn_u.unary.kid, f);
+    output_expression(node->pn_u.unary.kid, f, false);
     Stream_write_string(f, ";\n");
     break;
   case TOK_TRY:
@@ -1090,10 +1037,10 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
         assert(catch->pn_type == TOK_CATCH);
         Stream_printf(f, "%*s", indent, "");
         Stream_write_string(f, "catch (");
-        output_destructuring_expression(catch->pn_kid1, f);
+        output_expression(catch->pn_kid1, f, false);
         if (catch->pn_kid2) {
           Stream_write_string(f, " if ");
-          instrument_expression(catch->pn_kid2, f);
+          output_expression(catch->pn_kid2, f, false);
         }
         Stream_write_string(f, ") {\n");
         instrument_statement(catch->pn_kid3, f, indent + 2, false);
@@ -1128,7 +1075,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_BINARY);
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "with (");
-    instrument_expression(node->pn_left, f);
+    output_expression(node->pn_left, f, false);
     Stream_write_string(f, ") {\n");
     instrument_statement(node->pn_right, f, indent + 2, false);
     Stream_printf(f, "%*s", indent, "");
@@ -1136,7 +1083,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     break;
   case TOK_VAR:
     Stream_printf(f, "%*s", indent, "");
-    instrument_expression(node, f);
+    output_expression(node, f, false);
     Stream_write_string(f, ";\n");
     break;
   case TOK_RETURN:
@@ -1145,7 +1092,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_write_string(f, "return");
     if (node->pn_kid != NULL) {
       Stream_write_char(f, ' ');
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, true);
     }
     Stream_write_string(f, ";\n");
     break;
@@ -1153,7 +1100,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_UNARY);
     Stream_printf(f, "%*s", indent, "");
     if (node->pn_kid != NULL) {
-      instrument_expression(node->pn_kid, f);
+      output_expression(node->pn_kid, f, true);
     }
     Stream_write_string(f, ";\n");
     break;
@@ -1227,7 +1174,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     case PN_LIST:
       /* let definition */
       Stream_printf(f, "%*s", indent, "");
-      instrument_expression(node, f);
+      output_expression(node, f, false);
       Stream_write_string(f, ";\n");
       break;
     default:
