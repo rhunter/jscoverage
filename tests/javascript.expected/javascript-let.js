@@ -74,11 +74,10 @@ for (var i = 1; i <= 5; i++) {
     _$jscoverage['javascript-let.js'][26]++;
     let j = i;
     _$jscoverage['javascript-let.js'][27]++;
-    item.onclick = function (ev) {
+    item.onclick = (function (ev) {
   _$jscoverage['javascript-let.js'][28]++;
   alert("Item " + j + " is clicked.");
-}
-;
+});
     _$jscoverage['javascript-let.js'][30]++;
     list.appendChild(item);
   }

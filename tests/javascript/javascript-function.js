@@ -32,3 +32,7 @@ x = function() {
 (function (a, b) {
   print('x');
 })(1, 2);
+
+(function () {
+  print('x');
+}).call(window);

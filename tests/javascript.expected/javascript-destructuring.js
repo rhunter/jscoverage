@@ -79,10 +79,9 @@ function h(a, [b, c], {foo: d, "bar": e}) {
   g();
 }
 _$jscoverage['javascript-destructuring.js'][35]++;
-x = function ([a, b]) {
+x = (function ([a, b]) {
   return a + b;
-}
-;
+});
 _$jscoverage['javascript-destructuring.js'][37]++;
 ({x: x0, y: y0}) = point;
 _$jscoverage['javascript-destructuring.js'][38]++;

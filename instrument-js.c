@@ -414,7 +414,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
     }
   }
 
-  Stream_write_string(f, "}\n");
+  Stream_write_char(f, '}');
 }
 
 static void instrument_function_call(JSParseNode * node, Stream * f) {
@@ -433,15 +433,8 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
       Stream_write_char(f, ')');
       return;
     }
-    else {
-      Stream_write_char(f, '(');
-      output_expression(function_node, f, false);
-      Stream_write_char(f, ')');
-    }
   }
-  else {
-    output_expression(function_node, f, false);
-  }
+  output_expression(function_node, f, false);
   Stream_write_char(f, '(');
   for (struct JSParseNode * p = function_node->pn_next; p != NULL; p = p->pn_next) {
     if (p != node->pn_head->pn_next) {
@@ -478,7 +471,9 @@ TOK_IN          binary
 static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
+    Stream_write_char(f, '(');
     instrument_function(node, f, 0, FUNCTION_NORMAL);
+    Stream_write_char(f, ')');
     break;
   case TOK_COMMA:
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
@@ -861,6 +856,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
   switch (node->pn_type) {
   case TOK_FUNCTION:
     instrument_function(node, f, indent, FUNCTION_NORMAL);
+    Stream_write_char(f, '\n');
     break;
   case TOK_LC:
     assert(node->pn_arity == PN_LIST);
