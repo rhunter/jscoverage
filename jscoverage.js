@@ -423,22 +423,30 @@ function jscoverage_recalculateSummaryTab(cc) {
 
   var totals = { files:0, statements:0, executed:0, coverage:0, skipped:0 };
 
+  var file;
+  var files = [];
+  for (file in cc) {
+    files.push(file);
+  }
+  files.sort();
+
   var rowCounter = 0;
-  for (var file in cc) {
-    var i;
+  for (var f = 0; f < files.length; f++) {
+    file = files[f];
+    var lineNumber;
     var num_statements = 0;
     var num_executed = 0;
     var missing = [];
     var length = cc[file].length;
     var currentConditionalEnd = 0;
-    for (i = 0; i < length; i++) {
-      var n = cc[file][i];
+    for (lineNumber = 0; lineNumber < length; lineNumber++) {
+      var n = cc[file][lineNumber];
 
-      if (i === currentConditionalEnd) {
+      if (lineNumber === currentConditionalEnd) {
         currentConditionalEnd = 0;
       }
-      else if (currentConditionalEnd === 0 && cc[file].conditionals && cc[file].conditionals[i]) {
-        currentConditionalEnd = cc[file].conditionals[i];
+      else if (currentConditionalEnd === 0 && cc[file].conditionals && cc[file].conditionals[lineNumber]) {
+        currentConditionalEnd = cc[file].conditionals[lineNumber];
       }
 
       if (currentConditionalEnd !== 0) {
@@ -450,7 +458,7 @@ function jscoverage_recalculateSummaryTab(cc) {
       }
 
       if (n === 0) {
-        missing.push(i);
+        missing.push(lineNumber);
       }
       else {
         num_executed++;
@@ -503,7 +511,7 @@ function jscoverage_recalculateSummaryTab(cc) {
 
     if (showMissingColumn) {
       cell = document.createElement("td");
-      for (i = 0; i < missing.length; i++) {
+      for (var i = 0; i < missing.length; i++) {
         if (i !== 0) {
           cell.appendChild(document.createTextNode(", "));
         }
