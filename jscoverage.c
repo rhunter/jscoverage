@@ -49,7 +49,7 @@ int main(int argc, char ** argv) {
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-      copy_resource_to_stream("help.txt", stdout);
+      copy_resource_to_stream("jscoverage-help.txt", stdout);
       exit(EXIT_SUCCESS);
     }
     else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--version") == 0) {

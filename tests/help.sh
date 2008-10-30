@@ -25,11 +25,11 @@ export PATH=.:..:$PATH
 $VALGRIND jscoverage --help > OUT 2> ERR
 test -s OUT
 test ! -s ERR
-diff --strip-trailing-cr ../help.txt OUT
+diff --strip-trailing-cr ../jscoverage-help.txt OUT
 
 $VALGRIND jscoverage -h > OUT 2> ERR
 test -s OUT
 test ! -s ERR
-diff --strip-trailing-cr ../help.txt OUT
+diff --strip-trailing-cr ../jscoverage-help.txt OUT
 
 rm -fr OUT ERR

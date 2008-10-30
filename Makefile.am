@@ -21,7 +21,7 @@ SUBDIRS = js
 
 AM_CFLAGS = -Ijs -Ijs/build -DXP_UNIX
 
-resources = help.txt jscoverage-server-help.txt \
+resources = jscoverage-help.txt jscoverage-server-help.txt \
             jscoverage.jsm jscoverage.manifest jscoverage.xul jscoverage-overlay.js \
             jscoverage.html \
             jscoverage.css jscoverage-ie.css jscoverage-highlight.css \
