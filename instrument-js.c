@@ -22,6 +22,7 @@
 #include "instrument-js.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -764,6 +765,15 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     */
     if (node->pn_dval == 0.0) {
       Stream_write_string(f, "0");
+    }
+    else if (node->pn_dval == INFINITY) {
+      Stream_write_string(f, "Number.POSITIVE_INFINITY");
+    }
+    else if (node->pn_dval == -INFINITY) {
+      Stream_write_string(f, "Number.NEGATIVE_INFINITY");
+    }
+    else if (node->pn_dval == NAN) {
+      Stream_write_string(f, "Number.NaN");
     }
     else {
       Stream_printf(f, "%.15g", node->pn_dval);
