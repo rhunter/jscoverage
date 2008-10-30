@@ -1,5 +1,5 @@
 /*
-    main.c - JSCoverage main routine
+    jscoverage.c - main routine for `jscoverage' program
     Copyright (C) 2007, 2008 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify

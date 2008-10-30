@@ -18,7 +18,7 @@
 AC_PREREQ(2.61)
 AC_INIT([jscoverage], [0.4])
 AM_INIT_AUTOMAKE([-Wall foreign])
-AC_CONFIG_SRCDIR([main.c])
+AC_CONFIG_SRCDIR([jscoverage.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CANONICAL_HOST
 
