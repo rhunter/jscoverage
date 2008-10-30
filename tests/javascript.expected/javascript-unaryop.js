@@ -13,13 +13,13 @@ if (! _$jscoverage['javascript-unaryop.js']) {
   _$jscoverage['javascript-unaryop.js'][6] = 0;
 }
 _$jscoverage['javascript-unaryop.js'][1]++;
-x = -x;
+x = - x;
 _$jscoverage['javascript-unaryop.js'][2]++;
-x = +x;
+x = + x;
 _$jscoverage['javascript-unaryop.js'][3]++;
-x = !x;
+x = ! x;
 _$jscoverage['javascript-unaryop.js'][4]++;
-x = ~x;
+x = ~ x;
 _$jscoverage['javascript-unaryop.js'][5]++;
 x = typeof x;
 _$jscoverage['javascript-unaryop.js'][6]++;

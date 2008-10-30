@@ -550,19 +550,19 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
   case TOK_UNARYOP:
     switch (node->pn_op) {
     case JSOP_NEG:
-      Stream_write_char(f, '-');
+      Stream_write_string(f, "- ");
       output_expression(node->pn_kid, f, false);
       break;
     case JSOP_POS:
-      Stream_write_char(f, '+');
+      Stream_write_string(f, "+ ");
       output_expression(node->pn_kid, f, false);
       break;
     case JSOP_NOT:
-      Stream_write_char(f, '!');
+      Stream_write_string(f, "! ");
       output_expression(node->pn_kid, f, false);
       break;
     case JSOP_BITNOT:
-      Stream_write_char(f, '~');
+      Stream_write_string(f, "~ ");
       output_expression(node->pn_kid, f, false);
       break;
     case JSOP_TYPEOF:
