@@ -764,7 +764,12 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     To keep the output simple, special-case zero.
     */
     if (node->pn_dval == 0.0) {
-      Stream_write_string(f, "0");
+      if (signbit(node->pn_dval)) {
+        Stream_write_string(f, "-0");
+      }
+      else {
+        Stream_write_string(f, "0");
+      }
     }
     else if (node->pn_dval == INFINITY) {
       Stream_write_string(f, "Number.POSITIVE_INFINITY");
