@@ -5,6 +5,7 @@ Options:
       --document-root=DIR   serve content from DIR (default: current directory)
       --encoding=ENCODING   assume .js files use the given character encoding
       --ip-address=ADDRESS  bind to ADDRESS (default: 127.0.0.1)
+      --js-version=VERSION  use the specified JavaScript version
       --no-highlight        do not perform syntax highlighting
       --no-instrument=URL   do not instrument URL
       --port=PORT           use PORT for TCP port (default: 8080)
