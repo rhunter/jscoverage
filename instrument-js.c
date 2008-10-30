@@ -715,6 +715,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
           Stream_write_string(f, "set ");
         }
         output_expression(p->pn_left, f, false);
+        Stream_write_char(f, ' ');
         if (p->pn_right->pn_type != TOK_FUNCTION) {
           fatal_source(file_id, p->pn_pos.begin.lineno, "expected function");
         }
