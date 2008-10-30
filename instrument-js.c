@@ -777,7 +777,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     else if (node->pn_dval == -INFINITY) {
       Stream_write_string(f, "Number.NEGATIVE_INFINITY");
     }
-    else if (node->pn_dval == NAN) {
+    else if (isnan(node->pn_dval)) {
       Stream_write_string(f, "Number.NaN");
     }
     else {
