@@ -122,4 +122,4 @@ int vasprintf(char ** s, const char * template, va_list a);
 int asprintf(char ** s, const char * template, ...) __attribute__((__format__(printf, 2, 3)));
 #endif
 
-#endif
+#endif /* UTIL_H_ */
