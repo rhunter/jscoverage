@@ -305,21 +305,41 @@ static void output_array_comprehension_or_generator_expression(JSParseNode * nod
     assert(if_node->pn_arity == PN_TERNARY);
     p = if_node->pn_kid2;
   }
-  assert(p->pn_arity == PN_UNARY);
-  p = p->pn_kid;
-  if (p->pn_type == TOK_YIELD) {
-    /* for generator expressions */
+  switch (p->pn_arity) {
+  case PN_UNARY:
     p = p->pn_kid;
+    if (p->pn_type == TOK_YIELD) {
+      /* for generator expressions */
+      p = p->pn_kid;
+    }
+    output_expression(p, f, false);
+    break;
+  case PN_LIST:
+    /*
+    When the array comprehension contains "if (0)", it will be optimized away and
+    the result will be an empty TOK_LC list.
+    */
+    assert(p->pn_type == TOK_LC);
+    assert(p->pn_head == NULL);
+    /* the "1" is arbitrary (since the list is empty) */
+    Stream_write_char(f, '1');
+    break;
+  default:
+    abort();
+    break;
   }
 
-  output_expression(p, f, false);
   p = for_node;
   while (p->pn_type == TOK_FOR) {
     Stream_write_char(f, ' ');
     output_for_in(p, f);
     p = p->pn_right;
   }
-  if (if_node) {
+  if (p->pn_type == TOK_LC) {
+    /* this is the optimized-away "if (0)" */
+    Stream_write_string(f, " if (0)");
+  }
+  else if (if_node) {
     Stream_write_string(f, " if (");
     output_expression(if_node->pn_kid1, f, false);
     Stream_write_char(f, ')');
