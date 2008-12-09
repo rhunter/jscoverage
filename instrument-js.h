@@ -68,4 +68,4 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * data, size_t leng
 
 void jscoverage_write_source(const char * id, const uint16_t * characters, size_t num_characters, Stream * output);
 
-#endif
+#endif /* INSTRUMENT_JS_H_ */
