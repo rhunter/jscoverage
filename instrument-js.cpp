@@ -1197,6 +1197,16 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     Stream_printf(f, "%*s", indent, "");
     Stream_write_string(f, "debugger;\n");
     break;
+  case TOK_SEQ:
+    /*
+    This occurs with the statement:
+    for (var a = b in c) {}
+    */
+    assert(node->pn_arity == PN_LIST);
+    for (JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
+      instrument_statement(p, f, indent, false);
+    }
+    break;
   default:
     fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
   }
