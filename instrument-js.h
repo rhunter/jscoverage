@@ -20,10 +20,16 @@
 #ifndef INSTRUMENT_JS_H_
 #define INSTRUMENT_JS_H_
 
+/* ISO C99 specifies that C++ code must define this to get UINT16_MAX etc. */
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
 #include "stream.h"
 #include "util.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum FileType {
   FILE_TYPE_JS,
@@ -67,5 +73,9 @@ void Coverage_foreach_file(Coverage * coverage, CoverageForeachFunction f, void 
 int jscoverage_parse_json(Coverage * coverage, const uint8_t * data, size_t length) __attribute__((warn_unused_result));
 
 void jscoverage_write_source(const char * id, const uint16_t * characters, size_t num_characters, Stream * output);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INSTRUMENT_JS_H_ */

@@ -338,7 +338,7 @@ InitExnPrivate(JSContext *cx, JSObject *exnObject, JSString *message,
         if (fp->script) {
             elem->filename = fp->script->filename;
             if (fp->regs)
-                elem->ulineno = js_PCToLineNumber(cx, fp->script, fp->regs->pc);
+                elem->ulineno = js_FramePCToLineNumber(cx, fp);
         }
         ++elem;
     }
@@ -804,9 +804,7 @@ Exception(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
     } else {
         if (!fp)
             fp = JS_GetScriptedCaller(cx, NULL);
-        lineno = (fp && fp->regs)
-                 ? js_PCToLineNumber(cx, fp->script, fp->regs->pc)
-                 : 0;
+        lineno = (fp && fp->regs) ? js_FramePCToLineNumber(cx, fp) : 0;
     }
 
     return (OBJ_GET_CLASS(cx, obj) != &js_ErrorClass) ||
@@ -1074,7 +1072,7 @@ js_InitExceptionClasses(JSContext *cx, JSObject *obj)
             break;
 
         /* Make this constructor make objects of class Exception. */
-        fun->u.n.clasp = &js_ErrorClass;
+        FUN_CLASP(fun) = &js_ErrorClass;
 
         /* Make the prototype and constructor links. */
         if (!js_SetClassPrototype(cx, FUN_OBJECT(fun), protos[i],

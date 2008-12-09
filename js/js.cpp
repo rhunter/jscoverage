@@ -54,6 +54,7 @@
 #include "jsapi.h"
 #include "jsarray.h"
 #include "jsatom.h"
+#include "jsbuiltins.h"
 #include "jscntxt.h"
 #include "jsdbgapi.h"
 #include "jsemit.h"
@@ -759,6 +760,20 @@ ReadLine(JSContext *cx, uintN argc, jsval *vp)
     return JS_TRUE;
 }
 
+#ifdef JS_TRACER
+static jsval JS_FASTCALL
+Print_tn(JSContext *cx, JSString *str)
+{
+    char *bytes = JS_EncodeString(cx, str);
+    if (!bytes)
+        return JSVAL_ERROR_COOKIE;
+    fprintf(gOutFile, "%s\n", bytes);
+    JS_free(cx, bytes);
+    fflush(gOutFile);
+    return JSVAL_VOID;
+}
+#endif
+
 static JSBool
 Print(JSContext *cx, uintN argc, jsval *vp)
 {
@@ -1350,9 +1365,9 @@ Notes(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
     return JS_TRUE;
 }
 
-JS_STATIC_ASSERT(JSTN_CATCH == 0);
-JS_STATIC_ASSERT(JSTN_FINALLY == 1);
-JS_STATIC_ASSERT(JSTN_ITER == 2);
+JS_STATIC_ASSERT(JSTRY_CATCH == 0);
+JS_STATIC_ASSERT(JSTRY_FINALLY == 1);
+JS_STATIC_ASSERT(JSTRY_ITER == 2);
 
 static const char* const TryNoteNames[] = { "catch", "finally", "iter" };
 
@@ -2540,10 +2555,31 @@ out:
     return ok;
 }
 
+static int32 JS_FASTCALL
+ShapeOf_tn(JSObject *obj)
+{
+    if (!obj)
+        return 0;
+    if (!OBJ_IS_NATIVE(obj))
+        return -1;
+    return OBJ_SHAPE(obj);
+}
+
+static JSBool
+ShapeOf(JSContext *cx, uintN argc, jsval *vp)
+{
+    jsval v = JS_ARGV(cx, vp)[0];
+    if (!JSVAL_IS_OBJECT(v)) {
+        JS_ReportError(cx, "shapeOf: object expected");
+        return JS_FALSE;
+    }
+    return JS_NewNumberValue(cx, ShapeOf_tn(JSVAL_TO_OBJECT(v)), vp);
+}
+
 #ifdef JS_THREADSAFE
 
 static JSBool
-Sleep(JSContext *cx, uintN argc, jsval *vp)
+Sleep_fn(JSContext *cx, uintN argc, jsval *vp)
 {
     jsdouble t_secs;
     PRUint32 t_ticks;
@@ -2803,13 +2839,16 @@ fail:
 
 #endif
 
+JS_DEFINE_TRCINFO_1(Print, (2, (static, JSVAL_FAIL, Print_tn, CONTEXT, STRING, 0, 0)))
+JS_DEFINE_TRCINFO_1(ShapeOf, (1, (static, INT32, ShapeOf_tn, OBJECT, 0, 0)))
+
 /* We use a mix of JS_FS and JS_FN to test both kinds of natives. */
 static JSFunctionSpec shell_functions[] = {
     JS_FS("version",        Version,        0,0,0),
     JS_FS("options",        Options,        0,0,0),
     JS_FS("load",           Load,           1,0,0),
     JS_FN("readline",       ReadLine,       0,0),
-    JS_FN("print",          Print,          0,0),
+    JS_TN("print",          Print,          0,0, Print_trcinfo),
     JS_FS("help",           Help,           0,0,0),
     JS_FS("quit",           Quit,           0,0,0),
     JS_FN("gc",             GC,             0,0),
@@ -2847,6 +2886,7 @@ static JSFunctionSpec shell_functions[] = {
     JS_FN("getslx",         GetSLX,         1,0),
     JS_FN("toint32",        ToInt32,        1,0),
     JS_FS("evalcx",         EvalInContext,  1,0,0),
+    JS_TN("shapeOf",        ShapeOf,        1,0, ShapeOf_trcinfo),
 #ifdef MOZ_SHARK
     JS_FS("startShark",      js_StartShark,      0,0,0),
     JS_FS("stopShark",       js_StopShark,       0,0,0),
@@ -2868,7 +2908,7 @@ static JSFunctionSpec shell_functions[] = {
     JS_FS("arrayInfo",       js_ArrayInfo,       1,0,0),
 #endif
 #ifdef JS_THREADSAFE
-    JS_FN("sleep",          Sleep,          1,0),
+    JS_FN("sleep",          Sleep_fn,       1,0),
     JS_FN("scatter",        Scatter,        1,0),
 #endif
     JS_FS_END
@@ -2931,6 +2971,7 @@ static const char *const shell_help_messages[] = {
 "  Evaluate s in optional sandbox object o\n"
 "  if (s == '' && !o) return new o with eager standard classes\n"
 "  if (s == 'lazy' && !o) return new o with lazy standard classes",
+"shapeOf(obj)             Get the shape of obj (an implementation detail)",
 #ifdef MOZ_SHARK
 "startShark()             Start a Shark session.\n"
 "                         Shark must be running with programatic sampling.",
@@ -3756,7 +3797,7 @@ MakeAbsolutePathname(JSContext *cx, const char *from, const char *leaf)
 
     /* Else, we were given a real pathname, return that + the leaf. */
     dirlen = slash - from + 1;
-    dir = JS_malloc(cx, dirlen + strlen(leaf) + 1);
+    dir = (char*) JS_malloc(cx, dirlen + strlen(leaf) + 1);
     if (!dir)
         return NULL;
 
@@ -3804,7 +3845,7 @@ snarf(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
             if (len == -1 || fseek(file, 0, SEEK_SET) == EOF) {
                 JS_ReportError(cx, "can't seek start of %s", pathname);
             } else {
-                buf = JS_malloc(cx, len + 1);
+                buf = (char*) JS_malloc(cx, len + 1);
                 if (buf) {
                     cc = fread(buf, 1, len, file);
                     if (cc != len) {

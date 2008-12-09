@@ -425,7 +425,8 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       token_stream.flags |= TSF_OPERAND;
       class = CLASS_KEYWORD;
       break;
-    case TOK_BODY:
+    case TOK_SEQ:
+    case TOK_FORHEAD:
     case TOK_RESERVED:
     case TOK_LIMIT:
       abort();

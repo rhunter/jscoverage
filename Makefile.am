@@ -19,7 +19,8 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = js
 
-AM_CFLAGS = -Ijs -Ijs/build -DXP_UNIX
+AM_CFLAGS = -Ijs -DXP_UNIX
+AM_CXXFLAGS = -Ijs -DXP_UNIX
 
 resources = jscoverage-help.txt jscoverage-server-help.txt \
             jscoverage.jsm jscoverage.manifest jscoverage.xul jscoverage-overlay.js \
@@ -32,13 +33,13 @@ bin_PROGRAMS = jscoverage jscoverage-server
 jscoverage_SOURCES = encoding.c encoding.h \
                      highlight.c highlight.h \
                      instrument.c instrument.h \
-                     instrument-js.c instrument-js.h \
+                     instrument-js.cpp instrument-js.h \
                      jscoverage.c global.h \
                      resource-manager.c resource-manager.h \
                      stream.c stream.h \
                      util.c util.h \
                      $(resources)
-jscoverage_LDADD = js/build/libjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
+jscoverage_LDADD = js/libmozjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 jscoverage_server_SOURCES = http-connection.c \
                             http-exchange.c \
                             http-host.c \
@@ -47,13 +48,13 @@ jscoverage_server_SOURCES = http-connection.c \
                             http-url.c \
                             encoding.c encoding.h \
                             highlight.c highlight.h \
-                            instrument-js.c instrument-js.h \
+                            instrument-js.cpp instrument-js.h \
                             jscoverage-server.c global.h \
                             resource-manager.c resource-manager.h \
                             stream.c stream.h \
                             util.c util.h \
                             $(resources)
-jscoverage_server_LDADD = js/build/libjs.a -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@ @EXTRA_TIMER_LIBS@
+jscoverage_server_LDADD = js/libmozjs.a -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@ @EXTRA_TIMER_LIBS@
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

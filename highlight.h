@@ -24,6 +24,14 @@
 
 #include "stream.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void jscoverage_highlight_js(JSContext * context, const char * id, const jschar * characters, size_t num_characters, Stream * output);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HIGHLIGHT_H_ */

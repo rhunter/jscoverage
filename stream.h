@@ -24,6 +24,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct Stream {
   uint8_t * data;
   size_t length;
@@ -45,5 +49,9 @@ void Stream_write_file_contents(Stream * stream, FILE * f);
 void Stream_reset(Stream * stream);
 
 void Stream_delete(Stream * stream);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STREAM_H_ */

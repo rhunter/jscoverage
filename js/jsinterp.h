@@ -68,6 +68,7 @@ typedef struct JSFrameRegs {
  */
 struct JSStackFrame {
     JSFrameRegs     *regs;
+    jsbytecode      *imacpc;        /* null or interpreter macro call pc */
     jsval           *slots;         /* variables, locals and operand stack */
     JSObject        *callobj;       /* lazily created Call object */
     JSObject        *argsobj;       /* lazily created arguments object */
@@ -94,6 +95,16 @@ struct JSStackFrame {
     jsrefcount      pcDisabledSave; /* for balanced property cache control */
 #endif
 };
+
+#ifdef DEBUG
+#ifdef __cplusplus
+static JS_INLINE uintN
+FramePCOffset(JSStackFrame* fp)
+{
+    return uintN((fp->imacpc ? fp->imacpc : fp->regs->pc) - fp->script->code);
+}
+#endif
+#endif
 
 static JS_INLINE jsval *
 StackBase(JSStackFrame *fp)
@@ -133,6 +144,7 @@ typedef struct JSInlineFrame {
 #define JSFRAME_ITERATOR       0x80 /* trying to get an iterator for for-in */
 #define JSFRAME_POP_BLOCKS    0x100 /* scope chain contains blocks to pop */
 #define JSFRAME_GENERATOR     0x200 /* frame belongs to generator-iterator */
+#define JSFRAME_IMACRO_START  0x400 /* imacro starting -- see jstracer.h */
 
 #define JSFRAME_OVERRIDE_SHIFT 24   /* override bit-set params; see jsfun.c */
 #define JSFRAME_OVERRIDE_BITS  8
@@ -186,8 +198,12 @@ typedef struct JSInlineFrame {
 
 #define SHAPE_OVERFLOW_BIT      JS_BIT(32 - PCVCAP_TAGBITS)
 
+/*
+ * When sprop is not null and the shape generation triggers the GC due to a
+ * shape overflow, the functions roots sprop.
+ */
 extern uint32
-js_GenerateShape(JSContext *cx, JSBool gcLocked);
+js_GenerateShape(JSContext *cx, JSBool gcLocked, JSScopeProperty *sprop);
 
 struct JSPropCacheEntry {
     jsbytecode          *kpc;           /* pc if vcap tag is <= 1, else atom */

@@ -25,6 +25,7 @@ AC_CANONICAL_HOST
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CC_C99
+AC_PROG_CXX
 
 # Checks for libraries.
 AM_ICONV
@@ -74,4 +75,5 @@ then
 fi
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
+AC_CONFIG_SUBDIRS([js])
 AC_OUTPUT

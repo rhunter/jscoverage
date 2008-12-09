@@ -29,6 +29,10 @@
 
 #include <sys/stat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern const char * program;
 
 void fatal(const char * format, ...)
@@ -63,7 +67,7 @@ char * xstrdup(const char * s);
 
 char * xstrndup(const char * s, size_t size);
 
-int xasprintf(char ** s, const char * template, ...) __attribute__((__format__(printf, 2, 3)));
+int xasprintf(char ** s, const char * format, ...) __attribute__((__format__(printf, 2, 3)));
 
 char * xgetcwd(void);
 
@@ -115,11 +119,15 @@ char * strndup(const char * s, size_t size);
 #endif
 
 #ifndef HAVE_VASPRINTF
-int vasprintf(char ** s, const char * template, va_list a);
+int vasprintf(char ** s, const char * format, va_list a);
 #endif
 
 #ifndef HAVE_ASPRINTF
-int asprintf(char ** s, const char * template, ...) __attribute__((__format__(printf, 2, 3)));
+int asprintf(char ** s, const char * format, ...) __attribute__((__format__(printf, 2, 3)));
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* UTIL_H_ */

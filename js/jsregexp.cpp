@@ -51,6 +51,7 @@
 #include "jsapi.h"
 #include "jsarray.h"
 #include "jsatom.h"
+#include "jsbuiltins.h"
 #include "jscntxt.h"
 #include "jsversion.h"
 #include "jsfun.h"
@@ -64,6 +65,23 @@
 #include "jsscan.h"
 #include "jsscope.h"
 #include "jsstr.h"
+
+#ifdef JS_TRACER
+#include "jstracer.h"
+using namespace avmplus;
+using namespace nanojit;
+
+/* 
+ * FIXME  Duplicated with jstracer.cpp, doing it this way for now
+ *        to keep it private to files that need it. 
+ */
+#ifdef JS_JIT_SPEW
+static bool verbose_debug = getenv("TRACEMONKEY") && strstr(getenv("TRACEMONKEY"), "verbose");
+#define debug_only_v(x) if (verbose_debug) { x; }
+#else
+#define debug_only_v(x)
+#endif
+#endif
 
 typedef enum REOp {
 #define REOP_DEF(opcode, name) opcode,
@@ -1600,6 +1618,20 @@ SetForwardJumpOffset(jsbytecode *jump, jsbytecode *target)
     return JS_TRUE;
 }
 
+/* Copy the charset data from a character class node to the charset list
+ * in the regexp object. */
+static JS_ALWAYS_INLINE RECharSet *
+InitNodeCharSet(JSRegExp *re, RENode *node)
+{
+    RECharSet *charSet = &re->classList[node->u.ucclass.index];
+    charSet->converted = JS_FALSE;
+    charSet->length = node->u.ucclass.bmsize;
+    charSet->u.src.startIndex = node->u.ucclass.startIndex;
+    charSet->u.src.length = node->u.ucclass.kidlen;
+    charSet->sense = node->u.ucclass.sense;
+    return charSet;
+}
+
 /*
  * Generate bytecode for the tree rooted at t using an explicit stack instead
  * of recursion.
@@ -1609,7 +1641,6 @@ EmitREBytecode(CompilerState *state, JSRegExp *re, size_t treeDepth,
                jsbytecode *pc, RENode *t)
 {
     EmitStateStackEntry *emitStateSP, *emitStateStack;
-    RECharSet *charSet;
     REOp op;
 
     if (treeDepth == 0) {
@@ -1899,12 +1930,7 @@ EmitREBytecode(CompilerState *state, JSRegExp *re, size_t treeDepth,
             if (!t->u.ucclass.sense)
                 pc[-1] = REOP_NCLASS;
             pc = WriteCompactIndex(pc, t->u.ucclass.index);
-            charSet = &re->classList[t->u.ucclass.index];
-            charSet->converted = JS_FALSE;
-            charSet->length = t->u.ucclass.bmsize;
-            charSet->u.src.startIndex = t->u.ucclass.startIndex;
-            charSet->u.src.length = t->u.ucclass.kidlen;
-            charSet->sense = t->u.ucclass.sense;
+            InitNodeCharSet(re, t);
             break;
 
           default:
@@ -1934,6 +1960,273 @@ EmitREBytecode(CompilerState *state, JSRegExp *re, size_t treeDepth,
     goto cleanup;
 }
 
+#ifdef JS_TRACER
+typedef List<LIns*, LIST_NonGCObjects> LInsList;
+
+/* Dummy GC for nanojit placement new. */
+static GC gc;
+
+class RegExpNativeCompiler {
+ private:
+    JSRegExp*        re;   /* Careful: not fully initialized */
+    CompilerState*   cs;   /* RegExp to compile */
+    Fragment*        fragment;
+    LirWriter*       lir;
+
+    LIns*            state;
+    LIns*            gdata;
+    LIns*            cpend;
+
+    JSBool isCaseInsensitive() const { return cs->flags & JSREG_FOLD; }
+
+    void targetCurrentPoint(LIns* ins) { ins->target(lir->ins0(LIR_label)); }
+
+    void targetCurrentPoint(LInsList& fails) 
+    {
+        LIns* fail = lir->ins0(LIR_label);
+        for (size_t i = 0; i < fails.size(); ++i) {
+            fails[i]->target(fail);
+        }
+        fails.clear();
+    }
+
+    /* 
+     * These functions return the new position after their match operation,
+     * or NULL if there was an error.
+     */
+    LIns* compileEmpty(RENode* node, LIns* pos, LInsList& fails) 
+    {
+        return pos;
+    }
+
+    LIns* compileFlatSingleChar(RENode* node, LIns* pos, LInsList& fails) 
+    {
+        /* 
+         * Fast case-insensitive test for ASCII letters: convert text
+         * char to lower case by bit-or-ing in 32 and compare.
+         */
+        JSBool useFastCI = JS_FALSE;
+        jschar ch = node->u.flat.chr; /* char to test for */
+        jschar ch2 = ch;              /* 2nd char to test for if ci */
+        if (cs->flags & JSREG_FOLD) {
+            if (L'A' <= ch && ch <= L'Z' || L'a' <= ch || ch <= L'z') {
+                ch |= 32;
+                ch2 = ch;
+                useFastCI = JS_TRUE;
+            } else if (JS_TOLOWER(ch) != ch) {
+                ch2 = JS_TOLOWER(ch);
+                ch = JS_TOUPPER(ch);
+            }
+        }
+
+        LIns* to_fail = lir->insBranch(LIR_jf, lir->ins2(LIR_lt, pos, cpend), 0);
+        fails.add(to_fail);
+        LIns* text_ch = lir->insLoad(LIR_ldcs, pos, lir->insImm(0));
+        LIns* comp_ch = useFastCI ? 
+            lir->ins2(LIR_or, text_ch, lir->insImm(32)) : 
+            text_ch;
+        if (ch == ch2) {
+            fails.add(lir->insBranch(LIR_jf, lir->ins2(LIR_eq, comp_ch, lir->insImm(ch)), 0));
+        } else {
+            LIns* to_ok = lir->insBranch(LIR_jt, lir->ins2(LIR_eq, comp_ch, lir->insImm(ch)), 0);
+            fails.add(lir->insBranch(LIR_jf, lir->ins2(LIR_eq, comp_ch, lir->insImm(ch2)), 0));
+            targetCurrentPoint(to_ok);
+        }
+
+        return lir->ins2(LIR_piadd, pos, lir->insImm(2));
+    }
+
+    LIns* compileClass(RENode* node, LIns* pos, LInsList& fails) 
+    {
+        if (!node->u.ucclass.sense) 
+            return JS_FALSE;
+
+        RECharSet* charSet = InitNodeCharSet(re, node);
+        LIns* to_fail = lir->insBranch(LIR_jf, lir->ins2(LIR_lt, pos, cpend), 0);
+        fails.add(to_fail);
+        LIns* text_ch = lir->insLoad(LIR_ldcs, pos, lir->insImm(0));
+        fails.add(lir->insBranch(LIR_jf, lir->ins2(LIR_le, text_ch, lir->insImm(charSet->length)), 0));
+        LIns* byteIndex = lir->ins2(LIR_rsh, text_ch, lir->insImm(3));
+        LIns* bitmap = lir->insLoad(LIR_ld, lir->insImmPtr(charSet), (int) offsetof(RECharSet, u.bits));
+        LIns* byte = lir->insLoad(LIR_ldcb, lir->ins2(LIR_piadd, bitmap, byteIndex), (int) 0);
+        LIns* bitMask = lir->ins2(LIR_lsh, lir->insImm(1),
+                               lir->ins2(LIR_and, text_ch, lir->insImm(0x7)));
+        LIns* test = lir->ins2(LIR_eq, lir->ins2(LIR_and, byte, bitMask), lir->insImm(0));
+        
+        LIns* to_next = lir->insBranch(LIR_jt, test, 0);
+        fails.add(to_next);
+        return lir->ins2(LIR_piadd, pos, lir->insImm(2));
+    }
+
+    LIns* compileAlt(RENode* node, LIns* pos, LInsList& fails) 
+    {
+        LInsList kidFails(NULL);
+        if (!compileNode((RENode *) node->kid, pos, kidFails)) 
+            return JS_FALSE;
+        if (!compileNode(node->next, pos, kidFails)) 
+            return JS_FALSE;
+
+        targetCurrentPoint(kidFails);
+        if (!compileNode(node->u.altprereq.kid2, pos, fails)) 
+            return JS_FALSE;
+        /* 
+         * Disable compilation for any regexp where something follows an
+         * alternation. To make this work, we need to redesign to either
+         * (a) pass around continuations so we know the right place to go
+         * when we logically return, or (b) generate explicit backtracking
+         * code. 
+         */
+        if (node->next) 
+            return JS_FALSE;
+        return pos;
+    }
+
+    JSBool compileNode(RENode* node, LIns* pos, LInsList& fails) 
+    {
+        for (; node; node = node->next) {
+            if (fragment->lirbuf->outOmem()) 
+                return JS_FALSE;
+
+            switch (node->op) {
+            case REOP_EMPTY:
+                pos = compileEmpty(node, pos, fails);
+                break;
+            case REOP_FLAT:
+                if (node->u.flat.length != 1) 
+                    return JS_FALSE;
+                pos = compileFlatSingleChar(node, pos, fails);
+                break;
+            case REOP_ALT:
+            case REOP_ALTPREREQ:
+                pos = compileAlt(node, pos, fails);
+                break;
+            case REOP_CLASS:
+                pos = compileClass(node, pos, fails);
+                break;
+            default:
+                return JS_FALSE;
+            }
+            if (!pos) 
+                return JS_FALSE;
+        }
+
+        lir->insStorei(pos, state, (int) offsetof(REMatchState, cp));
+        lir->ins1(LIR_ret, state);
+        return JS_TRUE;
+    }
+
+    JSBool compileSticky(RENode* root, LIns* start) 
+    {
+        LInsList fails(NULL);
+        if (!compileNode(root, start, fails)) 
+            return JS_FALSE;
+        targetCurrentPoint(fails);
+        lir->ins1(LIR_ret, lir->insImm(0));
+        return JS_TRUE;
+    }
+
+    JSBool compileAnchoring(RENode* root, LIns* start) 
+    {
+        /* Even at the end, the empty regexp would match. */
+        LIns* to_next = lir->insBranch(LIR_jf, 
+                                       lir->ins2(LIR_le, start, cpend), 0);
+        LInsList fails(NULL);
+        if (!compileNode(root, start, fails)) 
+            return JS_FALSE;
+
+        targetCurrentPoint(to_next);
+        lir->ins1(LIR_ret, lir->insImm(0));
+        
+        targetCurrentPoint(fails);
+        lir->insStorei(lir->ins2(LIR_piadd, start, lir->insImm(2)), gdata, 
+                       (int) offsetof(REGlobalData, skipped));
+        
+        return JS_TRUE;
+    }
+
+    inline LIns*
+    addName(LirBuffer* lirbuf, LIns* ins, const char* name)
+    {
+        debug_only_v(lirbuf->names->addName(ins, name);)
+        return ins;
+    }
+
+ public:
+    RegExpNativeCompiler(JSRegExp *re, CompilerState *cs) 
+        : re(re), cs(cs), fragment(NULL) {  }
+
+    JSBool compile(JSContext* cx) 
+    {
+        GuardRecord* guard;
+        LIns* skip;
+        LIns* start;
+        bool oom = false;
+        
+        Fragmento* fragmento = JS_TRACE_MONITOR(cx).reFragmento;
+        fragment = fragmento->getLoop(re);
+        if (!fragment) {
+            fragment = fragmento->getAnchor(re);
+            fragment->lirbuf = new (&gc) LirBuffer(fragmento, NULL);
+            /* Scary: required to have the onDestroy method delete the lirbuf. */
+            fragment->root = fragment;
+        }
+        LirBuffer* lirbuf = fragment->lirbuf;
+        LirBufWriter* lirb;
+        if (lirbuf->outOmem()) goto fail2;
+        /* FIXME Use bug 463260 smart pointer when available. */
+        lir = lirb = new (&gc) LirBufWriter(lirbuf);
+
+        /* FIXME Use bug 463260 smart pointer when available. */
+        debug_only_v(fragment->lirbuf->names = new (&gc) LirNameMap(&gc, NULL, fragmento->labels);)
+        /* FIXME Use bug 463260 smart pointer when available. */
+        debug_only_v(lir = new (&gc) VerboseWriter(&gc, lir, lirbuf->names);)
+
+        lir->ins0(LIR_start);
+        lirbuf->state = state = addName(lirbuf, lir->insParam(0, 0), "state");
+        lirbuf->param1 = gdata = addName(lirbuf, lir->insParam(1, 0), "gdata");
+        start = addName(lirbuf, lir->insLoad(LIR_ldp, lirbuf->param1, (int) offsetof(REGlobalData, skipped)), "start");
+        cpend = addName(lirbuf, lir->insLoad(LIR_ldp, lirbuf->param1, offsetof(REGlobalData, cpend)), "cpend");
+
+        if (cs->flags & JSREG_STICKY) {
+            if (!compileSticky(cs->result, start)) goto fail;
+        } else {
+            if (!compileAnchoring(cs->result, start)) goto fail;
+        }
+
+        /* Create fake guard record for loop edge. */
+        skip = lirb->skip(sizeof(GuardRecord) + sizeof(SideExit));
+        guard = (GuardRecord *) skip->payload();
+        memset(guard, 0, sizeof(*guard));
+        guard->exit = (SideExit *) guard+1;
+        guard->exit->target = fragment;
+        fragment->lastIns = lir->insGuard(LIR_loop, lir->insImm(1), skip);
+
+        ::compile(fragmento->assm(), fragment);
+        if (fragmento->assm()->error() != nanojit::None) {
+            oom = fragmento->assm()->error() == nanojit::OutOMem;
+            goto fail;
+        }
+
+        delete lirb;
+        debug_only_v(delete lir;)
+        return JS_TRUE;
+    fail:
+        delete lirb;
+        debug_only_v(delete lir;)
+    fail2:
+        if (lirbuf->outOmem() || oom) 
+            fragmento->clearFrags();
+        return JS_FALSE;
+    }
+};
+
+static inline JSBool
+js_CompileRegExpToNative(JSContext *cx, JSRegExp *re, CompilerState *cs)
+{
+    RegExpNativeCompiler rc(re, cs);
+    return rc.compile(cx);
+}
+#endif
 
 JSRegExp *
 js_NewRegExp(JSContext *cx, JSTokenStream *ts,
@@ -1981,6 +2274,7 @@ js_NewRegExp(JSContext *cx, JSTokenStream *ts,
         if (!ParseRegExp(&state))
             goto out;
     }
+
     resize = offsetof(JSRegExp, program) + state.progLength + 1;
     re = (JSRegExp *) JS_malloc(cx, resize);
     if (!re)
@@ -2002,6 +2296,17 @@ js_NewRegExp(JSContext *cx, JSTokenStream *ts,
     } else {
         re->classList = NULL;
     }
+
+#ifdef JS_TRACER
+    /*
+     * Try compiling the native code version. For the time being we also 
+     * compile the bytecode version in case we evict the native code
+     * version from the code cache.
+     */
+    if (TRACING_ENABLED(cx))
+        js_CompileRegExpToNative(cx, re, &state);
+#endif
+    /* Compile the bytecode version. */
     endPC = EmitREBytecode(&state, re, state.treeDepth, re->program, state.result);
     if (!endPC) {
         js_DestroyRegExp(cx, re);
@@ -2014,6 +2319,11 @@ js_NewRegExp(JSContext *cx, JSTokenStream *ts,
      * This is safe since no pointers to newly parsed regexp or its parts
      * besides re exist here.
      */
+#if 0 
+    /*
+     * FIXME: Until bug 464866 is fixed, we can't move the re object so
+     * don't shrink it for now.
+     */
     if ((size_t)(endPC - re->program) != state.progLength + 1) {
         JSRegExp *tmp;
         JS_ASSERT((size_t)(endPC - re->program) < state.progLength + 1);
@@ -2022,6 +2332,7 @@ js_NewRegExp(JSContext *cx, JSTokenStream *ts,
         if (tmp)
             re = tmp;
     }
+#endif    
 
     re->flags = flags;
     re->parenCount = state.parenCount;
@@ -2537,6 +2848,12 @@ void
 js_DestroyRegExp(JSContext *cx, JSRegExp *re)
 {
     if (JS_ATOMIC_DECREMENT(&re->nrefs) == 0) {
+#ifdef JS_TRACER
+        /* Don't reuse this compiled code for some new regexp at same addr. */
+        Fragment* fragment = JS_TRACE_MONITOR(cx).reFragmento->getLoop(re);
+        if (fragment) 
+            fragment->blacklist();
+#endif
         if (re->classList) {
             uintN i;
             for (i = 0; i < re->classCount; i++) {
@@ -3343,7 +3660,36 @@ MatchRegExp(REGlobalData *gData, REMatchState *x)
     const jschar *cp = x->cp;
     const jschar *cp2;
     uintN j;
+#ifdef JS_TRACER
+    Fragment *fragment;
 
+    /* Run with native regexp if possible. */
+    if (TRACING_ENABLED(gData->cx) &&
+        ((fragment = JS_TRACE_MONITOR(gData->cx).reFragmento->getLoop(gData->regexp)) != NULL)
+        && fragment->code() && !fragment->isBlacklisted()) {
+        union { NIns *code; REMatchState* (FASTCALL *func)(void*, void*); } u;
+        u.code = fragment->code();
+        REMatchState *lr;
+        gData->skipped = (ptrdiff_t) x->cp;
+
+        debug_only_v(printf("entering REGEXP trace at %s:%u@%u, code: %p\n",
+                            gData->cx->fp->script->filename,
+                            js_FramePCToLineNumber(gData->cx, gData->cx->fp),
+                            FramePCOffset(gData->cx->fp),
+                            fragment->code()););
+
+#if defined(JS_NO_FASTCALL) && defined(NANOJIT_IA32)
+        SIMULATE_FASTCALL(lr, x, gData, u.func);
+#else
+        lr = u.func(x, gData);
+#endif
+
+        debug_only_v(printf("leaving REGEXP trace\n"));
+
+        gData->skipped = ((const jschar *) gData->skipped) - cp;
+        return lr;
+    }
+#endif
     /*
      * Have to include the position beyond the last character
      * in order to detect end-of-input/line condition.
@@ -4273,6 +4619,21 @@ regexp_test(JSContext *cx, uintN argc, jsval *vp)
     return JS_TRUE;
 }
 
+#ifdef JS_TRACER
+static jsint FASTCALL
+Regexp_p_test(JSContext* cx, JSObject* regexp, JSString* str)
+{
+    jsval vp[3] = { JSVAL_NULL, OBJECT_TO_JSVAL(regexp), STRING_TO_JSVAL(str) };
+    if (!regexp_exec_sub(cx, regexp, 1, vp + 2, JS_TRUE, vp))
+        return JSVAL_TO_BOOLEAN(JSVAL_VOID);
+    return *vp == JSVAL_TRUE;
+}
+
+JS_DEFINE_TRCINFO_1(regexp_test,
+    (3, (static, BOOL_FAIL, Regexp_p_test, CONTEXT, THIS, STRING,  1, 1)))
+
+#endif
+
 static JSFunctionSpec regexp_methods[] = {
 #if JS_HAS_TOSOURCE
     JS_FN(js_toSource_str,  regexp_toString,    0,0),
@@ -4280,7 +4641,7 @@ static JSFunctionSpec regexp_methods[] = {
     JS_FN(js_toString_str,  regexp_toString,    0,0),
     JS_FN("compile",        regexp_compile,     2,0),
     JS_FN("exec",           regexp_exec,        1,0),
-    JS_FN("test",           regexp_test,        1,0),
+    JS_TN("test",           regexp_test,        1,0, regexp_test_trcinfo),
     JS_FS_END
 };
 

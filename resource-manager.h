@@ -23,6 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Resource {
   const char * name;
   const unsigned char * data;
@@ -34,5 +38,9 @@ const struct Resource * get_resource(const char * name);
 void copy_resource_to_stream(const char * resource, FILE * stream);
 
 void copy_resource(const char * resource, const char * destination_directory);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RESOURCE_MANAGER_H_ */

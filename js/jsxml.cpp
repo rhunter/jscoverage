@@ -1835,8 +1835,8 @@ ParseXMLSource(JSContext *cx, JSString *src)
     JSXMLArray nsarray;
     uintN flags;
 
-    static const char prefix[] = "<parent xmlns='";
-    static const char middle[] = "'>";
+    static const char prefix[] = "<parent xmlns=\"";
+    static const char middle[] = "\">";
     static const char suffix[] = "</parent>";
 
 #define constrlen(constr)   (sizeof(constr) - 1)
@@ -1844,6 +1844,7 @@ ParseXMLSource(JSContext *cx, JSString *src)
     if (!js_GetDefaultXMLNamespace(cx, &nsval))
         return NULL;
     uri = GetURI(JSVAL_TO_OBJECT(nsval));
+    uri = js_EscapeAttributeValue(cx, uri, JS_FALSE);
 
     urilen = JSSTRING_LENGTH(uri);
     srclen = JSSTRING_LENGTH(src);
@@ -1880,7 +1881,7 @@ ParseXMLSource(JSContext *cx, JSString *src)
         op = (JSOp) *fp->regs->pc;
         if (op == JSOP_TOXML || op == JSOP_TOXMLLIST) {
             filename = fp->script->filename;
-            lineno = js_PCToLineNumber(cx, fp->script, fp->regs->pc);
+            lineno = js_FramePCToLineNumber(cx, fp);
             for (endp = srcp + srclen; srcp < endp; srcp++) {
                 if (*srcp == '\n')
                     --lineno;
