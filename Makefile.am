@@ -19,8 +19,8 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = js
 
-AM_CFLAGS = -Ijs -DXP_UNIX
-AM_CXXFLAGS = -Ijs -DXP_UNIX
+AM_CFLAGS = -Ijs @XP_DEF@
+AM_CXXFLAGS = -Ijs @XP_DEF@
 
 resources = jscoverage-help.txt jscoverage-server-help.txt \
             jscoverage.jsm jscoverage.manifest jscoverage.xul jscoverage-overlay.js \

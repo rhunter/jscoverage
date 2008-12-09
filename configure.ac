@@ -50,6 +50,16 @@ AC_LINK_IFELSE(
   [jscoverage_have_multibytetowidechar=no
    AC_MSG_RESULT([no])])
 
+AC_SUBST([XP_DEF])
+case "$host_os" in
+  cygwin*|mingw*)
+    XP_DEF='-DXP_WIN'
+    ;;
+  *)
+    XP_DEF='-DXP_UNIX'
+    ;;
+esac
+
 AC_SUBST([EXTRA_SOCKET_LIBS])
 AC_SUBST([EXTRA_THREAD_LIBS])
 AC_SUBST([EXTRA_TIMER_LIBS])

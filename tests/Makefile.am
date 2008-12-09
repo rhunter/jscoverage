@@ -31,8 +31,8 @@ noinst_PROGRAMS = asprintf \
                   recursive-dir-list \
                   streams
 
-AM_CFLAGS = -DXP_UNIX -I../js
-AM_CXXFLAGS = -DXP_UNIX -I../js
+AM_CFLAGS = @XP_DEF@ -I../js
+AM_CXXFLAGS = @XP_DEF@ -I../js
 
 asprintf_SOURCES = asprintf.c ../util.c
 
