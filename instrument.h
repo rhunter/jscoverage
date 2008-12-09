@@ -28,4 +28,4 @@ void jscoverage_instrument(const char * source,
                            char ** no_instrument,
                            int num_no_instrument);
 
-#endif
+#endif /* INSTRUMENT_H_ */
