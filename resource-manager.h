@@ -35,4 +35,4 @@ void copy_resource_to_stream(const char * resource, FILE * stream);
 
 void copy_resource(const char * resource, const char * destination_directory);
 
-#endif
+#endif /* RESOURCE_MANAGER_H_ */
