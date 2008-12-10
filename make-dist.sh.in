@@ -19,10 +19,9 @@ done
 
 # add generated files
 cp -a --parents aclocal.m4 \
-                config.guess config.sub ltmain.sh \
                 configure \
                 config.h.in \
-                Makefile.in depcomp install-sh missing \
+                Makefile.in config.guess config.sub depcomp install-sh missing \
                 $distdir
 cp -a --parents tests/Makefile.in $distdir
 cp -a --parents doc/instrumented $distdir
