@@ -31,8 +31,8 @@ noinst_PROGRAMS = asprintf \
                   recursive-dir-list \
                   streams
 
-AM_CFLAGS = @XP_DEF@ -I../js
-AM_CXXFLAGS = @XP_DEF@ -I../js
+AM_CFLAGS = @XP_DEF@ -I../js -I../js/obj
+AM_CXXFLAGS = @XP_DEF@ -I../js -I../js/obj
 
 asprintf_SOURCES = asprintf.c ../util.c
 
@@ -63,7 +63,7 @@ http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.cpp ../resource-manager.c ../stream.c ../util.c
-json_LDADD = ../js/libmozjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
+json_LDADD = ../js/obj/libjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 
 mkdirs_SOURCES = mkdirs.c ../util.c
 

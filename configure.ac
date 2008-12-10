@@ -52,7 +52,7 @@ AC_LINK_IFELSE(
 
 AC_SUBST([XP_DEF])
 case "$host_os" in
-  cygwin*|mingw*)
+  mingw*)
     XP_DEF='-DXP_WIN'
     ;;
   *)
@@ -85,5 +85,4 @@ then
 fi
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
-AC_CONFIG_SUBDIRS([js])
 AC_OUTPUT
