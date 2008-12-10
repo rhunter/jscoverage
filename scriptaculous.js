@@ -535,7 +535,7 @@ new Test.Unit.Runner({
       links = cells.item(4).getElementsByTagName('a');
       assertEqual(0, links.length);
 
-      row = rows.item(2);
+      row = rows.item(4);
       cells = row.getElementsByTagName('td');
       assertEqual(5, cells.length);
       links = cells.item(0).getElementsByTagName('a');
@@ -550,7 +550,7 @@ new Test.Unit.Runner({
       assertEqual('1', links.item(0).innerHTML);
       assertEqual('4', links.item(1).innerHTML);
 
-      row = rows.item(3);
+      row = rows.item(2);
       cells = row.getElementsByTagName('td');
       assertEqual(5, cells.length);
       links = cells.item(0).getElementsByTagName('a');
@@ -563,7 +563,7 @@ new Test.Unit.Runner({
       links = cells.item(4).getElementsByTagName('a');
       assertEqual(0, links.length);
 
-      row = rows.item(4);
+      row = rows.item(3);
       cells = row.getElementsByTagName('td');
       assertEqual(5, cells.length);
       links = cells.item(0).getElementsByTagName('a');
