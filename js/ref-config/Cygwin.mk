@@ -9,6 +9,6 @@ MKSHLIB = $(LD) -shared $(XMKSHLIBOPTS)
 
 all:
 
-build/js.o: js.cpp
+obj/js.o: js.cpp
 	@$(MAKE_OBJDIR)
 	$(CXX) -o $@ -c $(PROGRAM_CFLAGS) js.cpp
