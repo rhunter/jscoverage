@@ -10,8 +10,8 @@ rm -fr $distdir
 mkdir $distdir
 
 cp -a doc $distdir
-cp -a jscoverage.exe $distdir
-strip $distdir/jscoverage.exe
+cp -a jscoverage.exe jscoverage-server.exe $distdir
+strip $distdir/*.exe
 cp -a COPYING $distdir
 unix2dos $distdir/COPYING
 cp -a README $distdir/README.txt
