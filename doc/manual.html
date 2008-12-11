@@ -117,6 +117,8 @@ The directory structure under <var>SOURCE-DIRECTORY</var> is preserved, so that 
 <code><var>DESTINATION-DIRECTORY</var>/dir/index.html</code> and an instrumented
 version of the script at
 <code><var>DESTINATION-DIRECTORY</var>/dir/script.js</code>.
+In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html</code>
+which is used to execute the instrumented code.
 </p>
 
 <table>
@@ -140,13 +142,8 @@ version of the script at
 </table>
 
 <p>
-In addition, <code>jscoverage</code> creates a file called <code>jscoverage.html</code>
-which is used to execute the instrumented code.
-</p>
-
-<p>
-To instrument the code in the <code>doc/example/</code> directory, execute the
-following command from the top-level directory of the JSCoverage distribution:
+For the example code in the <code>doc/example/</code> directory, you can execute the
+following command line from the top-level directory of the JSCoverage distribution:
 </p>
 
 <pre>
