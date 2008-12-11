@@ -40,6 +40,72 @@
 
         <h2>Latest News <a href="http://siliconforks.com/jscoverage/news.xml" type="application/rss+xml" title="RSS feed for JSCoverage"><img src="feed-icon-14x14.png" alt="RSS feed"></a></h2>
 
+        <h3><a name="20081211">December 11, 2008 - JSCoverage 0.4</a></h3>
+        <p>
+        JSCoverage 0.4 is available for <a href="http://siliconforks.com/jscoverage/download.html">download</a>.
+        </p>
+        <p>
+        This release includes many new features:
+        </p>
+        <ul class="list">
+        <li>
+        The new <code>jscoverage-server</code> program is provided as an
+        alternative to the <code>jscoverage</code> program.  The
+        <code>jscoverage-server</code> program is a simple HTTP server which
+        instruments JavaScript code as it is served; this allows you to execute
+        JavaScript and gather code coverage statistics without a preliminary
+        step of creating instrumented code. The <code>jscoverage-server</code>
+        program can either serve files directly from the filesystem or run as a
+        proxy server (with the <code>--proxy</code> option), instrumenting
+        JavaScript provided by another web server.
+        <li>
+        Using <code>jscoverage-server</code>, coverage reports can now be stored
+        to the filesystem.
+        </li>
+        <li>
+        JSCoverage now recognizes special JavaScript comments which specify that
+        certain lines of code should be ignored in coverage reports.
+        </li>
+        <li>
+        The new <code>--encoding</code> option provides better support for
+        different character encodings.
+        </li>
+        <li>
+        The JSCoverage user interface is now faster and more responsive.
+        </li>
+        <li>
+        The new <code>--no-highlight</code> option can be used to disable syntax
+        highlighting (giving better performance for large JavaScript files).
+        </li>
+        <li>
+        The build system has been modified so that <code>make install</code>
+        only installs the <code>jscoverage</code> and
+        <code>jscoverage-server</code> executables and their manual pages.
+        (Previous versions installed SpiderMonkey library and executable files,
+        which could conflict with other versions of SpiderMonkey installed on
+        your system.)
+        </li>
+        <li>
+        JSCoverage now supports several features beyond those found in the
+        <cite>ECMAScript Language Specification</cite>, including the following:
+        <ul class="list">
+        <li>getters and setters
+        <li><code>for each</code> loops
+        <li>generators and iterators
+        <li>the <code>let</code> keyword
+        <li>destructuring assignment
+        <li>array comprehensions
+        <li>expression closures
+        <li>generator expressions
+        </ul>
+        Use the new <code>--js-version</code> option to enable these features.
+        </li>
+        </ul>
+        <p>
+        The GCC C++ compiler (<code>g++</code>) is now required to compile
+        JSCoverage.  (Previously, only the C compiler was needed.)
+        </p>
+
         <h3><a name="20080331">March 31, 2008 - JSCoverage and Firefox 3</a></h3>
         <p>
         The <a href="faq.html">JSCoverage FAQ</a> has been updated to address problems using JSCoverage with Firefox 3.
@@ -49,30 +115,6 @@
         <p>
         JSCoverage is now <a href="http://packages.debian.org/sid/jscoverage">available</a> in the Debian unstable distribution.
         </p>
-
-        <h3><a name="20071122">November 22, 2007 - JSCoverage 0.3.1</a></h3>
-        <p>
-        JSCoverage 0.3.1 is available for <a href="http://siliconforks.com/jscoverage/download.html">download</a>.
-        </p>
-        <p>
-        This release has a number of bug fixes:
-        </p>
-        <ul class="list">
-        <li>
-        It should now be possible to run the native Windows version of <code>jscoverage</code>
-        with minimal privileges.
-        </li>
-        <li>
-        All files used by JSCoverage now use a <code>jscoverage</code>
-        prefix to avoid name collisions.
-        </li>
-        <li>
-        Compilation bugs which occurred under some versions of MSYS have been fixed.
-        </li>
-        <li>
-        Various documentation improvements.
-        </li>
-        </ul>
 
         <p>
         <a href="news.html">All news items...</a>
