@@ -24,7 +24,8 @@ function called in the page.
 */
 function jscoverage_init(w) {
   try {
-    Components.utils.import('resource://gre/modules/jscoverage.jsm');
+    // in Safari, "import" is a syntax error
+    Components.utils['import']('resource://gre/modules/jscoverage.jsm');
     jscoverage_isInvertedMode = true;
     return;
   }
