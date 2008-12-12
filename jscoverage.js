@@ -441,14 +441,18 @@ function jscoverage_recalculateSummaryTab(cc) {
     var fileCC = cc[file];
     var length = fileCC.length;
     var currentConditionalEnd = 0;
+    var conditionals = null;
+    if (fileCC.conditionals) {
+      conditionals = fileCC.conditionals;
+    }
     for (lineNumber = 0; lineNumber < length; lineNumber++) {
       var n = fileCC[lineNumber];
 
       if (lineNumber === currentConditionalEnd) {
         currentConditionalEnd = 0;
       }
-      else if (currentConditionalEnd === 0 && fileCC.conditionals && fileCC.conditionals[lineNumber]) {
-        currentConditionalEnd = fileCC.conditionals[lineNumber];
+      else if (currentConditionalEnd === 0 && conditionals && conditionals[lineNumber]) {
+        currentConditionalEnd = conditionals[lineNumber];
       }
 
       if (currentConditionalEnd !== 0) {
