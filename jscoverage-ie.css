@@ -69,3 +69,21 @@
   position: static;
   width: 100%;
 }
+
+/* some defaults */
+
+.TabPage {
+  height: 650px;
+}
+
+#iframeDiv {
+  height: 600px;
+}
+
+#summaryDiv {
+  height: 600px;
+}
+
+#sourceDiv {
+  height: 600px;
+}
