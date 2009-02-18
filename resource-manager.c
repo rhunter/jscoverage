@@ -1,6 +1,6 @@
 /*
     resource-manager.c - handles embedded files
-    Copyright (C) 2007, 2008 siliconforks.com
+    Copyright (C) 2007, 2008, 2009 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
