@@ -78,6 +78,7 @@ TESTS = encodings.sh \
         javascript.sh \
         javascript-ignore.sh \
         javascript-utf-8.sh \
+        mozilla.sh \
         no-arguments.sh \
         recursive.sh \
         recursive-crlf.sh \
