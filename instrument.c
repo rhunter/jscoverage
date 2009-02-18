@@ -163,7 +163,7 @@ void jscoverage_instrument(const char * source,
     }
     if (! directory_is_empty(destination)) {
       char * expected_file = NULL;
-      if (jscoverage_mozilla) {
+      if (jscoverage_mode == JSCOVERAGE_MOZILLA) {
         char * modules_directory = make_path(destination, "modules");
         expected_file = make_path(modules_directory, "jscoverage.jsm");
         free(modules_directory);
@@ -185,7 +185,7 @@ void jscoverage_instrument(const char * source,
   }
 
   /* copy the resources */
-  if (jscoverage_mozilla) {
+  if (jscoverage_mode == JSCOVERAGE_MOZILLA) {
     char * chrome_directory = make_path(destination, "chrome");
     char * jscoverage_chrome_directory = make_path(chrome_directory, "jscoverage");
     mkdirs(jscoverage_chrome_directory);

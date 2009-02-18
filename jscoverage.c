@@ -62,8 +62,11 @@ int main(int argc, char ** argv) {
       jscoverage_highlight = false;
     }
     else if (strcmp(argv[i], "--mozilla") == 0) {
-      jscoverage_mozilla = true;
+      jscoverage_mode = JSCOVERAGE_MOZILLA;
       jscoverage_set_js_version("180");
+    }
+    else if (strcmp(argv[i], "--no-browser") == 0) {
+      jscoverage_mode = JSCOVERAGE_NO_BROWSER;
     }
     else if (strcmp(argv[i], "--no-instrument") == 0) {
       i++;
