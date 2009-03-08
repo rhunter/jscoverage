@@ -522,6 +522,31 @@ function jscoverage_recalculateSummaryTab(cc) {
           cell.appendChild(document.createTextNode(", "));
         }
         link = jscoverage_createLink(file, missing[i]);
+
+        // group contiguous missing lines; e.g., 10, 11, 12 -> 10-12
+        var j, start = missing[i];
+        for (;;) {
+          j = 1;
+          while (i + j < missing.length && missing[i + j] == missing[i] + j) {
+            j++;
+          }
+          var nextmissing = missing[i + j], cur = missing[i] + j;
+          if (isNaN(nextmissing)) {
+            break;
+          }
+          while (cur < nextmissing && ! fileCC[cur]) {
+            cur++;
+          }
+          if (cur < nextmissing || cur >= length) {
+            break;
+          }
+          i += j;
+        }
+        if (start != missing[i] || j > 1) {
+          i += j - 1;
+          link.innerHTML += "-" + missing[i];
+        }
+
         cell.appendChild(link);
       }
       row.appendChild(cell);

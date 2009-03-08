@@ -596,6 +596,74 @@ new Test.Unit.Runner({
     this.assertIdentical('0%', span.innerHTML);
   },
 
+  test_recalculateSummaryTab_missing: function() {
+    var coverage = {};
+
+    coverage['foo.js'] = [];
+    coverage['foo.js'][1] = 1;
+    coverage['foo.js'][2] = 0;  // missing
+    coverage['foo.js'][3] = 1;
+    coverage['foo.js'][4] = 0;  // another missing
+    coverage['foo.js'][5] = 1;
+    coverage['foo.js'][7] = 0;  // missing with blank line preceding
+    coverage['foo.js'][8] = 1;
+    coverage['foo.js'][9] = 0;  // missing with blank line following
+    coverage['foo.js'][11] = 1;
+    coverage['foo.js'][13] = 0;  // missing with blank line preceding and following
+    coverage['foo.js'][15] = 1;
+    coverage['foo.js'][16] = 0;  // first of pair
+    coverage['foo.js'][17] = 0;  // second of pair
+    coverage['foo.js'][18] = 1;
+    coverage['foo.js'][19] = 0;  // first of pair (with intervening blank line)
+    coverage['foo.js'][21] = 0;  // second of pair (with intervening blank line)
+    coverage['foo.js'][22] = 1;
+    coverage['foo.js'][24] = 0;  // a trio
+    coverage['foo.js'][26] = 0;
+    coverage['foo.js'][28] = 0;
+    coverage['foo.js'][30] = 1;
+
+    coverage['bar.js'] = [];
+    coverage['bar.js'][1] = 0;  // missing at beginning
+    coverage['bar.js'][2] = 1;
+    coverage['bar.js'][3] = 0;
+    coverage['bar.js'][4] = 1;
+    coverage['bar.js'][5] = 0;  // missing at end
+
+    var checkbox = document.getElementById('checkbox');
+    checkbox.checked = true;
+    jscoverage_appendMissingColumn();
+
+    jscoverage_recalculateSummaryTab(coverage);
+
+    var summaryTable = document.getElementById('summaryTable');
+    var rows = summaryTable.getElementsByTagName('tr');
+    this.assertEqual(4, rows.length);
+    var row, cells, links, percentage;
+    row = rows.item(3);
+    cells = row.getElementsByTagName('td');
+    links = cells.item(4).getElementsByTagName('a');
+    this.assertEqual(8, links.length);
+    this.assertEqual('2', links.item(0).innerHTML);
+    this.assertEqual('4', links.item(1).innerHTML);
+    this.assertEqual('7', links.item(2).innerHTML);
+    this.assertEqual('9', links.item(3).innerHTML);
+    this.assertEqual('13', links.item(4).innerHTML);
+    this.assertEqual('16-17', links.item(5).innerHTML);
+    this.assertEqual('19-21', links.item(6).innerHTML);
+    this.assertEqual('24-28', links.item(7).innerHTML);
+    row = rows.item(2);
+    cells = row.getElementsByTagName('td');
+    links = cells.item(4).getElementsByTagName('a');
+    this.assertEqual(3, links.length);
+    this.assertEqual('1', links.item(0).innerHTML);
+    this.assertEqual('3', links.item(1).innerHTML);
+    this.assertEqual('5', links.item(2).innerHTML);
+
+    // restore gMissing
+    checkbox.checked = false;
+    jscoverage_removeMissingColumn();
+  },
+
   test_missingColumn: function() {
     var checkbox = document.getElementById('checkbox');
     this.assert(! checkbox.checked);
