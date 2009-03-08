@@ -422,7 +422,7 @@ function jscoverage_recalculateSummaryTab(cc) {
     tbody.removeChild(tbody.firstChild);
   }
 
-  var totals = { files:0, statements:0, executed:0, coverage:0, skipped:0 };
+  var totals = { files:0, statements:0, executed:0 };
 
   var file;
   var files = [];
@@ -532,10 +532,6 @@ function jscoverage_recalculateSummaryTab(cc) {
     totals['files'] ++;
     totals['statements'] += num_statements;
     totals['executed'] += num_executed;
-    totals['coverage'] += percentage;
-    if( num_statements === 0 ) {
-        totals['skipped']++;
-    }
 
     // write totals data into summaryTotals row
     var tr = document.getElementById("summaryTotals");
@@ -545,7 +541,7 @@ function jscoverage_recalculateSummaryTab(cc) {
         tds[1].firstChild.nodeValue = totals['statements'];
         tds[2].firstChild.nodeValue = totals['executed'];
 
-        var coverage = parseInt(totals['coverage'] / ( totals['files'] - totals['skipped'] ) );
+        var coverage = parseInt(100 * totals['executed'] / totals['statements']);
         if( isNaN( coverage ) ) {
             coverage = 0;
         }

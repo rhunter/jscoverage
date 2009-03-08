@@ -531,7 +531,7 @@ new Test.Unit.Runner({
       assertEqual('4', cells.item(1).innerHTML);
       assertEqual('2', cells.item(2).innerHTML);
       percentage = cells.item(3).getElementsByTagName('span').item(0).innerHTML;
-      assertEqual('66%', percentage);
+      assertEqual('50%', percentage);
       links = cells.item(4).getElementsByTagName('a');
       assertEqual(0, links.length);
 
