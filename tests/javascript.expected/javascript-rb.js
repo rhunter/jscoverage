@@ -11,6 +11,7 @@ if (! _$jscoverage['javascript-rb.js']) {
   _$jscoverage['javascript-rb.js'][4] = 0;
   _$jscoverage['javascript-rb.js'][5] = 0;
 }
+_$jscoverage['javascript-rb.js'].source = ["x <span class=\"k\">=</span> <span class=\"k\">[];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,</span> y<span class=\"k\">];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,</span> y<span class=\"k\">,];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,,</span> y<span class=\"k\">];</span>"];
 _$jscoverage['javascript-rb.js'][1]++;
 x = [];
 _$jscoverage['javascript-rb.js'][2]++;
@@ -21,4 +22,3 @@ _$jscoverage['javascript-rb.js'][4]++;
 x = [x, y,];
 _$jscoverage['javascript-rb.js'][5]++;
 x = [x, , y];
-_$jscoverage['javascript-rb.js'].source = ["x <span class=\"k\">=</span> <span class=\"k\">[];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,</span> y<span class=\"k\">];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,</span> y<span class=\"k\">,];</span>","x <span class=\"k\">=</span> <span class=\"k\">[</span>x<span class=\"k\">,,</span> y<span class=\"k\">];</span>"];

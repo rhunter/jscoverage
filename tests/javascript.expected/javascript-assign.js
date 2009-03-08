@@ -20,6 +20,7 @@ if (! _$jscoverage['javascript-assign.js']) {
   _$jscoverage['javascript-assign.js'][13] = 0;
   _$jscoverage['javascript-assign.js'][14] = 0;
 }
+_$jscoverage['javascript-assign.js'].source = ["<span class=\"k\">var</span> x <span class=\"k\">=</span> <span class=\"s\">1</span><span class=\"k\">;</span>","<span class=\"k\">var</span> y <span class=\"k\">=</span> <span class=\"s\">1</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> y<span class=\"k\">;</span>","x <span class=\"k\">+=</span> y<span class=\"k\">;</span>","x <span class=\"k\">-=</span> y<span class=\"k\">;</span>","x <span class=\"k\">*=</span> y<span class=\"k\">;</span>","x <span class=\"k\">%=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&lt;&lt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&gt;&gt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&gt;&gt;&gt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&amp;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">|=</span> y<span class=\"k\">;</span>","x <span class=\"k\">^=</span> y<span class=\"k\">;</span>","x <span class=\"k\">/=</span> y<span class=\"k\">;</span>"];
 _$jscoverage['javascript-assign.js'][1]++;
 var x = 1;
 _$jscoverage['javascript-assign.js'][2]++;
@@ -48,4 +49,3 @@ _$jscoverage['javascript-assign.js'][13]++;
 x ^= y;
 _$jscoverage['javascript-assign.js'][14]++;
 x /= y;
-_$jscoverage['javascript-assign.js'].source = ["<span class=\"k\">var</span> x <span class=\"k\">=</span> <span class=\"s\">1</span><span class=\"k\">;</span>","<span class=\"k\">var</span> y <span class=\"k\">=</span> <span class=\"s\">1</span><span class=\"k\">;</span>","x <span class=\"k\">=</span> y<span class=\"k\">;</span>","x <span class=\"k\">+=</span> y<span class=\"k\">;</span>","x <span class=\"k\">-=</span> y<span class=\"k\">;</span>","x <span class=\"k\">*=</span> y<span class=\"k\">;</span>","x <span class=\"k\">%=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&lt;&lt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&gt;&gt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&gt;&gt;&gt;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">&amp;=</span> y<span class=\"k\">;</span>","x <span class=\"k\">|=</span> y<span class=\"k\">;</span>","x <span class=\"k\">^=</span> y<span class=\"k\">;</span>","x <span class=\"k\">/=</span> y<span class=\"k\">;</span>"];
