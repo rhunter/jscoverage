@@ -29,12 +29,17 @@
         equally to the total, regardless of the number of lines of code in the
         file.  Now, the calculation is done using a weighted average.  This
         fixes
-        <a href="http://siliconforks.com/jscoverage/bugs/6">bug 6</a> (thanks to
+        <a href="http://siliconforks.com/jscoverage/bugs/6">bug #6</a> (thanks to
         Liu Cougar).
         </li>
         <li>
         Contiguous lines in the "Missing" column are now grouped together (thanks to
         Liu Cougar).
+        </li>
+        <li>
+        Fixed a bug which resulted in an empty "Source" tab when code being
+        tested threw an uncaught exception
+        (<a href="http://siliconforks.com/jscoverage/bugs/5">bug #5</a>).
         </li>
         </ul>
 
