@@ -431,9 +431,9 @@ int HTTPMessage_read_start_line_and_headers(HTTPMessage * message) {
     skip_lws(&p);
 
     if (*p == '\0') {
+      /* value was empty: ignore this header??? */
       free(name);
-      Stream_delete(stream);
-      return -1;
+      continue;
     }
 
     /* skip backward over LWS, starting from the last char in the buffer */

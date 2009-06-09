@@ -26,6 +26,7 @@ noinst_PROGRAMS = asprintf \
                   http-server-charset \
                   http-server-chunked \
                   http-server-close-immediately \
+                  http-server-empty-header-value \
                   json \
                   mkdirs \
                   recursive-dir-list \
@@ -61,6 +62,8 @@ http_server_chunked_SOURCES = http-server-chunked.c ../stream.c ../util.c
 http_server_chunked_LDADD = @EXTRA_SOCKET_LIBS@
 
 http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
+
+http_server_empty_header_value_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.cpp ../resource-manager.c ../stream.c ../util.c
 json_LDADD = ../js/obj/libjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
@@ -100,6 +103,7 @@ TESTS = encodings.sh \
         proxy-bad-response-body.sh \
         proxy-bad-response-body-javascript.sh \
         proxy-bad-response-headers.sh \
+        proxy-empty-header-value.sh \
         proxy-no-server.sh \
         proxy-url.sh \
         server.sh \
