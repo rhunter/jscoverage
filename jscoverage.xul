@@ -29,7 +29,9 @@
     <menu label="JSCoverage" insertafter="javascriptConsole,devToolsSeparator">
       <menupopup>
         <menuitem label="View Coverage" command="jscoverageViewCommand"/>
+<!--
         <menuitem label="Store Coverage" command="jscoverageStoreCommand"/>
+-->
       </menupopup>
     </menu>
   </menupopup>
