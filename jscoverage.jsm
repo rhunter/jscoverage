@@ -58,14 +58,29 @@ var JSCoverageUtils = {
     return this;
   },
 
+  getReportDirectory: function() {
+    const Cc = Components.classes;
+    const Ci = Components.interfaces;
+
+    var directoryService = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties);
+    /*
+    CurProcD - directory in which the firefox process was started
+    CurWorkD - current working directory
+    Home - home directory
+    TmpD - temp directory
+    See xpcom/io/nsDirectoryServiceDefs.h
+    */
+    var reportDirectory = directoryService.get('CurProcD', Ci.nsILocalFile);
+    reportDirectory.appendRelativePath('jscoverage-report');
+    return reportDirectory;
+  },
+
   readExistingCoverage: function() {
     try {
       const Cc = Components.classes;
       const Ci = Components.interfaces;
 
-      var directoryService = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties);
-      var reportDirectory = directoryService.get('CurWorkD', Ci.nsILocalFile);
-      reportDirectory.appendRelativePath('jscoverage-report');
+      var reportDirectory = this.getReportDirectory();
       if (! reportDirectory.exists()) {
         return;
       }
@@ -111,9 +126,7 @@ var JSCoverageUtils = {
       const Cc = Components.classes;
       const Ci = Components.interfaces;
 
-      var directoryService = Cc['@mozilla.org/file/directory_service;1'].getService(Ci.nsIProperties);
-      var reportDirectory = directoryService.get('CurWorkD', Ci.nsILocalFile);
-      reportDirectory.appendRelativePath('jscoverage-report');
+      var reportDirectory = this.getReportDirectory();
       if (! reportDirectory.exists()) {
         reportDirectory.create(Ci.nsIFile.DIRECTORY_TYPE, 0755);
       }
