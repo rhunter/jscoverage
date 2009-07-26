@@ -78,6 +78,7 @@ TESTS = encodings.sh \
         fatal.sh \
         help.sh \
         invalid-option.sh \
+        instrumented-source-directory.sh \
         javascript.sh \
         javascript-ignore.sh \
         javascript-utf-8.sh \

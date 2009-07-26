@@ -99,6 +99,14 @@ static void instrument_file(const char * source_file, const char * destination_f
 
         Stream_write_file_contents(input_stream, input);
 
+        /*
+        Check if the source file looks like an instrumented JavaScript file.
+        */
+        if (input_stream->length >= JSCOVERAGE_INSTRUMENTED_HEADER_LENGTH &&
+            memcmp(input_stream->data, JSCOVERAGE_INSTRUMENTED_HEADER, JSCOVERAGE_INSTRUMENTED_HEADER_LENGTH) == 0) {
+          fatal_command_line("file %s in the source directory appears to be already instrumented", id);
+        }
+
         size_t num_characters = input_stream->length;
         uint16_t * characters = NULL;
         int result = jscoverage_bytes_to_characters(jscoverage_encoding, input_stream->data, input_stream->length, &characters, &num_characters);
