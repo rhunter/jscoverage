@@ -95,7 +95,7 @@ wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://siliconforks.com/jscov
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://siliconforks.com/jscoverage.css | diff ../jscoverage.css -
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://siliconforks.com/jscoverage-throbber.gif | diff ../jscoverage-throbber.gif -
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://siliconforks.com/jscoverage.js > OUT
-echo -e 'jscoverage_isServer = true;\r' | cat ../jscoverage.js - | diff - OUT
+echo 'jscoverage_isServer = true;' | cat ../jscoverage.js - | diff --strip-trailing-cr - OUT
 
 # load/store
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' --post-data='{}' http://siliconforks.com/jscoverage-store > /dev/null
@@ -103,7 +103,7 @@ echo -n '{}' | diff - DIR/jscoverage.json
 diff ../jscoverage.html DIR/jscoverage.html
 diff ../jscoverage.css DIR/jscoverage.css
 diff ../jscoverage-throbber.gif DIR/jscoverage-throbber.gif
-echo -e 'jscoverage_isReport = true;\r' | cat ../jscoverage.js - | diff - DIR/jscoverage.js
+echo 'jscoverage_isReport = true;' | cat ../jscoverage.js - | diff --strip-trailing-cr - DIR/jscoverage.js
 
 # send it an FTP request
 echo 400 > EXPECTED
