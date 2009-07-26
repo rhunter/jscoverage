@@ -18,7 +18,7 @@
 
 set -e
 
-. common.sh
+. ./common.sh
 
 # skip on windows
 uname=`uname`

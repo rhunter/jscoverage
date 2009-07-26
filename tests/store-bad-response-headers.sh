@@ -18,7 +18,7 @@
 
 set -e
 
-. common.sh
+. ./common.sh
 
 shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${server_port}/jscoverage-shutdown" > /dev/null
