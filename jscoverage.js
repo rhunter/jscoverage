@@ -384,16 +384,13 @@ function jscoverage_browser_load() {
 function jscoverage_createLink(file, line) {
   var link = document.createElement("a");
 
-  var url;
   var call;
   var text;
   if (line) {
-    url = file + ".jscoverage.html?" + line;
     call = "jscoverage_get('" + file + "', " + line + ");";
     text = line.toString();
   }
   else {
-    url = file + ".jscoverage.html";
     call = "jscoverage_get('" + file + "');";
     text = file;
   }
