@@ -132,5 +132,6 @@ TESTS = encodings.sh \
         store-server-bad-body.sh \
         store-server-closes-immediately.sh \
         store-source-not-found.sh \
+        store-spaces.sh \
         store-unreadable-json.sh \
         store-unwritable-json.sh
