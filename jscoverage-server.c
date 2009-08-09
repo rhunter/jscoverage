@@ -516,7 +516,15 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
     else {
       /* check that the path begins with / */
       if (file_coverage->id[0] == '/') {
-        char * source_path = make_path(document_root, file_coverage->id + 1);
+        char * decoded_path = decode_uri_component(file_coverage->id);
+        if (strstr(decoded_path, "..") != NULL) {
+          free(decoded_path);
+          fputs("[]", f);
+          HTTPServer_log_err("Warning: invalid source path: %s\n", file_coverage->id);
+          goto done;
+        }
+        char * source_path = make_path(document_root, decoded_path + 1);
+        free(decoded_path);
         FILE * source_file = fopen(source_path, "rb");
         free(source_path);
         if (source_file == NULL) {
@@ -563,6 +571,7 @@ static void write_json_for_file(const FileCoverage * file_coverage, int i, void 
     }
     fputc(']', f);
   }
+done:
   fputc('}', f);
 }
 

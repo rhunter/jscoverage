@@ -381,21 +381,26 @@ function jscoverage_browser_load() {
 // -----------------------------------------------------------------------------
 // tab 2
 
+function jscoverage_createHandler(file, line) {
+  return function () {
+    jscoverage_get(file, line);
+    return false;
+  };
+}
+
 function jscoverage_createLink(file, line) {
   var link = document.createElement("a");
+  link.href = '#';
+  link.onclick = jscoverage_createHandler(file, line);
 
-  var call;
   var text;
   if (line) {
-    call = "jscoverage_get('" + file + "', " + line + ");";
     text = line.toString();
   }
   else {
-    call = "jscoverage_get('" + file + "');";
     text = file;
   }
 
-  link.setAttribute('href', 'javascript:' + call);
   link.appendChild(document.createTextNode(text));
 
   return link;
