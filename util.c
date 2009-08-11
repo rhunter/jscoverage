@@ -90,6 +90,10 @@ void version(void) {
 #else
   printf("none\n");
 #endif
+  printf("Copyright (C) 2009 siliconforks.com\n");
+  printf("License GPLv2+: GNU GPL version 2 or later <http://siliconforks.com/jscoverage/license.html>\n");
+  printf("This is free software: you are free to change and redistribute it.\n");
+  printf("There is NO WARRANTY, to the extent permitted by law.\n");
   exit(EXIT_SUCCESS);
 }
 
