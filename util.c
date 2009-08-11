@@ -281,10 +281,8 @@ static int is_slash(char c) {
 char * make_path(const char * parent, const char * relative_path) {
   size_t parent_length = strlen(parent);
   size_t relative_path_length = strlen(relative_path);
-  assert(parent_length > 0);
-  assert(relative_path_length > 0);
   size_t result_length = addst(parent_length, relative_path_length);
-  int parent_ends_with_slash = is_slash(parent[parent_length - 1]);
+  int parent_ends_with_slash = parent_length > 0 && is_slash(parent[parent_length - 1]);
   if (parent_ends_with_slash) {
     result_length = addst(result_length, 1);
   }
