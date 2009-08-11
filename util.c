@@ -266,15 +266,35 @@ bool str_ends_with(const char * string, const char * suffix) {
   return strcmp(string + string_length - suffix_length, suffix) == 0;
 }
 
+static int is_slash(char c) {
+#ifdef _WIN32
+  return c == '/' || c == '\\';
+#else
+  return c == '/';
+#endif
+}
+
 char * make_path(const char * parent, const char * relative_path) {
   size_t parent_length = strlen(parent);
   size_t relative_path_length = strlen(relative_path);
+  assert(parent_length > 0);
+  assert(relative_path_length > 0);
   size_t result_length = addst(parent_length, relative_path_length);
-  result_length = addst(result_length, 2);
+  int parent_ends_with_slash = is_slash(parent[parent_length - 1]);
+  if (parent_ends_with_slash) {
+    result_length = addst(result_length, 1);
+  }
+  else {
+    result_length = addst(result_length, 2);
+  }
   char * result = xmalloc(result_length);
   strcpy(result, parent);
-  result[parent_length] = '/';
-  strcpy(result + parent_length + 1, relative_path);
+  char * p = result + parent_length;
+  if (! parent_ends_with_slash) {
+    *p = '/';
+    ++p;
+  }
+  strcpy(p, relative_path);
   return result;
 }
 

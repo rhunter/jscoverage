@@ -28,6 +28,7 @@ noinst_PROGRAMS = asprintf \
                   http-server-close-immediately \
                   http-server-empty-header-value \
                   json \
+                  make-path \
                   mkdirs \
                   recursive-dir-list \
                   streams
@@ -68,6 +69,8 @@ http_server_empty_header_value_LDADD = @EXTRA_SOCKET_LIBS@
 json_SOURCES = json.c ../encoding.c ../highlight.c ../instrument-js.cpp ../resource-manager.c ../stream.c ../util.c
 json_LDADD = ../js/obj/libjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 
+make_path_SOURCES = make-path.c ../util.c
+
 mkdirs_SOURCES = mkdirs.c ../util.c
 
 recursive_dir_list_SOURCES = recursive-dir-list.c ../util.c
@@ -92,6 +95,7 @@ TESTS = encodings.sh \
         same-directory.sh \
         version.sh \
         asprintf.sh \
+        make-path.sh \
         mkdirs.sh \
         recursive-dir-list.sh \
         streams.sh \
