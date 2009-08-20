@@ -52,7 +52,10 @@ function jscoverage_quote(s) {
 
 var JSCoverageUtils = {
   QueryInterface: function (aIID) {
-    if (! aIID.equals(nsIObserver) && ! aIID.equals(nsISupports)) {
+    const Cc = Components.classes;
+    const Ci = Components.interfaces;
+
+    if (! aIID.equals(Ci.nsIObserver) && ! aIID.equals(Ci.nsISupports)) {
       throw Components.results.NS_ERROR_NO_INTERFACE;
     }
     return this;
