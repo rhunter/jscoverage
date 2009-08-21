@@ -244,7 +244,9 @@ try {
   const Cc = Components.classes;
   const Ci = Components.interfaces;
   const jscoverage_observerService = Cc['@mozilla.org/observer-service;1'].getService(Ci.nsIObserverService);
-  jscoverage_observerService.addObserver(JSCoverageUtils, 'quit-application', false);
+  // 'xpcom-shutdown' works under xpcshell
+  // jscoverage_observerService.addObserver(JSCoverageUtils, 'quit-application', false);
+  jscoverage_observerService.addObserver(JSCoverageUtils, 'xpcom-shutdown', false);
 
   dump('jscoverage.jsm: initialized\n');
 }
