@@ -438,6 +438,18 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   Stream_write_char(f, '}');
 }
 
+static void output_function_arguments(JSParseNode * node, Stream * f) {
+  JSParseNode * function_node = node->pn_head;
+  Stream_write_char(f, '(');
+  for (struct JSParseNode * p = function_node->pn_next; p != NULL; p = p->pn_next) {
+    if (p != function_node->pn_next) {
+      Stream_write_string(f, ", ");
+    }
+    output_expression(p, f, false);
+  }
+  Stream_write_char(f, ')');
+}
+
 static void instrument_function_call(JSParseNode * node, Stream * f) {
   JSParseNode * function_node = node->pn_head;
   if (function_node->pn_type == TOK_FUNCTION) {
@@ -456,14 +468,7 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
     }
   }
   output_expression(function_node, f, false);
-  Stream_write_char(f, '(');
-  for (struct JSParseNode * p = function_node->pn_next; p != NULL; p = p->pn_next) {
-    if (p != node->pn_head->pn_next) {
-      Stream_write_string(f, ", ");
-    }
-    output_expression(p, f, false);
-  }
-  Stream_write_char(f, ')');
+  output_function_arguments(node, f);
 }
 
 static void instrument_declarations(JSParseNode * list, Stream * f) {
@@ -635,8 +640,25 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     }
     break;
   case TOK_NEW:
+    /*
+    For an expression like
+      new (f())();
+    SpiderMonkey creates a node with pn_head NOT in parentheses.  If we just
+    output pn_head, we end up with
+      new f()();
+    This is not correct, because it is parsed as
+      (new f())();
+    We can fix this by surrounding pn_head in parentheses.
+    */
     Stream_write_string(f, "new ");
-    instrument_function_call(node, f);
+    if (node->pn_head->pn_type != TOK_NAME) {
+      Stream_write_char(f, '(');
+    }
+    output_expression(node->pn_head, f, false);
+    if (node->pn_head->pn_type != TOK_NAME) {
+      Stream_write_char(f, ')');
+    }
+    output_function_arguments(node, f);
     break;
   case TOK_DELETE:
     Stream_write_string(f, "delete ");
