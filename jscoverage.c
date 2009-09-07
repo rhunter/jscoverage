@@ -35,7 +35,6 @@ bool jscoverage_highlight = true;
 int main(int argc, char ** argv) {
   int verbose = 0;
 
-  // program = argv[0];
   program = "jscoverage";
 
   char * source = NULL;
