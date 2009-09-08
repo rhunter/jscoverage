@@ -85,33 +85,8 @@ int URL_parse_abs_path_and_query(const char * s, char ** abs_path, char ** query
 int URL_parse(const char * url, char ** host, uint16_t * port, char ** abs_path, char ** query) {
   /* check for invalid characters */
   for (const char * p = url; *p != '\0'; p++) {
-    switch (*p) {
-    case ';':
-    case '/':
-    case '?':
-    case ':':
-    case '@':
-    case '&':
-    case '=':
-    case '+':
-    case '$':
-    case ',':
-    case '-':
-    case '_':
-    case '.':
-    case '!':
-    case '~':
-    case '*':
-    case '\'':
-    case '(':
-    case ')':
-    case '%':
-      break;
-    default:
-      if (! isalnum(*p)) {
-        return -1;
-      }
-      break;
+    if (*p <= 32 || *p >= 127) {
+      return -1;
     }
   }
 
