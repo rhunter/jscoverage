@@ -18,13 +18,23 @@
 
 set -e
 
-trap 'rm -fr DIR OUT ERR' 1 2 3 15
+trap 'rm -fr DIR DIR2 OUT ERR' 1 2 3 15
 
 export PATH=.:..:$PATH
 
-$VALGRIND jscoverage --no-highlight --exclude=.svn --exclude=1/.svn --exclude=1/2/.svn recursive.expected DIR > OUT 2> ERR && exit 1
+rm -fr DIR DIR2 OUT ERR
+
+mkdir DIR
+cp recursive.expected/image.png DIR
+cp recursive.expected/index.html DIR
+cp recursive.expected/script.js DIR
+cp recursive.expected/style.css DIR
+cp recursive.expected/unix.txt DIR
+cp recursive.expected/windows.txt DIR
+cp recursive.expected/x DIR
+$VALGRIND jscoverage --no-highlight DIR DIR2 > OUT 2> ERR && exit 1
 test ! -s OUT
 test -s ERR
 diff --strip-trailing-cr instrumented-source-directory.expected.err ERR
 
-rm -fr DIR OUT ERR
+rm -fr DIR DIR2 OUT ERR
