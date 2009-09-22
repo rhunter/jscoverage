@@ -43,8 +43,8 @@ enum Class {
   CLASS_CBRACKET
 };
 
-static const char * get_class_name(enum Class class) {
-  switch (class) {
+static const char * get_class_name(enum Class c) {
+  switch (c) {
   case CLASS_NONE:
     abort();
     break;
@@ -90,22 +90,22 @@ static uint16_t line_num;
 static uint16_t column_num;
 static enum Class current_class;
 
-static void output_character(jschar c, enum Class class) {
+static void output_character(jschar c, enum Class class_) {
   if (c == '\r' || c == '\n' || c == 0x2028 || c == 0x2029) {
-    class = CLASS_NONE;
+    class_ = CLASS_NONE;
   }
 
-  if (class != current_class) {
+  if (class_ != current_class) {
     /* output the end tag */
     if (current_class != CLASS_NONE) {
       Stream_write_string(g_output, "</span>");
     }
 
-    current_class = class;
+    current_class = class_;
 
     /* output the start tag */
     if (current_class != CLASS_NONE) {
-      Stream_printf(g_output, "<span class=\"%s\">", get_class_name(class));
+      Stream_printf(g_output, "<span class=\"%s\">", get_class_name(class_));
     }
   }
 
@@ -243,13 +243,13 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     mark_nontoken_chars(t.pos.begin.lineno, t.pos.begin.index);
 
     /* mark the token */
-    enum Class class;
+    enum Class class_;
     switch (tt) {
     case TOK_ERROR:
     case TOK_EOF:
       abort();
     case TOK_EOL:
-      class = CLASS_NONE;
+      class_ = CLASS_NONE;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_SEMI:
@@ -269,7 +269,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_MINUS:
     case TOK_STAR:
     case TOK_DIVOP:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_UNARYOP:
@@ -278,15 +278,15 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       case JSOP_POS:
       case JSOP_NOT:
       case JSOP_BITNOT:
-        class = CLASS_SYMBOL;
+        class_ = CLASS_SYMBOL;
         token_stream.flags |= TSF_OPERAND;
         break;
       case JSOP_TYPEOF:
-        class = CLASS_KEYWORD;
+        class_ = CLASS_KEYWORD;
         token_stream.flags |= TSF_OPERAND;
         break;
       case JSOP_VOID:
-        class = CLASS_TYPE;
+        class_ = CLASS_TYPE;
         token_stream.flags |= TSF_OPERAND;
         break;
       default:
@@ -295,52 +295,52 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_INC:
     case TOK_DEC:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       /* token_stream.flags does not change w.r.t. TSF_OPERAND */
       break;
     case TOK_DOT:
     case TOK_LB:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RB:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_LC:
-      class = CLASS_CBRACKET;
+      class_ = CLASS_CBRACKET;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RC:
-      class = CLASS_CBRACKET;
+      class_ = CLASS_CBRACKET;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_LP:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_RP:
-      class = CLASS_SYMBOL;
+      class_ = CLASS_SYMBOL;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_NAME:
-      class = CLASS_NONE;
+      class_ = CLASS_NONE;
       token_stream.flags &= ~TSF_OPERAND;
       if (js_PeekToken(context, &token_stream) == TOK_LP) {
         /* function */
-        class = CLASS_NONE;
+        class_ = CLASS_NONE;
       }
       break;
     case TOK_NUMBER:
-      class = CLASS_NUMBER;
+      class_ = CLASS_NUMBER;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_STRING:
-      class = CLASS_STRING;
+      class_ = CLASS_STRING;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_REGEXP:
-      class = CLASS_REGEXP;
+      class_ = CLASS_REGEXP;
       token_stream.flags &= ~TSF_OPERAND;
       break;
     case TOK_PRIMARY:
@@ -349,7 +349,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       case JSOP_FALSE:
       case JSOP_NULL:
       case JSOP_THIS:
-        class = CLASS_KEYWORD;
+        class_ = CLASS_KEYWORD;
         token_stream.flags &= ~TSF_OPERAND;
         break;
       default:
@@ -357,7 +357,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       }
       break;
     case TOK_FUNCTION:
-      class = CLASS_KEYWORD;
+      class_ = CLASS_KEYWORD;
       token_stream.flags |= TSF_OPERAND;
       break;
     case TOK_IF:
@@ -377,7 +377,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_NEW:
     case TOK_DELETE:
       token_stream.flags |= TSF_OPERAND;
-      class = CLASS_KEYWORD;
+      class_ = CLASS_KEYWORD;
       break;
     case TOK_DEFSHARP:
     case TOK_USESHARP:
@@ -390,7 +390,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_INSTANCEOF:
     case TOK_DEBUGGER:
       token_stream.flags |= TSF_OPERAND;
-      class = CLASS_KEYWORD;
+      class_ = CLASS_KEYWORD;
       break;
     case TOK_XMLSTAGO:
     case TOK_XMLETAGO:
@@ -414,7 +414,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_YIELD:
       token_stream.flags |= TSF_OPERAND;
-      class = CLASS_KEYWORD;
+      class_ = CLASS_KEYWORD;
       break;
     case TOK_ARRAYCOMP:
     case TOK_ARRAYPUSH:
@@ -423,7 +423,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_LET:
       token_stream.flags |= TSF_OPERAND;
-      class = CLASS_KEYWORD;
+      class_ = CLASS_KEYWORD;
       break;
     case TOK_SEQ:
     case TOK_FORHEAD:
@@ -455,7 +455,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
         output_character(c, CLASS_SPECIALCHAR);
       }
       else {
-        output_character(c, class);
+        output_character(c, class_);
       }
 
       if (line_num > end_line) {
