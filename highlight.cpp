@@ -1,5 +1,5 @@
 /*
-    highlight.c - JavaScript syntax highlighting
+    highlight.cpp - JavaScript syntax highlighting
     Copyright (C) 2008, 2009 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,10 @@
 #include <jsscan.h>
 
 #include "util.h"
+
+#ifndef UINT16_MAX
+#define UINT16_MAX 65535
+#endif
 
 enum Class {
   CLASS_NONE,

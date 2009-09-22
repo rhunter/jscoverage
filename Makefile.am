@@ -31,7 +31,7 @@ resources = jscoverage-help.txt jscoverage-server-help.txt \
 
 bin_PROGRAMS = jscoverage jscoverage-server
 jscoverage_SOURCES = encoding.c encoding.h \
-                     highlight.c highlight.h \
+                     highlight.cpp highlight.h \
                      instrument.c instrument.h \
                      instrument-js.cpp instrument-js.h \
                      jscoverage.c global.h \
@@ -47,7 +47,7 @@ jscoverage_server_SOURCES = http-connection.c \
                             http-server.c http-server.h \
                             http-url.c \
                             encoding.c encoding.h \
-                            highlight.c highlight.h \
+                            highlight.cpp highlight.h \
                             instrument-js.cpp instrument-js.h \
                             jscoverage-server.c global.h \
                             resource-manager.c resource-manager.h \
