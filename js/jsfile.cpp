@@ -57,6 +57,17 @@
 #   define CURRENT_DIR          "c:\\"
 #   define POPEN                _popen
 #   define PCLOSE               _pclose
+#elif defined(SYMBIAN)
+#   include <strings.h>
+#   include <stdio.h>
+#   include <stdlib.h>
+#   include <unistd.h>
+#   include <limits.h>
+#   define FILESEPARATOR        '\\'
+#   define FILESEPARATOR2       '/'
+#   define CURRENT_DIR          "c:\\"
+#   define POPEN                popen
+#   define PCLOSE               pclose
 #elif defined(XP_UNIX) || defined(XP_BEOS)
 #   include <strings.h>
 #   include <stdio.h>
@@ -259,7 +270,7 @@ js_filenameHasAPipe(const char *filename)
 static JSBool
 js_isAbsolute(const char *name)
 {
-#if defined(XP_WIN) || defined(XP_OS2)
+#if defined(XP_WIN) || defined(XP_OS2) || defined(SYMBIAN)
     return *name && name[1] == ':';
 #else
     return (name[0]
@@ -2181,7 +2192,7 @@ file_constructor(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
     JSString *str;
     JSFile   *file;
 
-    if (!(cx->fp->flags & JSFRAME_CONSTRUCTING)) {
+    if (!JS_IsConstructing(cx)) {
         /* Replace obj with a new File object. */
         obj = JS_NewObject(cx, &js_FileClass, NULL, NULL);
         if (!obj)

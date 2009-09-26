@@ -155,7 +155,7 @@ MOZ_WIDGET_SUPPORT_LIBS    = $(DIST)/lib/$(LIB_PREFIX)widgetsupport_s.$(LIB_SUFF
 
 ifdef MOZ_MEMORY
 ifneq ($(OS_ARCH),WINNT)
-JEMALLOC_LIBS = $(MKSHLIB_FORCE_ALL) $(call EXPAND_LIBNAME,jemalloc) $(MKSHLIB_UNFORCE_ALL)
+JEMALLOC_LIBS = $(MKSHLIB_FORCE_ALL) $(call EXPAND_LIBNAME_PATH,jemalloc,$(DIST)/lib) $(MKSHLIB_UNFORCE_ALL)
 endif
 endif
 
@@ -493,33 +493,7 @@ ifndef MOZILLA_INTERNAL_API
 INCLUDES	+= -I$(LIBXUL_DIST)/sdk/include
 endif
 
-# The entire tree should be subject to static analysis using the XPCOM
-# script. Additional scripts may be added by specific subdirectories.
-
-DEHYDRA_SCRIPT = $(topsrcdir)/xpcom/analysis/static-checking.js
-
-DEHYDRA_MODULES = \
-  $(topsrcdir)/xpcom/analysis/final.js \
-  $(NULL)
-
-TREEHYDRA_MODULES = \
-  $(topsrcdir)/xpcom/analysis/outparams.js \
-  $(topsrcdir)/xpcom/analysis/stack.js \
-  $(topsrcdir)/xpcom/analysis/flow.js \
-  $(NULL)
-
-DEHYDRA_ARGS = \
-  --topsrcdir=$(topsrcdir) \
-  --objdir=$(DEPTH) \
-  --dehydra-modules=$(subst $(NULL) ,$(COMMA),$(strip $(DEHYDRA_MODULES))) \
-  --treehydra-modules=$(subst $(NULL) ,$(COMMA),$(strip $(TREEHYDRA_MODULES))) \
-  $(NULL)
-
-DEHYDRA_FLAGS = -fplugin=$(DEHYDRA_PATH) -fplugin-arg='$(DEHYDRA_SCRIPT) $(DEHYDRA_ARGS)'
-
-ifdef DEHYDRA_PATH
-OS_CXXFLAGS += $(DEHYDRA_FLAGS)
-endif
+include $(topsrcdir)/config/static-checking-config.mk
 
 CFLAGS		= $(OS_CFLAGS)
 CXXFLAGS	= $(OS_CXXFLAGS)
@@ -872,6 +846,10 @@ ifeq (,$(filter WINCE WINNT OS2,$(OS_ARCH)))
 RUN_TEST_PROGRAM = $(DIST)/bin/run-mozilla.sh
 endif
 
+ifeq ($(OS_ARCH),OS2)
+RUN_TEST_PROGRAM = $(topsrcdir)/build/os2/test_os2.cmd "$(DIST)"
+endif
+
 #
 # Java macros
 #
@@ -881,4 +859,9 @@ JAVAC_FLAGS += -source 1.4
 
 ifdef MOZ_DEBUG
 JAVAC_FLAGS += -g
+endif
+
+ifdef TIERS
+DIRS += $(foreach tier,$(TIERS),$(tier_$(tier)_dirs))
+STATIC_DIRS += $(foreach tier,$(TIERS),$(tier_$(tier)_staticdirs))
 endif

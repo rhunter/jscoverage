@@ -54,6 +54,7 @@
 #include <string.h>
 #include "jstypes.h"
 #include "jsarena.h" /* Added by JSIFY */
+#include "jsbit.h"
 #include "jsutil.h" /* Added by JSIFY */
 #include "jsdtoa.h"
 #include "jsprf.h"
@@ -675,27 +676,41 @@ js_ReportCompileErrorNumber(JSContext *cx, JSTokenStream *ts, JSParseNode *pn,
 }
 
 static JSBool
-GrowStringBuffer(JSStringBuffer *sb, size_t newlength)
+GrowStringBuffer(JSStringBuffer *sb, size_t amount)
 {
-    ptrdiff_t offset;
-    jschar *bp;
-
-    offset = PTRDIFF(sb->ptr, sb->base, jschar);
+    ptrdiff_t offset = sb->ptr - sb->base;
     JS_ASSERT(offset >= 0);
-    newlength += offset + 1;
-    if ((size_t)offset < newlength && newlength < ~(size_t)0 / sizeof(jschar))
-        bp = (jschar *) realloc(sb->base, newlength * sizeof(jschar));
-    else
-        bp = NULL;
-    if (!bp) {
-        free(sb->base);
-        sb->base = STRING_BUFFER_ERROR_BASE;
-        return JS_FALSE;
+
+    /*
+     * This addition needs an overflow check, but we can defer bounding against
+     * ~size_t(0) / sizeof(jschar) till later to consolidate that test.
+     */
+    size_t newlength = offset + amount + 1;
+    if (size_t(offset) < newlength) {
+        /* Grow by powers of two until 16MB, then grow by that chunk size. */
+        const size_t CHUNK_SIZE_MASK = JS_BITMASK(24);
+
+        if (newlength <= CHUNK_SIZE_MASK)
+            newlength = JS_BIT(JS_CeilingLog2(newlength));
+        else if (newlength & CHUNK_SIZE_MASK)
+            newlength = (newlength | CHUNK_SIZE_MASK) + 1;
+
+        /* Now do the full overflow check. */
+        if (size_t(offset) < newlength && newlength < ~size_t(0) / sizeof(jschar)) {
+            jschar *bp = (jschar *) realloc(sb->base, newlength * sizeof(jschar));
+            if (bp) {
+                sb->base = bp;
+                sb->ptr = bp + offset;
+                sb->limit = bp + newlength - 1;
+                return true;
+            }
+        }
     }
-    sb->base = bp;
-    sb->ptr = bp + offset;
-    sb->limit = bp + newlength - 1;
-    return JS_TRUE;
+
+    /* Either newlength overflow or realloc failure: poison the well. */
+    free(sb->base);
+    sb->base = STRING_BUFFER_ERROR_BASE;
+    return false;
 }
 
 static void
@@ -719,19 +734,6 @@ void
 js_FinishStringBuffer(JSStringBuffer *sb)
 {
     sb->free(sb);
-}
-
-#define ENSURE_STRING_BUFFER(sb,n) \
-    ((sb)->ptr + (n) <= (sb)->limit || sb->grow(sb, n))
-
-static void
-FastAppendChar(JSStringBuffer *sb, jschar c)
-{
-    if (!STRING_BUFFER_OK(sb))
-        return;
-    if (!ENSURE_STRING_BUFFER(sb, 1))
-        return;
-    *sb->ptr++ = c;
 }
 
 void
@@ -817,7 +819,7 @@ GetXMLEntity(JSContext *cx, JSTokenStream *ts)
 
     /* Put the entity, including the '&' already scanned, in ts->tokenbuf. */
     offset = PTRDIFF(ts->tokenbuf.ptr, ts->tokenbuf.base, jschar);
-    FastAppendChar(&ts->tokenbuf, '&');
+    js_FastAppendChar(&ts->tokenbuf, '&');
     if (!STRING_BUFFER_OK(&ts->tokenbuf))
         return JS_FALSE;
     while ((c = GetChar(ts)) != ';') {
@@ -826,7 +828,7 @@ GetXMLEntity(JSContext *cx, JSTokenStream *ts)
                                         JSMSG_END_OF_XML_ENTITY);
             return JS_FALSE;
         }
-        FastAppendChar(&ts->tokenbuf, (jschar) c);
+        js_FastAppendChar(&ts->tokenbuf, (jschar) c);
         if (!STRING_BUFFER_OK(&ts->tokenbuf))
             return JS_FALSE;
     }
@@ -1028,7 +1030,11 @@ js_GetToken(JSContext *cx, JSTokenStream *ts)
                                                TOKENBUF_LENGTH(),             \
                                                0)                             \
                              : NULL)
-#define ADD_TO_TOKENBUF(c)  FastAppendChar(&ts->tokenbuf, (jschar) (c))
+#define ADD_TO_TOKENBUF(c)  JS_BEGIN_MACRO                                    \
+                                js_FastAppendChar(&ts->tokenbuf, jschar(c));  \
+                                if (!TOKENBUF_OK())                           \
+                                    goto error;                               \
+                            JS_END_MACRO
 
 /* The following 4 macros should only be used when TOKENBUF_OK() is true. */
 #define TOKENBUF_BASE()     (ts->tokenbuf.base)
@@ -1560,10 +1566,19 @@ retry:
          * https://bugzilla.mozilla.org/show_bug.cgi?id=309712
          * https://bugzilla.mozilla.org/show_bug.cgi?id=310993
          *
-         * So without JSOPTION_XML, we never scan an XML comment or CDATA
-         * literal.  We always scan <! as the start of an HTML comment hack
-         * to end of line, used since Netscape 2 to hide script tag content
-         * from script-unaware browsers.
+         * So without JSOPTION_XML, we changed around Firefox 1.5 never to scan
+         * an XML comment or CDATA literal.  Instead, we always scan <! as the
+         * start of an HTML comment hack to end of line, used since Netscape 2
+         * to hide script tag content from script-unaware browsers.
+         *
+         * But this still leaves XML resources with certain internal structure
+         * vulnerable to being loaded as script cross-origin, and some internal
+         * data stolen, so for Firefox 3.5 and beyond, we reject programs whose
+         * source consists only of XML literals. See:
+         *
+         * https://bugzilla.mozilla.org/show_bug.cgi?id=336551
+         *
+         * The check for this is in jsparse.cpp, JSCompiler::compileScript.
          */
         if ((ts->flags & TSF_OPERAND) &&
             (JS_HAS_XML_OPTION(cx) || PeekChar(ts) != '!')) {
@@ -1802,6 +1817,7 @@ skipline:
         }
 
         if (MatchChar(ts, '*')) {
+            uintN lineno = ts->lineno;
             while ((c = GetChar(ts)) != EOF &&
                    !(c == '*' && MatchChar(ts, '/'))) {
                 /* Ignore all characters until comment close. */
@@ -1811,12 +1827,17 @@ skipline:
                                             JSMSG_UNTERMINATED_COMMENT);
                 goto error;
             }
+            if ((ts->flags & TSF_NEWLINES) && lineno != ts->lineno) {
+                ts->flags &= ~TSF_DIRTYLINE;
+                tt = TOK_EOL;
+                goto eol_out;
+            }
             ts->cursor = (ts->cursor - 1) & NTOKENS_MASK;
             goto retry;
         }
 
         if (ts->flags & TSF_OPERAND) {
-            uintN flags;
+            uintN flags, length;
             JSBool inCharClass = JS_FALSE;
 
             INIT_TOKENBUF();
@@ -1841,15 +1862,15 @@ skipline:
                 }
                 ADD_TO_TOKENBUF(c);
             }
-            for (flags = 0; ; ) {
+            for (flags = 0, length = TOKENBUF_LENGTH() + 1; ; length++) {
                 c = PeekChar(ts);
-                if (c == 'g')
+                if (c == 'g' && !(flags & JSREG_GLOB))
                     flags |= JSREG_GLOB;
-                else if (c == 'i')
+                else if (c == 'i' && !(flags & JSREG_FOLD))
                     flags |= JSREG_FOLD;
-                else if (c == 'm')
+                else if (c == 'm' && !(flags & JSREG_MULTILINE))
                     flags |= JSREG_MULTILINE;
-                else if (c == 'y')
+                else if (c == 'y' && !(flags & JSREG_STICKY))
                     flags |= JSREG_STICKY;
                 else
                     break;
@@ -1857,9 +1878,11 @@ skipline:
             }
             c = PeekChar(ts);
             if (JS7_ISLET(c)) {
-                tp->ptr = ts->linebuf.ptr - 1;
+                char buf[2] = { '\0' };
+                tp->pos.begin.index += length + 1;
+                buf[0] = (char)c;
                 js_ReportCompileErrorNumber(cx, ts, NULL, JSREPORT_ERROR,
-                                            JSMSG_BAD_REGEXP_FLAG);
+                                            JSMSG_BAD_REGEXP_FLAG, buf);
                 (void) GetChar(ts);
                 goto error;
             }

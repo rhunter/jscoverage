@@ -201,6 +201,8 @@ struct JSScope {
     JSTitle         title;              /* lock state */
 #endif
     JSObject        *object;            /* object that owns this scope */
+    jsrefcount      nrefs;              /* count of all referencing objects */
+    uint32          freeslot;           /* index of next free slot in object */
     uint32          shape;              /* property cache shape identifier */
     uint8           flags;              /* flags, see below */
     int8            hashShift;          /* multiplicative hash shift */
@@ -211,27 +213,11 @@ struct JSScope {
     JSScopeProperty *lastProp;          /* pointer to last property added */
 };
 
-#ifdef JS_THREADSAFE
-JS_STATIC_ASSERT(offsetof(JSScope, title) == sizeof(JSObjectMap));
-#endif
-
 #define JS_IS_SCOPE_LOCKED(cx, scope)   JS_IS_TITLE_LOCKED(cx, &(scope)->title)
 
-#define OBJ_SCOPE(obj)                  ((JSScope *)(obj)->map)
+#define OBJ_SCOPE(obj)                  (JS_ASSERT(OBJ_IS_NATIVE(obj)),       \
+                                         (JSScope *) (obj)->map)
 #define OBJ_SHAPE(obj)                  (OBJ_SCOPE(obj)->shape)
-
-#define SCOPE_MAKE_UNIQUE_SHAPE(cx,scope)                                     \
-    ((scope)->shape = js_GenerateShape((cx), JS_FALSE, NULL))
-
-#define SCOPE_EXTEND_SHAPE(cx,scope,sprop)                                    \
-    JS_BEGIN_MACRO                                                            \
-        if (!(scope)->lastProp ||                                             \
-            (scope)->shape == (scope)->lastProp->shape) {                     \
-            (scope)->shape = (sprop)->shape;                                  \
-        } else {                                                              \
-            (scope)->shape = js_GenerateShape((cx), JS_FALSE, sprop);         \
-        }                                                                     \
-    JS_END_MACRO
 
 /* By definition, hashShift = JS_DHASH_BITS - log2(capacity). */
 #define SCOPE_CAPACITY(scope)           JS_BIT(JS_DHASH_BITS-(scope)->hashShift)
@@ -240,10 +226,13 @@ JS_STATIC_ASSERT(offsetof(JSScope, title) == sizeof(JSObjectMap));
 #define SCOPE_MIDDLE_DELETE             0x0001
 #define SCOPE_SEALED                    0x0002
 #define SCOPE_BRANDED                   0x0004
+#define SCOPE_INDEXED_PROPERTIES        0x0008
 
 #define SCOPE_HAD_MIDDLE_DELETE(scope)  ((scope)->flags & SCOPE_MIDDLE_DELETE)
 #define SCOPE_SET_MIDDLE_DELETE(scope)  ((scope)->flags |= SCOPE_MIDDLE_DELETE)
 #define SCOPE_CLR_MIDDLE_DELETE(scope)  ((scope)->flags &= ~SCOPE_MIDDLE_DELETE)
+#define SCOPE_HAS_INDEXED_PROPERTIES(scope)  ((scope)->flags & SCOPE_INDEXED_PROPERTIES)
+#define SCOPE_SET_INDEXED_PROPERTIES(scope)  ((scope)->flags |= SCOPE_INDEXED_PROPERTIES)
 
 #define SCOPE_IS_SEALED(scope)          ((scope)->flags & SCOPE_SEALED)
 #define SCOPE_SET_SEALED(scope)         ((scope)->flags |= SCOPE_SEALED)
@@ -271,6 +260,27 @@ JS_STATIC_ASSERT(offsetof(JSScope, title) == sizeof(JSObjectMap));
 #define SCOPE_LAST_PROP(scope)          ((scope)->lastProp)
 #define SCOPE_REMOVE_LAST_PROP(scope)   ((scope)->lastProp =                  \
                                          (scope)->lastProp->parent)
+/*
+ * Helpers for reinterpreting JSPropertyOp as JSObject* for scripted getters
+ * and setters.
+ */
+static inline JSObject *
+js_CastAsObject(JSPropertyOp op)
+{
+    return JS_FUNC_TO_DATA_PTR(JSObject *, op);
+}
+
+static inline jsval
+js_CastAsObjectJSVal(JSPropertyOp op)
+{
+    return OBJECT_TO_JSVAL(JS_FUNC_TO_DATA_PTR(JSObject *, op));
+}
+
+static inline JSPropertyOp
+js_CastAsPropertyOp(JSObject *object)
+{
+    return JS_DATA_TO_FUNC_PTR(JSPropertyOp, object);
+}
 
 struct JSScopeProperty {
     jsid            id;                 /* int-tagged jsval/untagged JSAtom* */
@@ -322,21 +332,74 @@ struct JSScopeProperty {
 
 #define SPROP_INVALID_SLOT              0xffffffff
 
-#define SLOT_IN_SCOPE(slot,scope)         ((slot) < (scope)->map.freeslot)
+#define SLOT_IN_SCOPE(slot,scope)         ((slot) < (scope)->freeslot)
 #define SPROP_HAS_VALID_SLOT(sprop,scope) SLOT_IN_SCOPE((sprop)->slot, scope)
 
 #define SPROP_HAS_STUB_GETTER(sprop)    (!(sprop)->getter)
 #define SPROP_HAS_STUB_SETTER(sprop)    (!(sprop)->setter)
 
-/*
- * NB: SPROP_GET must not be called if SPROP_HAS_STUB_GETTER(sprop).
- */
-#define SPROP_GET(cx,sprop,obj,obj2,vp)                                       \
-    (((sprop)->attrs & JSPROP_GETTER)                                         \
-     ? js_InternalGetOrSet(cx, obj, (sprop)->id,                              \
-                           OBJECT_TO_JSVAL((sprop)->getter), JSACC_READ,      \
-                           0, 0, vp)                                          \
-     : (sprop)->getter(cx, OBJ_THIS_OBJECT(cx,obj), SPROP_USERID(sprop), vp))
+static inline void
+js_MakeScopeShapeUnique(JSContext *cx, JSScope *scope)
+{
+    js_LeaveTraceIfGlobalObject(cx, scope->object);
+    scope->shape = js_GenerateShape(cx, JS_FALSE);
+}
+
+static inline void
+js_ExtendScopeShape(JSContext *cx, JSScope *scope, JSScopeProperty *sprop)
+{
+    js_LeaveTraceIfGlobalObject(cx, scope->object);
+    if (!scope->lastProp ||
+        scope->shape == scope->lastProp->shape) {
+        scope->shape = sprop->shape;
+    } else {
+        scope->shape = js_GenerateShape(cx, JS_FALSE);
+    }
+}
+
+static JS_INLINE JSBool
+js_GetSprop(JSContext* cx, JSScopeProperty* sprop, JSObject* obj, jsval* vp)
+{
+    JS_ASSERT(!SPROP_HAS_STUB_GETTER(sprop));
+    if (sprop->attrs & JSPROP_GETTER) {
+        jsval fval = js_CastAsObjectJSVal(sprop->getter);
+        return js_InternalGetOrSet(cx, obj, sprop->id, fval, JSACC_READ,
+                                   0, 0, vp);
+    }
+
+    /*
+     * JSObjectOps is private, so we know there are only two implementations
+     * of the thisObject hook: with objects and XPConnect wrapped native
+     * objects.  XPConnect objects don't expect the hook to be called here,
+     * but with objects do.
+     */
+    if (STOBJ_GET_CLASS(obj) == &js_WithClass)
+        obj = obj->map->ops->thisObject(cx, obj);
+    return sprop->getter(cx, obj, SPROP_USERID(sprop), vp);
+}
+
+static JS_INLINE JSBool
+js_SetSprop(JSContext* cx, JSScopeProperty* sprop, JSObject* obj, jsval* vp)
+{
+    JS_ASSERT(!(SPROP_HAS_STUB_SETTER(sprop) &&
+                !(sprop->attrs & JSPROP_GETTER)));
+
+    if (sprop->attrs & JSPROP_SETTER) {
+        jsval fval = js_CastAsObjectJSVal(sprop->setter);
+        return js_InternalGetOrSet(cx, obj, (sprop)->id, fval, JSACC_WRITE,
+                                   1, vp, vp);
+    }
+
+    if (sprop->attrs & JSPROP_GETTER) {
+        js_ReportGetterOnlyAssignment(cx);
+        return JS_FALSE;
+    }
+
+    /* See the comment in js_GetSprop as to why we can check for 'with'. */
+    if (STOBJ_GET_CLASS(obj) == &js_WithClass)
+        obj = obj->map->ops->thisObject(cx, obj);
+    return sprop->setter(cx, obj, SPROP_USERID(sprop), vp);
+}
 
 /*
  * NB: SPROP_SET must not be called if (SPROP_HAS_STUB_SETTER(sprop) &&
@@ -345,12 +408,12 @@ struct JSScopeProperty {
 #define SPROP_SET(cx,sprop,obj,obj2,vp)                                       \
     (((sprop)->attrs & JSPROP_SETTER)                                         \
      ? js_InternalGetOrSet(cx, obj, (sprop)->id,                              \
-                           OBJECT_TO_JSVAL((sprop)->setter), JSACC_WRITE,     \
-                           1, vp, vp)                                         \
+                           OBJECT_TO_JSVAL((JSObject *) (sprop)->setter),     \
+                           JSACC_WRITE, 1, vp, vp)                            \
      : ((sprop)->attrs & JSPROP_GETTER)                                       \
      ? (JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL,                    \
                              JSMSG_GETTER_ONLY, NULL), JS_FALSE)              \
-     : (sprop)->setter(cx, OBJ_THIS_OBJECT(cx,obj), SPROP_USERID(sprop), vp))
+     : (sprop)->setter(cx, obj, SPROP_USERID(sprop), vp))
 
 /* Macro for common expression to test for shared permanent attributes. */
 #define SPROP_IS_SHARED_PERMANENT(sprop)                                      \
@@ -360,11 +423,16 @@ extern JSScope *
 js_GetMutableScope(JSContext *cx, JSObject *obj);
 
 extern JSScope *
-js_NewScope(JSContext *cx, jsrefcount nrefs, JSObjectOps *ops, JSClass *clasp,
-            JSObject *obj);
+js_NewScope(JSContext *cx, JSObjectOps *ops, JSClass *clasp, JSObject *obj);
 
 extern void
 js_DestroyScope(JSContext *cx, JSScope *scope);
+
+extern void
+js_HoldScope(JSScope *scope);
+
+extern JSBool
+js_DropScope(JSContext *cx, JSScope *scope, JSObject *obj);
 
 extern JS_FRIEND_API(JSScopeProperty **)
 js_SearchScope(JSScope *scope, jsid id, JSBool adding);

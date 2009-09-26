@@ -50,8 +50,6 @@
 
 JS_BEGIN_EXTERN_C
 
-JS_STATIC_ASSERT(JSTRACE_STRING == 2);
-
 #define JSTRACE_XML         3
 
 /*
@@ -70,17 +68,12 @@ JS_STATIC_ASSERT(JSTRACE_STRING == 2);
 #define GCX_EXTERNAL_STRING     JSTRACE_LIMIT       /* JSString with external
                                                        chars */
 /*
- * The number of defined GC types.
+ * The number of defined GC types and the maximum limit for the number of
+ * possible GC types.
  */
 #define GCX_NTYPES              (GCX_EXTERNAL_STRING + 8)
-
-/*
- * The maximum limit for the number of GC types.
- */
 #define GCX_LIMIT_LOG2         4           /* type index bits */
 #define GCX_LIMIT              JS_BIT(GCX_LIMIT_LOG2)
-
-JS_STATIC_ASSERT(GCX_NTYPES <= GCX_LIMIT);
 
 /* GC flag definitions, must fit in 8 bits (type index goes in the low bits). */
 #define GCF_TYPEMASK    JS_BITMASK(GCX_LIMIT_LOG2)
@@ -132,7 +125,7 @@ js_GetGCStringRuntime(JSString *str);
         if (SCOPE_IS_BRANDED(scope) &&                                        \
             (oldval) != (newval) &&                                           \
             (VALUE_IS_FUNCTION(cx,oldval) || VALUE_IS_FUNCTION(cx,newval))) { \
-            SCOPE_MAKE_UNIQUE_SHAPE(cx, scope);                               \
+            js_MakeScopeShapeUnique(cx, scope);                               \
         }                                                                     \
         GC_POKE(cx, oldval);                                                  \
     JS_END_MACRO
@@ -211,6 +204,11 @@ js_NewDoubleInRootedValue(JSContext *cx, jsdouble d, jsval *vp);
 extern jsdouble *
 js_NewWeaklyRootedDouble(JSContext *cx, jsdouble d);
 
+#ifdef JS_TRACER
+extern JSBool
+js_ReserveObjects(JSContext *cx, size_t nobjects);
+#endif
+
 extern JSBool
 js_LockGCThingRT(JSRuntime *rt, void *thing);
 
@@ -233,12 +231,6 @@ js_IsAboutToBeFinalized(JSContext *cx, void *thing);
 #endif
 
 /*
- * JS_IS_VALID_TRACE_KIND assumes that JSTRACE_STRING is the last non-xml
- * trace kind when JS_HAS_XML_SUPPORT is false.
- */
-JS_STATIC_ASSERT(JSTRACE_STRING + 1 == JSTRACE_XML);
-
-/*
  * Trace jsval when JSVAL_IS_OBJECT(v) can be an arbitrary GC thing casted as
  * JSVAL_OBJECT and js_GetGCThingTraceKind has to be used to find the real
  * type behind v.
@@ -249,11 +241,21 @@ js_CallValueTracerIfGCThing(JSTracer *trc, jsval v);
 extern void
 js_TraceStackFrame(JSTracer *trc, JSStackFrame *fp);
 
-extern void
+extern JS_REQUIRES_STACK void
 js_TraceRuntime(JSTracer *trc, JSBool allAtoms);
 
-extern JS_FRIEND_API(void)
+extern JS_REQUIRES_STACK JS_FRIEND_API(void)
 js_TraceContext(JSTracer *trc, JSContext *acx);
+
+/*
+ * Schedule the GC call at a later safe point.
+ */
+#ifndef JS_THREADSAFE
+# define js_TriggerGC(cx, gcLocked)    js_TriggerGC (cx)
+#endif
+
+extern void
+js_TriggerGC(JSContext *cx, JSBool gcLocked);
 
 /*
  * Kinds of js_GC invocation.
@@ -316,8 +318,6 @@ union JSGCDoubleCell {
     JSGCDoubleCell  *link;
 };
 
-JS_STATIC_ASSERT(sizeof(JSGCDoubleCell) == sizeof(double));
-
 typedef struct JSGCDoubleArenaList {
     JSGCArenaInfo   *first;             /* first allocated GC arena */
     jsbitmap        *nextDoubleFlags;   /* bitmask with flags to check for free
@@ -336,6 +336,9 @@ extern const JSGCFreeListSet js_GCEmptyFreeListSet;
 extern void
 js_RevokeGCLocalFreeLists(JSContext *cx);
 
+extern void
+js_DestroyScriptsToGC(JSContext *cx, JSThreadData *data);
+
 struct JSWeakRoots {
     /* Most recently created things by type, members of the GC's root set. */
     void            *newborn[GCX_NTYPES];
@@ -347,7 +350,6 @@ struct JSWeakRoots {
     jsval           lastInternalResult;
 };
 
-JS_STATIC_ASSERT(JSVAL_NULL == 0);
 #define JS_CLEAR_WEAK_ROOTS(wr) (memset((wr), 0, sizeof(JSWeakRoots)))
 
 /*

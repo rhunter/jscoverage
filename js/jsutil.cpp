@@ -51,6 +51,12 @@
 #    include <windows.h>
 #endif
 
+/*
+ * Checks the assumption that JS_FUNC_TO_DATA_PTR and JS_DATA_TO_FUNC_PTR
+ * macros uses to implement casts between function and data pointers.
+ */
+JS_STATIC_ASSERT(sizeof(void *) == sizeof(void (*)()));
+
 JS_PUBLIC_API(void) JS_Assert(const char *s, const char *file, JSIntn ln)
 {
     fprintf(stderr, "Assertion failure: %s, at %s:%d\n", s, file, ln);
@@ -210,7 +216,7 @@ JS_DumpHistogram(JSBasicStats *bs, FILE *fp)
 
 #endif /* JS_BASIC_STATS */
 
-#if defined DEBUG_notme && defined XP_UNIX
+#if defined(DEBUG_notme) && defined(XP_UNIX)
 
 #define __USE_GNU 1
 #include <dlfcn.h>
@@ -314,7 +320,7 @@ CallTree(void **bp)
     return site;
 }
 
-JSCallsite *
+JS_FRIEND_API(JSCallsite *)
 JS_Backtrace(int skip)
 {
     void **bp, **bpdown;
@@ -342,4 +348,14 @@ JS_Backtrace(int skip)
     return CallTree(bp);
 }
 
-#endif /* DEBUG_notme && XP_UNIX */
+JS_FRIEND_API(void)
+JS_DumpBacktrace(JSCallsite *trace)
+{
+    while (trace) {
+        fprintf(stdout, "%s [%s +0x%X]\n", trace->name, trace->library,
+                trace->offset);
+        trace = trace->parent;
+    }
+}
+
+#endif /* defined(DEBUG_notme) && defined(XP_UNIX) */

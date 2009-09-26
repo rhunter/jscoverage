@@ -1,4 +1,5 @@
 /* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+ * vim: set ts=8 sw=4 et tw=78:
  *
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -13,12 +14,11 @@
  * for the specific language governing rights and limitations under the
  * License.
  *
- * The Original Code is Mozilla Communicator client code, released
- * March 31, 1998.
+ * The Original Code is mozilla.org code.
  *
  * The Initial Developer of the Original Code is
- * Netscape Communications Corporation.
- * Portions created by the Initial Developer are Copyright (C) 1998
+ * Jim Blandy
+ * Portions created by the Initial Developer are Copyright (C) 2008
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -37,18 +37,60 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*
-	Error messages for JSShell. See js.msg for format.
-*/
+/* This header provides definitions for the <stdint.h> types we use,
+   even on systems that lack <stdint.h>.  */
 
-MSG_DEF(JSSMSG_NOT_AN_ERROR,             0, 0, JSEXN_NONE, "<Error #0 is reserved>")
-MSG_DEF(JSSMSG_CANT_OPEN,                1, 2, JSEXN_NONE, "can't open {0}: {1}") 
-MSG_DEF(JSSMSG_TRAP_USAGE,               2, 0, JSEXN_NONE, "usage: trap [fun] [pc] expr") 
-MSG_DEF(JSSMSG_LINE2PC_USAGE,            3, 0, JSEXN_NONE, "usage: line2pc [fun] line") 
-MSG_DEF(JSSMSG_FILE_SCRIPTS_ONLY,        4, 0, JSEXN_NONE, "only works on JS scripts read from files") 
-MSG_DEF(JSSMSG_UNEXPECTED_EOF,           5, 1, JSEXN_NONE, "unexpected EOF in {0}") 
-MSG_DEF(JSSMSG_DOEXP_USAGE,              6, 0, JSEXN_NONE, "usage: doexp obj id") 
-MSG_DEF(JSSMSG_SCRIPTS_ONLY,             7, 0, JSEXN_NONE, "only works on scripts") 
-MSG_DEF(JSSMSG_NOT_ENOUGH_ARGS,          8, 1, JSEXN_NONE, "{0}: not enough arguments")
-MSG_DEF(JSSMSG_TOO_MANY_ARGS,            9, 1, JSEXN_NONE, "{0}: too many arguments")
-MSG_DEF(JSSMSG_ASSERT_EQ_FAILED,        10, 2, JSEXN_NONE, "Assertion failed: got {0}, expected {1}")
+#ifndef jsstdint_h___
+#define jsstdint_h___
+
+#include "js-config.h"
+
+/* If we have a working stdint.h, use it.  */
+#if defined(JS_HAVE_STDINT_H)
+#include <stdint.h>
+
+/* If the configure script was able to find appropriate types for us,
+   use those.  */
+#elif defined(JS_INT8_TYPE)
+
+typedef signed   JS_INT8_TYPE   int8_t;
+typedef signed   JS_INT16_TYPE  int16_t;
+typedef signed   JS_INT32_TYPE  int32_t;
+typedef signed   JS_INT64_TYPE  int64_t;
+typedef signed   JS_INTPTR_TYPE intptr_t;
+
+typedef unsigned JS_INT8_TYPE   uint8_t;
+typedef unsigned JS_INT16_TYPE  uint16_t;
+typedef unsigned JS_INT32_TYPE  uint32_t;
+typedef unsigned JS_INT64_TYPE  uint64_t;
+typedef unsigned JS_INTPTR_TYPE uintptr_t;
+
+#else
+
+/* Microsoft Visual C/C++ has built-in __intN types.  */
+#if defined(JS_HAVE___INTN)
+
+typedef __int8 int8_t;
+typedef __int16 int16_t;
+typedef __int32 int32_t;
+typedef __int64 int64_t;
+
+typedef unsigned __int8 uint8_t;
+typedef unsigned __int16 uint16_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
+
+#else
+#error "couldn't find exact-width integer types"
+#endif
+
+/* Microsoft Visual C/C++ defines intptr_t and uintptr_t in <stddef.h>.  */
+#if defined(JS_STDDEF_H_HAS_INTPTR_T)
+#include <stddef.h>
+#else
+#error "couldn't find definitions for intptr_t, uintptr_t"
+#endif
+
+#endif /* JS_HAVE_STDINT_H */
+
+#endif /* jsstdint_h___ */

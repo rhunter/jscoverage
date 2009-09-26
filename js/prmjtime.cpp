@@ -107,6 +107,14 @@ PRMJ_LocalGMTDifference()
 {
     struct tm ltime;
 
+#if defined(XP_WIN) && !defined(WINCE)
+    /* Windows does not follow POSIX. Updates to the
+     * TZ environment variable are not reflected 
+     * immediately on that platform as they are
+     * on UNIX systems without this call.
+     */
+    _tzset();
+#endif
     /* get the difference between this time zone and GMT */
     memset((char *)&ltime,0,sizeof(ltime));
     ltime.tm_mday = 2;
@@ -139,12 +147,8 @@ PRMJ_ToExtendedTime(JSInt32 base_time)
 
     JSLL_UI2L(g1970GMTMicroSeconds,G1970GMTMICROHI);
     JSLL_UI2L(low,G1970GMTMICROLOW);
-#ifndef JS_HAVE_LONG_LONG
     JSLL_SHL(g1970GMTMicroSeconds,g1970GMTMicroSeconds,16);
     JSLL_SHL(g1970GMTMicroSeconds,g1970GMTMicroSeconds,16);
-#else
-    JSLL_SHL(g1970GMTMicroSeconds,g1970GMTMicroSeconds,32);
-#endif
     JSLL_ADD(g1970GMTMicroSeconds,g1970GMTMicroSeconds,low);
 
     JSLL_I2L(exttime,base_time);
@@ -532,6 +536,16 @@ PRMJ_DSTOffset(JSInt64 local_time)
         /*go ahead a day to make localtime work (does not work with 0) */
         JSLL_UI2L(local_time,PRMJ_DAY_SECONDS);
     }
+
+#if defined(XP_WIN) && !defined(WINCE)
+    /* Windows does not follow POSIX. Updates to the
+     * TZ environment variable are not reflected 
+     * immediately on that platform as they are
+     * on UNIX systems without this call.
+     */
+    _tzset();
+#endif
+
     JSLL_L2UI(local,local_time);
     PRMJ_basetime(local_time,&prtm);
 #ifndef HAVE_LOCALTIME_R
@@ -545,11 +559,10 @@ PRMJ_DSTOffset(JSInt64 local_time)
 #endif
 
     diff = ((tm.tm_hour - prtm.tm_hour) * PRMJ_HOUR_SECONDS) +
-	((tm.tm_min - prtm.tm_min) * 60);
+           ((tm.tm_min - prtm.tm_min) * 60);
 
-    if(diff < 0){
-	diff += PRMJ_DAY_SECONDS;
-    }
+    if (diff < 0)
+        diff += PRMJ_DAY_SECONDS;
 
     JSLL_UI2L(local_time,diff);
 
@@ -604,6 +617,16 @@ PRMJ_FormatTime(char *buf, int buflen, const char *fmt, PRMJTime *prtm)
     a.tm_mday = prtm->tm_mday;
     a.tm_mon = prtm->tm_mon;
     a.tm_wday = prtm->tm_wday;
+
+#if defined(HAVE_LOCALTIME_R) && defined(HAVE_TM_ZONE_TM_GMTOFF)
+    {
+        struct tm td;
+        time_t bogus = 0;
+        localtime_r(&bogus, &td);
+        a.tm_gmtoff = td.tm_gmtoff;
+        a.tm_zone = td.tm_zone;
+    }
+#endif
 
     /*
      * Years before 1900 and after 9999 cause strftime() to abort on Windows.

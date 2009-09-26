@@ -161,7 +161,7 @@ extern void
 js_FinalizeXML(JSContext *cx, JSXML *xml);
 
 extern JSObject *
-js_ParseNodeToXMLObject(JSContext *cx, JSParseContext *pc, JSParseNode *pn);
+js_ParseNodeToXMLObject(JSCompiler *jsc, JSParseNode *pn);
 
 extern JSObject *
 js_NewXMLObject(JSContext *cx, JSXMLClass xml_class);
@@ -169,7 +169,7 @@ js_NewXMLObject(JSContext *cx, JSXMLClass xml_class);
 extern JSObject *
 js_GetXMLObject(JSContext *cx, JSXML *xml);
 
-extern JS_FRIEND_DATA(JSXMLObjectOps)   js_XMLObjectOps;
+extern JS_FRIEND_DATA(JSObjectOps)      js_XMLObjectOps;
 extern JS_FRIEND_DATA(JSClass)          js_XMLClass;
 extern JS_FRIEND_DATA(JSExtendedClass)  js_NamespaceClass;
 extern JS_FRIEND_DATA(JSExtendedClass)  js_QNameClass;
@@ -182,7 +182,7 @@ extern JSClass                          js_XMLFilterClass;
  * NB: jsobj.h must be included before any call to OBJECT_IS_XML, and jsapi.h
  * and jsobj.h must be included before any call to VALUE_IS_XML.
  */
-#define OBJECT_IS_XML(cx,obj)   ((obj)->map->ops == &js_XMLObjectOps.base)
+#define OBJECT_IS_XML(cx,obj)   ((obj)->map->ops == &js_XMLObjectOps)
 #define VALUE_IS_XML(cx,v)      (!JSVAL_IS_PRIMITIVE(v) &&                    \
                                  OBJECT_IS_XML(cx, JSVAL_TO_OBJECT(v)))
 
@@ -257,16 +257,13 @@ extern JSBool
 js_FindXMLProperty(JSContext *cx, jsval nameval, JSObject **objp, jsid *idp);
 
 extern JSBool
-js_GetXMLFunction(JSContext *cx, JSObject *obj, jsid id, jsval *vp);
+js_GetXMLMethod(JSContext *cx, JSObject *obj, jsid id, jsval *vp);
 
 extern JSBool
 js_GetXMLDescendants(JSContext *cx, JSObject *obj, jsval id, jsval *vp);
 
 extern JSBool
 js_DeleteXMLListElements(JSContext *cx, JSObject *listobj);
-
-extern JSObject *
-js_InitXMLFilterClass(JSContext *cx, JSObject* obj);
 
 extern JSBool
 js_StepXMLListFilter(JSContext *cx, JSBool initialized);
@@ -292,6 +289,16 @@ js_MakeXMLCommentString(JSContext *cx, JSString *str);
 
 extern JSString *
 js_MakeXMLPIString(JSContext *cx, JSString *name, JSString *str);
+
+extern JSBool
+js_EnumerateXMLValues(JSContext *cx, JSObject *obj, JSIterateOp enum_op,
+                      jsval *statep, jsid *idp, jsval *vp);
+
+extern JSBool
+js_TestXMLEquality(JSContext *cx, JSObject *obj, jsval v, JSBool *bp);
+
+extern JSBool
+js_ConcatenateXML(JSContext *cx, JSObject *obj, jsval v, jsval *vp);
 
 JS_END_EXTERN_C
 

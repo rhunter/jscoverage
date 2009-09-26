@@ -40,6 +40,7 @@
 /*
  * JS JSON functions.
  */
+#include "jsscan.h"
 
 #define JSON_MAX_DEPTH  2048
 #define JSON_PARSER_BUFSIZE 1024
@@ -52,8 +53,8 @@ extern JSObject *
 js_InitJSONClass(JSContext *cx, JSObject *obj);
 
 extern JSBool
-js_Stringify(JSContext *cx, jsval *vp, JSObject *replacer,
-             JSONWriteCallback callback, void *data, uint32 depth);
+js_Stringify(JSContext *cx, jsval *vp, JSObject *replacer, jsval space,
+             JSONWriteCallback callback, void *data);
 
 extern JSBool js_TryJSON(JSContext *cx, jsval *vp);
 
@@ -88,8 +89,8 @@ struct JSONParser {
     JSONParserState *statep;
     JSONParserState stateStack[JSON_MAX_DEPTH];
     jsval *rootVal;
-    JSStringBuffer *objectKey;
-    JSStringBuffer *buffer;
+    JSStringBuffer objectKey;
+    JSStringBuffer buffer;
     JSObject *objectStack;
 };
 
@@ -100,7 +101,7 @@ extern JSBool
 js_ConsumeJSONText(JSContext *cx, JSONParser *jp, const jschar *data, uint32 len);
 
 extern JSBool
-js_FinishJSONParse(JSContext *cx, JSONParser *jp);
+js_FinishJSONParse(JSContext *cx, JSONParser *jp, jsval reviver);
 
 JS_END_EXTERN_C
 

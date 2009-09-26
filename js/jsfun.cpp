@@ -365,6 +365,174 @@ args_delProperty(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
     return JS_TRUE;
 }
 
+static JS_REQUIRES_STACK JSObject *
+WrapEscapingClosure(JSContext *cx, JSStackFrame *fp, JSObject *funobj, JSFunction *fun)
+{
+    JS_ASSERT(GET_FUNCTION_PRIVATE(cx, funobj) == fun);
+    JS_ASSERT(fun->optimizedClosure());
+    JS_ASSERT(!fun->u.i.wrapper);
+
+    /*
+     * We do not attempt to reify Call and Block objects on demand for outer
+     * scopes. This could be done (see the "v8" patch in bug 494235) but it is
+     * fragile in the face of ongoing compile-time optimization. Instead, the
+     * _DBG* opcodes used by wrappers created here must cope with unresolved
+     * upvars and throw them as reference errors. Caveat debuggers!
+     */
+    JSObject *scopeChain = js_GetScopeChain(cx, fp);
+    if (!scopeChain)
+        return NULL;
+
+    JSObject *wfunobj = js_NewObjectWithGivenProto(cx, &js_FunctionClass,
+                                                   funobj, scopeChain, 0);
+    if (!wfunobj)
+        return NULL;
+    JSAutoTempValueRooter tvr(cx, wfunobj);
+
+    JSFunction *wfun = (JSFunction *) wfunobj;
+    wfunobj->fslots[JSSLOT_PRIVATE] = PRIVATE_TO_JSVAL(wfun);
+    wfun->nargs = 0;
+    wfun->flags = fun->flags | JSFUN_HEAVYWEIGHT;
+    wfun->u.i.nvars = 0;
+    wfun->u.i.nupvars = 0;
+    wfun->u.i.skipmin = fun->u.i.skipmin;
+    wfun->u.i.wrapper = true;
+    wfun->u.i.script = NULL;
+    wfun->u.i.names.taggedAtom = NULL;
+    wfun->atom = fun->atom;
+
+    if (fun->hasLocalNames()) {
+        void *mark = JS_ARENA_MARK(&cx->tempPool);
+        jsuword *names = js_GetLocalNameArray(cx, fun, &cx->tempPool);
+        if (!names)
+            return NULL;
+
+        JSBool ok = true;
+        for (uintN i = 0, n = fun->countLocalNames(); i != n; i++) {
+            jsuword name = names[i];
+            JSAtom *atom = JS_LOCAL_NAME_TO_ATOM(name);
+            JSLocalKind localKind = (i < fun->nargs)
+                                    ? JSLOCAL_ARG
+                                    : (i < fun->countArgsAndVars())
+                                    ? (JS_LOCAL_NAME_IS_CONST(name)
+                                       ? JSLOCAL_CONST
+                                       : JSLOCAL_VAR)
+                                    : JSLOCAL_UPVAR;
+
+            ok = js_AddLocal(cx, wfun, atom, localKind);
+            if (!ok)
+                break;
+        }
+
+        JS_ARENA_RELEASE(&cx->tempPool, mark);
+        if (!ok)
+            return NULL;
+        JS_ASSERT(wfun->nargs == fun->nargs);
+        JS_ASSERT(wfun->u.i.nvars == fun->u.i.nvars);
+        JS_ASSERT(wfun->u.i.nupvars == fun->u.i.nupvars);
+        js_FreezeLocalNames(cx, wfun);
+    }
+
+    JSScript *script = fun->u.i.script;
+    jssrcnote *snbase = SCRIPT_NOTES(script);
+    jssrcnote *sn = snbase;
+    while (!SN_IS_TERMINATOR(sn))
+        sn = SN_NEXT(sn);
+    uintN nsrcnotes = (sn - snbase) + 1;
+
+    /* NB: GC must not occur before wscript is homed in wfun->u.i.script. */
+    JSScript *wscript = js_NewScript(cx, script->length, nsrcnotes,
+                                     script->atomMap.length,
+                                     (script->objectsOffset != 0)
+                                     ? JS_SCRIPT_OBJECTS(script)->length
+                                     : 0,
+                                     fun->u.i.nupvars,
+                                     (script->regexpsOffset != 0)
+                                     ? JS_SCRIPT_REGEXPS(script)->length
+                                     : 0,
+                                     (script->trynotesOffset != 0)
+                                     ? JS_SCRIPT_TRYNOTES(script)->length
+                                     : 0);
+    if (!wscript)
+        return NULL;
+
+    memcpy(wscript->code, script->code, script->length);
+    wscript->main = wscript->code + (script->main - script->code);
+
+    memcpy(SCRIPT_NOTES(wscript), snbase, nsrcnotes);
+    memcpy(wscript->atomMap.vector, script->atomMap.vector,
+           wscript->atomMap.length * sizeof(JSAtom *));
+    if (script->objectsOffset != 0) {
+        memcpy(JS_SCRIPT_OBJECTS(wscript)->vector, JS_SCRIPT_OBJECTS(script)->vector,
+               JS_SCRIPT_OBJECTS(wscript)->length * sizeof(JSObject *));
+    }
+    if (script->regexpsOffset != 0) {
+        memcpy(JS_SCRIPT_REGEXPS(wscript)->vector, JS_SCRIPT_REGEXPS(script)->vector,
+               JS_SCRIPT_REGEXPS(wscript)->length * sizeof(JSObject *));
+    }
+    if (script->trynotesOffset != 0) {
+        memcpy(JS_SCRIPT_TRYNOTES(wscript)->vector, JS_SCRIPT_TRYNOTES(script)->vector,
+               JS_SCRIPT_TRYNOTES(wscript)->length * sizeof(JSTryNote));
+    }
+
+    if (wfun->u.i.nupvars != 0) {
+        JS_ASSERT(wfun->u.i.nupvars == JS_SCRIPT_UPVARS(wscript)->length);
+        memcpy(JS_SCRIPT_UPVARS(wscript)->vector, JS_SCRIPT_UPVARS(script)->vector,
+               wfun->u.i.nupvars * sizeof(uint32));
+    }
+
+    jsbytecode *pc = wscript->code;
+    while (*pc != JSOP_STOP) {
+        /* XYZZYbe should copy JSOP_TRAP? */
+        JSOp op = js_GetOpcode(cx, wscript, pc);
+        const JSCodeSpec *cs = &js_CodeSpec[op];
+        ptrdiff_t oplen = cs->length;
+        if (oplen < 0)
+            oplen = js_GetVariableBytecodeLength(pc);
+
+        /*
+         * Rewrite JSOP_{GET,CALL}DSLOT as JSOP_{GET,CALL}UPVAR_DBG for the
+         * case where fun is an escaping flat closure. This works because the
+         * UPVAR and DSLOT ops by design have the same format: an upvar index
+         * immediate operand.
+         */
+        switch (op) {
+          case JSOP_GETUPVAR:       *pc = JSOP_GETUPVAR_DBG; break;
+          case JSOP_CALLUPVAR:      *pc = JSOP_CALLUPVAR_DBG; break;
+          case JSOP_GETDSLOT:       *pc = JSOP_GETUPVAR_DBG; break;
+          case JSOP_CALLDSLOT:      *pc = JSOP_CALLUPVAR_DBG; break;
+          case JSOP_DEFFUN_FC:      *pc = JSOP_DEFFUN_DBGFC; break;
+          case JSOP_DEFLOCALFUN_FC: *pc = JSOP_DEFLOCALFUN_DBGFC; break;
+          case JSOP_LAMBDA_FC:      *pc = JSOP_LAMBDA_DBGFC; break;
+          default:;
+        }
+        pc += oplen;
+    }
+
+    /*
+     * Fill in the rest of wscript. This means if you add members to JSScript
+     * you must update this code. FIXME: factor into JSScript::clone method.
+     */
+    wscript->flags = script->flags;
+    wscript->version = script->version;
+    wscript->nfixed = script->nfixed;
+    wscript->filename = script->filename;
+    wscript->lineno = script->lineno;
+    wscript->nslots = script->nslots;
+    wscript->staticLevel = script->staticLevel;
+    wscript->principals = script->principals;
+    if (wscript->principals)
+        JSPRINCIPALS_HOLD(cx, wscript->principals);
+#ifdef CHECK_SCRIPT_OWNER
+    wscript->owner = script->owner;
+#endif
+
+    /* Deoptimize wfun from FUN_{FLAT,NULL}_CLOSURE to FUN_INTERPRETED. */
+    FUN_SET_KIND(wfun, JSFUN_INTERPRETED);
+    wfun->u.i.script = wscript;
+    return wfunobj;
+}
+
 static JSBool
 args_getProperty(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
 {
@@ -382,8 +550,22 @@ args_getProperty(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
     slot = JSVAL_TO_INT(id);
     switch (slot) {
       case ARGS_CALLEE:
-        if (!TEST_OVERRIDE_BIT(fp, slot))
+        if (!TEST_OVERRIDE_BIT(fp, slot)) {
+            /*
+             * If this function or one in it needs upvars that reach above it
+             * in the scope chain, it must not be a null closure (it could be a
+             * flat closure, or an unoptimized closure -- the latter itself not
+             * necessarily heavyweight). Rather than wrap here, we simply throw
+             * to reduce code size and tell debugger users the truth instead of
+             * passing off a fibbing wrapper.
+             */
+            if (fp->fun->needsWrapper()) {
+                JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL,
+                                     JSMSG_OPTIMIZED_CLOSURE_LEAK);
+                return JS_FALSE;
+            }
             *vp = OBJECT_TO_JSVAL(fp->callee);
+        }
         break;
 
       case ARGS_LENGTH:
@@ -461,7 +643,7 @@ args_resolve(JSContext *cx, JSObject *obj, jsval id, uintN flags,
             }
             *objp = obj;
         }
-    } else {
+    } else if (JSVAL_IS_STRING(id)) {
         str = JSVAL_TO_STRING(id);
         atom = cx->runtime->atomState.lengthAtom;
         if (str == ATOM_TO_STRING(atom)) {
@@ -586,14 +768,68 @@ JSClass js_ArgumentsClass = {
     JS_CLASS_TRACE(args_or_call_trace), NULL
 };
 
-#define JSSLOT_SCRIPTED_FUNCTION         (JSSLOT_PRIVATE + 1)
+#define JSSLOT_CALLEE                    (JSSLOT_PRIVATE + 1)
 #define JSSLOT_CALL_ARGUMENTS            (JSSLOT_PRIVATE + 2)
 #define CALL_CLASS_FIXED_RESERVED_SLOTS  2
 
-JSObject *
-js_GetCallObject(JSContext *cx, JSStackFrame *fp, JSObject *parent)
+/*
+ * A Declarative Environment object stores its active JSStackFrame pointer in
+ * its private slot, just as Call and Arguments objects do.
+ */
+JSClass js_DeclEnvClass = {
+    js_Object_str,
+    JSCLASS_HAS_PRIVATE | JSCLASS_HAS_CACHED_PROTO(JSProto_Object),
+    JS_PropertyStub,  JS_PropertyStub,  JS_PropertyStub,  JS_PropertyStub,
+    JS_EnumerateStub, JS_ResolveStub,   JS_ConvertStub,   JS_FinalizeStub,
+    JSCLASS_NO_OPTIONAL_MEMBERS
+};
+
+static JS_REQUIRES_STACK JSBool
+CheckForEscapingClosure(JSContext *cx, JSObject *obj, jsval *vp)
 {
-    JSObject *callobj, *funobj;
+    JS_ASSERT(STOBJ_GET_CLASS(obj) == &js_CallClass ||
+              STOBJ_GET_CLASS(obj) == &js_DeclEnvClass);
+
+    jsval v = *vp;
+
+    if (VALUE_IS_FUNCTION(cx, v)) {
+        JSObject *funobj = JSVAL_TO_OBJECT(v);
+        JSFunction *fun = GET_FUNCTION_PRIVATE(cx, funobj);
+
+        /*
+         * Any escaping null or flat closure that reaches above itself or
+         * contains nested functions that reach above it must be wrapped.
+         * We can wrap only when this Call or Declarative Environment obj
+         * still has an active stack frame associated with it.
+         */
+        if (fun->needsWrapper()) {
+            JSStackFrame *fp = (JSStackFrame *) JS_GetPrivate(cx, obj);
+            if (fp) {
+                JSObject *wrapper = WrapEscapingClosure(cx, fp, funobj, fun);
+                if (!wrapper)
+                    return false;
+                *vp = OBJECT_TO_JSVAL(wrapper);
+                return true;
+            }
+
+            JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL,
+                                 JSMSG_OPTIMIZED_CLOSURE_LEAK);
+            return false;
+        }
+    }
+    return true;
+}
+
+static JS_REQUIRES_STACK JSBool
+CalleeGetter(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
+{
+    return CheckForEscapingClosure(cx, obj, vp);
+}
+
+JSObject *
+js_GetCallObject(JSContext *cx, JSStackFrame *fp)
+{
+    JSObject *callobj;
 
     /* Create a call object for fp only if it lacks one. */
     JS_ASSERT(fp->fun);
@@ -601,43 +837,70 @@ js_GetCallObject(JSContext *cx, JSStackFrame *fp, JSObject *parent)
     if (callobj)
         return callobj;
 
-    /* The default call parent is its function's parent (static link). */
-    if (!parent) {
-        funobj = fp->callee;
-        if (funobj)
-            parent = OBJ_GET_PARENT(cx, funobj);
+#ifdef DEBUG
+    /* A call object should be a frame's outermost scope chain element.  */
+    JSClass *classp = OBJ_GET_CLASS(cx, fp->scopeChain);
+    if (classp == &js_WithClass || classp == &js_BlockClass || classp == &js_CallClass)
+        JS_ASSERT(OBJ_GET_PRIVATE(cx, fp->scopeChain) != fp);
+#endif
+
+    /*
+     * Create the call object, using the frame's enclosing scope as its
+     * parent, and link the call to its stack frame. For a named function
+     * expression Call's parent points to an environment object holding
+     * function's name.
+     */
+    JSAtom *lambdaName = (fp->fun->flags & JSFUN_LAMBDA) ? fp->fun->atom : NULL;
+    if (lambdaName) {
+        JSObject *env = js_NewObjectWithGivenProto(cx, &js_DeclEnvClass, NULL,
+                                                   fp->scopeChain, 0);
+        if (!env)
+            return NULL;
+        env->fslots[JSSLOT_PRIVATE] = PRIVATE_TO_JSVAL(fp);
+
+        /* Root env before js_DefineNativeProperty (-> JSClass.addProperty). */
+        fp->scopeChain = env;
+        if (!js_DefineNativeProperty(cx, fp->scopeChain, ATOM_TO_JSID(lambdaName),
+                                     OBJECT_TO_JSVAL(fp->callee),
+                                     CalleeGetter, NULL,
+                                     JSPROP_PERMANENT | JSPROP_READONLY,
+                                     0, 0, NULL)) {
+            return NULL;
+        }
     }
 
-    /* Create the call object and link it to its stack frame. */
-    callobj = js_NewObject(cx, &js_CallClass, NULL, parent, 0);
+    callobj = js_NewObjectWithGivenProto(cx, &js_CallClass, NULL,
+                                         fp->scopeChain, 0);
     if (!callobj)
         return NULL;
 
     JS_SetPrivate(cx, callobj, fp);
-    STOBJ_SET_SLOT(callobj, JSSLOT_SCRIPTED_FUNCTION,
-                   OBJECT_TO_JSVAL(FUN_OBJECT(fp->fun)));
+    JS_ASSERT(fp->fun == GET_FUNCTION_PRIVATE(cx, fp->callee));
+    STOBJ_SET_SLOT(callobj, JSSLOT_CALLEE, OBJECT_TO_JSVAL(fp->callee));
     fp->callobj = callobj;
 
-    /* Make callobj be the scope chain and the variables object. */
-    JS_ASSERT(fp->scopeChain == parent);
+    /*
+     * Push callobj on the top of the scope chain, and make it the
+     * variables object.
+     */
     fp->scopeChain = callobj;
     fp->varobj = callobj;
     return callobj;
 }
 
-JSFunction *
-js_GetCallObjectFunction(JSObject *obj)
+static JSFunction *
+GetCallObjectFunction(JSObject *obj)
 {
     jsval v;
 
     JS_ASSERT(STOBJ_GET_CLASS(obj) == &js_CallClass);
-    v = STOBJ_GET_SLOT(obj, JSSLOT_SCRIPTED_FUNCTION);
+    v = STOBJ_GET_SLOT(obj, JSSLOT_CALLEE);
     if (JSVAL_IS_VOID(v)) {
         /* Newborn or prototype object. */
         return NULL;
     }
     JS_ASSERT(!JSVAL_IS_PRIMITIVE(v));
-    return (JSFunction *) JSVAL_TO_OBJECT(v);
+    return GET_FUNCTION_PRIVATE(cx, JSVAL_TO_OBJECT(v));
 }
 
 JS_FRIEND_API(JSBool)
@@ -673,8 +936,8 @@ js_PutCallObject(JSContext *cx, JSStackFrame *fp)
     }
 
     fun = fp->fun;
-    JS_ASSERT(fun == js_GetCallObjectFunction(callobj));
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
+    JS_ASSERT(fun == GetCallObjectFunction(callobj));
+    n = fun->countArgsAndVars();
     if (n != 0) {
         JS_LOCK_OBJ(cx, callobj);
         n += JS_INITIAL_NSLOTS;
@@ -685,17 +948,25 @@ js_PutCallObject(JSContext *cx, JSStackFrame *fp)
             memcpy(callobj->dslots, fp->argv, fun->nargs * sizeof(jsval));
             memcpy(callobj->dslots + fun->nargs, fp->slots,
                    fun->u.i.nvars * sizeof(jsval));
-            if (scope->object == callobj && n > scope->map.freeslot)
-                scope->map.freeslot = n;
+            if (scope->object == callobj && n > scope->freeslot)
+                scope->freeslot = n;
         }
         JS_UNLOCK_SCOPE(cx, scope);
     }
 
     /*
-     * Clear the private pointer to fp, which is about to go away (js_Invoke).
+     * Clear private pointers to fp, which is about to go away (js_Invoke).
      * Do this last because js_GetProperty calls above need to follow the
-     * private slot to find fp.
+     * call object's private slot to find fp.
      */
+    if ((fun->flags & JSFUN_LAMBDA) && fun->atom) {
+        JSObject *env = STOBJ_GET_PARENT(callobj);
+
+        JS_ASSERT(STOBJ_GET_CLASS(env) == &js_DeclEnvClass);
+        JS_ASSERT(STOBJ_GET_PRIVATE(env) == fp);
+        JS_SetPrivate(cx, env, NULL);
+    }
+
     JS_SetPrivate(cx, callobj, NULL);
     fp->callobj = NULL;
     return ok;
@@ -713,8 +984,8 @@ call_enumerate(JSContext *cx, JSObject *obj)
     JSObject *pobj;
     JSProperty *prop;
 
-    fun = js_GetCallObjectFunction(obj);
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
+    fun = GetCallObjectFunction(obj);
+    n = fun ? fun->countArgsAndVars() : 0;
     if (n == 0)
         return JS_TRUE;
 
@@ -741,11 +1012,12 @@ call_enumerate(JSContext *cx, JSObject *obj)
             goto out;
 
         /*
-         * At this point the call object always has a property corresponding
-         * to the local name because call_resolve creates the property using
-         * JSPROP_PERMANENT.
+         * The call object will always have a property corresponding to the
+         * argument or variable name because call_resolve creates the property
+         * using JSPROP_PERMANENT.
          */
-        JS_ASSERT(prop && pobj == obj);
+        JS_ASSERT(prop);
+        JS_ASSERT(pobj == obj);
         OBJ_DROP_PROPERTY(cx, pobj, prop);
     }
     ok = JS_TRUE;
@@ -773,7 +1045,7 @@ CallPropertyOp(JSContext *cx, JSObject *obj, jsid id, jsval *vp,
     if (STOBJ_GET_CLASS(obj) != &js_CallClass)
         return JS_TRUE;
 
-    fun = js_GetCallObjectFunction(obj);
+    fun = GetCallObjectFunction(obj);
     fp = (JSStackFrame *) JS_GetPrivate(cx, obj);
 
     if (kind == JSCPK_ARGUMENTS) {
@@ -818,10 +1090,12 @@ CallPropertyOp(JSContext *cx, JSObject *obj, jsid id, jsval *vp,
         JS_ASSERT(kind == JSCPK_VAR);
         array = fp->slots;
     }
-    if (setter)
+    if (setter) {
+        GC_POKE(cx, array[i]);
         array[i] = *vp;
-    else
+    } else {
         *vp = array[i];
+    }
     return JS_TRUE;
 }
 
@@ -855,6 +1129,15 @@ js_GetCallVar(JSContext *cx, JSObject *obj, jsid id, jsval *vp)
     return CallPropertyOp(cx, obj, id, vp, JSCPK_VAR, JS_FALSE);
 }
 
+JSBool
+js_GetCallVarChecked(JSContext *cx, JSObject *obj, jsid id, jsval *vp)
+{
+    if (!CallPropertyOp(cx, obj, id, vp, JSCPK_VAR, JS_FALSE))
+        return JS_FALSE;
+
+    return CheckForEscapingClosure(cx, obj, vp);
+}
+
 static JSBool
 SetCallVar(JSContext *cx, JSObject *obj, jsid id, jsval *vp)
 {
@@ -865,26 +1148,47 @@ static JSBool
 call_resolve(JSContext *cx, JSObject *obj, jsval idval, uintN flags,
              JSObject **objp)
 {
+    jsval callee;
     JSFunction *fun;
     jsid id;
     JSLocalKind localKind;
     JSPropertyOp getter, setter;
     uintN slot, attrs;
 
+    JS_ASSERT(STOBJ_GET_CLASS(obj) == &js_CallClass);
+    JS_ASSERT(!STOBJ_GET_PROTO(obj));
+
     if (!JSVAL_IS_STRING(idval))
         return JS_TRUE;
 
-    fun = js_GetCallObjectFunction(obj);
-    if (!fun)
+    callee = STOBJ_GET_SLOT(obj, JSSLOT_CALLEE);
+    if (JSVAL_IS_VOID(callee))
         return JS_TRUE;
+    fun = GET_FUNCTION_PRIVATE(cx, JSVAL_TO_OBJECT(callee));
 
     if (!js_ValueToStringId(cx, idval, &id))
         return JS_FALSE;
 
+    /*
+     * Check whether the id refers to a formal parameter, local variable or
+     * the arguments special name.
+     *
+     * We define all such names using JSDNP_DONT_PURGE to avoid an expensive
+     * shape invalidation in js_DefineNativeProperty. If such an id happens to
+     * shadow a global or upvar of the same name, any inner functions can
+     * never access the outer binding. Thus it cannot invalidate any property
+     * cache entries or derived trace guards for the outer binding. See also
+     * comments in js_PurgeScopeChainHelper from jsobj.cpp.
+     */
     localKind = js_LookupLocal(cx, fun, JSID_TO_ATOM(id), &slot);
-    if (localKind != JSLOCAL_NONE) {
+    if (localKind != JSLOCAL_NONE && localKind != JSLOCAL_UPVAR) {
         JS_ASSERT((uint16) slot == slot);
-        attrs = JSPROP_PERMANENT | JSPROP_SHARED;
+
+        /*
+         * We follow 10.2.3 of ECMA 262 v3 and make argument and variable
+         * properties of the Call objects enumerable.
+         */
+        attrs = JSPROP_ENUMERATE | JSPROP_PERMANENT | JSPROP_SHARED;
         if (localKind == JSLOCAL_ARG) {
             JS_ASSERT(slot < fun->nargs);
             getter = js_GetCallArg;
@@ -896,10 +1200,23 @@ call_resolve(JSContext *cx, JSObject *obj, jsval idval, uintN flags,
             setter = SetCallVar;
             if (localKind == JSLOCAL_CONST)
                 attrs |= JSPROP_READONLY;
+
+            /*
+             * Use js_GetCallVarChecked if the local's value is a null closure.
+             * This way we penalize performance only slightly on first use of a
+             * null closure, not on every use.
+             */
+            jsval v;
+            if (!CallPropertyOp(cx, obj, INT_TO_JSID((int16)slot), &v, JSCPK_VAR, JS_FALSE))
+                return JS_FALSE;
+            if (VALUE_IS_FUNCTION(cx, v) &&
+                GET_FUNCTION_PRIVATE(cx, JSVAL_TO_OBJECT(v))->needsWrapper()) {
+                getter = js_GetCallVarChecked;
+            }
         }
         if (!js_DefineNativeProperty(cx, obj, id, JSVAL_VOID, getter, setter,
                                      attrs, SPROP_HAS_SHORTID, (int16) slot,
-                                     NULL)) {
+                                     NULL, JSDNP_DONT_PURGE)) {
             return JS_FALSE;
         }
         *objp = obj;
@@ -914,12 +1231,14 @@ call_resolve(JSContext *cx, JSObject *obj, jsval idval, uintN flags,
         if (!js_DefineNativeProperty(cx, obj, id, JSVAL_VOID,
                                      GetCallArguments, SetCallArguments,
                                      JSPROP_PERMANENT | JSPROP_SHARED,
-                                     0, 0, NULL)) {
+                                     0, 0, NULL, JSDNP_DONT_PURGE)) {
             return JS_FALSE;
         }
         *objp = obj;
         return JS_TRUE;
     }
+
+    /* Control flow reaches here only if id was not resolved. */
     return JS_TRUE;
 }
 
@@ -943,16 +1262,15 @@ call_reserveSlots(JSContext *cx, JSObject *obj)
 {
     JSFunction *fun;
 
-    fun = js_GetCallObjectFunction(obj);
-    return JS_GET_LOCAL_NAME_COUNT(fun);
+    fun = GetCallObjectFunction(obj);
+    return fun->countArgsAndVars();
 }
 
 JS_FRIEND_DATA(JSClass) js_CallClass = {
-    js_Call_str,
+    "Call",
     JSCLASS_HAS_PRIVATE |
     JSCLASS_HAS_RESERVED_SLOTS(CALL_CLASS_FIXED_RESERVED_SLOTS) |
-    JSCLASS_NEW_RESOLVE | JSCLASS_IS_ANONYMOUS |
-    JSCLASS_MARK_IS_TRACE | JSCLASS_HAS_CACHED_PROTO(JSProto_Call),
+    JSCLASS_NEW_RESOLVE | JSCLASS_IS_ANONYMOUS | JSCLASS_MARK_IS_TRACE,
     JS_PropertyStub,    JS_PropertyStub,
     JS_PropertyStub,    JS_PropertyStub,
     call_enumerate,     (JSResolveOp)call_resolve,
@@ -1005,7 +1323,8 @@ fun_getProperty(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
     }
 
     /* Find fun's top-most activation record. */
-    for (fp = cx->fp; fp && (fp->fun != fun || (fp->flags & JSFRAME_SPECIAL));
+    for (fp = js_GetTopStackFrame(cx);
+         fp && (fp->fun != fun || (fp->flags & JSFRAME_SPECIAL));
          fp = fp->down) {
         continue;
     }
@@ -1040,10 +1359,26 @@ fun_getProperty(JSContext *cx, JSObject *obj, jsval id, jsval *vp)
         break;
 
       case FUN_CALLER:
-        if (fp && fp->down && fp->down->fun)
+        if (fp && fp->down && fp->down->fun) {
+            JSFunction *caller = fp->down->fun;
+            /*
+             * See equivalent condition in args_getProperty for ARGS_CALLEE,
+             * but here we do not want to throw, since this escape can happen
+             * via foo.caller alone, without any debugger or indirect eval. And
+             * it seems foo.caller is still used on the Web.
+             */
+            if (caller->needsWrapper()) {
+                JSObject *wrapper = WrapEscapingClosure(cx, fp->down, FUN_OBJECT(caller), caller);
+                if (!wrapper)
+                    return JS_FALSE;
+                *vp = OBJECT_TO_JSVAL(wrapper);
+                return JS_TRUE;
+            }
+
             *vp = OBJECT_TO_JSVAL(fp->down->callee);
-        else
+        } else {
             *vp = JSVAL_NULL;
+        }
         if (!JSVAL_IS_PRIMITIVE(*vp)) {
             callbacks = JS_GetSecurityCallbacks(cx);
             if (callbacks && callbacks->checkObjectAccess) {
@@ -1129,15 +1464,6 @@ fun_resolve(JSContext *cx, JSObject *obj, jsval id, uintN flags,
 
     /*
      * No need to reflect fun.prototype in 'fun.prototype = ... '.
-     *
-     * This is not just an optimization, because we must not resolve when
-     * defining hidden properties during compilation. The setup code for the
-     * prototype and the lazy properties below eventually calls the property
-     * hooks for the function object. That in turn calls fun_reserveSlots to
-     * get the number of the reserved slots which is just the number of
-     * regular expressions literals in the function. When compiling, that
-     * number is not yet ready so we must make sure that fun_resolve does
-     * nothing until the code for the function is generated.
      */
     if (flags & JSRESOLVE_ASSIGNING)
         return JS_TRUE;
@@ -1217,15 +1543,17 @@ fun_convert(JSContext *cx, JSObject *obj, JSType type, jsval *vp)
 #if JS_HAS_XDR
 
 /* XXX store parent and proto, if defined */
-static JSBool
-fun_xdrObject(JSXDRState *xdr, JSObject **objp)
+JSBool
+js_XDRFunctionObject(JSXDRState *xdr, JSObject **objp)
 {
     JSContext *cx;
     JSFunction *fun;
-    uint32 nullAtom;            /* flag to indicate if fun->atom is NULL */
-    uintN nargs, nvars, n;
-    uint32 localsword;          /* word to xdr argument and variable counts */
-    uint32 flagsword;           /* originally only flags was JS_XDRUint8'd */
+    uint32 firstword;           /* flag telling whether fun->atom is non-null,
+                                   plus for fun->u.i.skipmin, fun->u.i.wrapper,
+                                   and 14 bits reserved for future use */
+    uintN nargs, nvars, nupvars, n;
+    uint32 localsword;          /* word for argument and variable counts */
+    uint32 flagsword;           /* word for fun->u.i.nupvars and fun->flags */
     JSTempValueRooter tvr;
     JSBool ok;
 
@@ -1238,11 +1566,19 @@ fun_xdrObject(JSXDRState *xdr, JSObject **objp)
                                  JS_GetFunctionName(fun));
             return JS_FALSE;
         }
-        nullAtom = !fun->atom;
+        if (fun->u.i.wrapper) {
+            JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL,
+                                 JSMSG_XDR_CLOSURE_WRAPPER,
+                                 JS_GetFunctionName(fun));
+            return JS_FALSE;
+        }
+        JS_ASSERT((fun->u.i.wrapper & ~1U) == 0);
+        firstword = (fun->u.i.skipmin << 2) | (fun->u.i.wrapper << 1) | !!fun->atom;
         nargs = fun->nargs;
         nvars = fun->u.i.nvars;
+        nupvars = fun->u.i.nupvars;
         localsword = (nargs << 16) | nvars;
-        flagsword = fun->flags;
+        flagsword = (nupvars << 16) | fun->flags;
     } else {
         fun = js_NewFunction(cx, NULL, NULL, 0, JSFUN_INTERPRETED, NULL, NULL);
         if (!fun)
@@ -1250,17 +1586,18 @@ fun_xdrObject(JSXDRState *xdr, JSObject **objp)
         STOBJ_CLEAR_PARENT(FUN_OBJECT(fun));
         STOBJ_CLEAR_PROTO(FUN_OBJECT(fun));
 #ifdef __GNUC__
-        nvars = nargs = 0;   /* quell GCC uninitialized warning */
+        nvars = nargs = nupvars = 0;    /* quell GCC uninitialized warning */
 #endif
     }
 
     /* From here on, control flow must flow through label out. */
+    MUST_FLOW_THROUGH("out");
     JS_PUSH_TEMP_ROOT_OBJECT(cx, FUN_OBJECT(fun), &tvr);
     ok = JS_TRUE;
 
-    if (!JS_XDRUint32(xdr, &nullAtom))
+    if (!JS_XDRUint32(xdr, &firstword))
         goto bad;
-    if (!nullAtom && !js_XDRStringAtom(xdr, &fun->atom))
+    if ((firstword & 1U) && !js_XDRStringAtom(xdr, &fun->atom))
         goto bad;
     if (!JS_XDRUint32(xdr, &localsword) ||
         !JS_XDRUint32(xdr, &flagsword)) {
@@ -1269,13 +1606,16 @@ fun_xdrObject(JSXDRState *xdr, JSObject **objp)
 
     if (xdr->mode == JSXDR_DECODE) {
         nargs = localsword >> 16;
-        nvars = localsword & JS_BITMASK(16);
-        JS_ASSERT(flagsword | JSFUN_INTERPRETED);
-        fun->flags = (uint16) flagsword;
+        nvars = uint16(localsword);
+        JS_ASSERT((flagsword & JSFUN_KINDMASK) >= JSFUN_INTERPRETED);
+        nupvars = flagsword >> 16;
+        fun->flags = uint16(flagsword);
+        fun->u.i.skipmin = uint16(firstword >> 2);
+        fun->u.i.wrapper = (firstword >> 1) & 1;
     }
 
     /* do arguments and local vars */
-    n = nargs + nvars;
+    n = nargs + nvars + nupvars;
     if (n != 0) {
         void *mark;
         uintN i;
@@ -1297,6 +1637,7 @@ fun_xdrObject(JSXDRState *xdr, JSObject **objp)
          * names (indexes starting from nargs) bitmap's bit is set when the
          * name is declared as const, not as ordinary var.
          * */
+        MUST_FLOW_THROUGH("release_mark");
         bitmapLength = JS_HOWMANY(n, JS_BITS_PER_UINT32);
         JS_ARENA_ALLOCATE_CAST(bitmap, uint32 *, &xdr->cx->tempPool,
                                bitmapLength * sizeof *bitmap);
@@ -1352,10 +1693,12 @@ fun_xdrObject(JSXDRState *xdr, JSObject **objp)
             if (xdr->mode == JSXDR_DECODE) {
                 localKind = (i < nargs)
                             ? JSLOCAL_ARG
-                            : bitmap[i >> JS_BITS_PER_UINT32_LOG2] &
-                              JS_BIT(i & (JS_BITS_PER_UINT32 - 1))
-                            ? JSLOCAL_CONST
-                            : JSLOCAL_VAR;
+                            : (i < nargs + nvars)
+                            ? (bitmap[i >> JS_BITS_PER_UINT32_LOG2] &
+                               JS_BIT(i & (JS_BITS_PER_UINT32 - 1))
+                               ? JSLOCAL_CONST
+                               : JSLOCAL_VAR)
+                            : JSLOCAL_UPVAR;
                 ok = js_AddLocal(xdr->cx, fun, name, localKind);
                 if (!ok)
                     goto release_mark;
@@ -1394,7 +1737,7 @@ bad:
 
 #else  /* !JS_HAS_XDR */
 
-#define fun_xdrObject NULL
+#define js_XDRFunctionObject NULL
 
 #endif /* !JS_HAS_XDR */
 
@@ -1493,7 +1836,7 @@ fun_reserveSlots(JSContext *cx, JSObject *obj)
     fun = (JSFunction *) JS_GetPrivate(cx, obj);
     nslots = 0;
     if (fun && FUN_INTERPRETED(fun) && fun->u.i.script) {
-        if (fun->u.i.script->upvarsOffset != 0)
+        if (fun->u.i.nupvars != 0)
             nslots = JS_SCRIPT_UPVARS(fun->u.i.script)->length;
         if (fun->u.i.script->regexpsOffset != 0)
             nslots += JS_SCRIPT_REGEXPS(fun->u.i.script)->length;
@@ -1516,7 +1859,7 @@ JS_FRIEND_DATA(JSClass) js_FunctionClass = {
     fun_convert,      fun_finalize,
     NULL,             NULL,
     NULL,             NULL,
-    fun_xdrObject,    fun_hasInstance,
+    js_XDRFunctionObject, fun_hasInstance,
     JS_CLASS_TRACE(fun_trace), fun_reserveSlots
 };
 
@@ -1586,7 +1929,7 @@ fun_toSource(JSContext *cx, uintN argc, jsval *vp)
 }
 #endif
 
-JSBool
+JS_REQUIRES_STACK JSBool
 js_fun_call(JSContext *cx, uintN argc, jsval *vp)
 {
     JSObject *obj;
@@ -1645,7 +1988,7 @@ js_fun_call(JSContext *cx, uintN argc, jsval *vp)
     return ok;
 }
 
-JSBool
+JS_REQUIRES_STACK JSBool
 js_fun_apply(JSContext *cx, uintN argc, jsval *vp)
 {
     JSObject *obj, *aobj;
@@ -1736,7 +2079,7 @@ out:
 }
 
 #ifdef NARCISSUS
-static JSBool
+static JS_REQUIRES_STACK JSBool
 fun_applyConstructor(JSContext *cx, uintN argc, jsval *vp)
 {
     JSObject *aobj;
@@ -1797,9 +2140,9 @@ static JSFunctionSpec function_methods[] = {
 static JSBool
 Function(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
 {
-    JSStackFrame *fp, *caller;
     JSFunction *fun;
     JSObject *parent;
+    JSStackFrame *fp, *caller;
     uintN i, n, lineno;
     JSAtom *atom;
     const char *filename;
@@ -1812,8 +2155,7 @@ Function(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
     size_t arg_length, args_length, old_args_length;
     JSTokenType tt;
 
-    fp = cx->fp;
-    if (!(fp->flags & JSFRAME_CONSTRUCTING)) {
+    if (!JS_IsConstructing(cx)) {
         obj = js_NewObject(cx, &js_FunctionClass, NULL, NULL, 0);
         if (!obj)
             return JS_FALSE;
@@ -1852,8 +2194,9 @@ Function(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
      * are built for Function.prototype.call or .apply activations that invoke
      * Function indirectly from a script.
      */
+    fp = js_GetTopStackFrame(cx);
     JS_ASSERT(!fp->script && fp->fun && fp->fun->u.n.native == Function);
-    caller = JS_GetScriptedCaller(cx, fp);
+    caller = js_GetScriptedCaller(cx, fp);
     if (caller) {
         principals = JS_EvalFramePrincipals(cx, fp, caller);
         filename = js_ComputeFilename(cx, caller, principals, &lineno);
@@ -2020,9 +2363,9 @@ Function(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
         str = cx->runtime->emptyString;
     }
 
-    return js_CompileFunctionBody(cx, fun, principals,
-                                  JSSTRING_CHARS(str), JSSTRING_LENGTH(str),
-                                  filename, lineno);
+    return JSCompiler::compileFunctionBody(cx, fun, principals,
+                                           JSSTRING_CHARS(str), JSSTRING_LENGTH(str),
+                                           filename, lineno);
 }
 
 JSObject *
@@ -2053,24 +2396,6 @@ bad:
     return NULL;
 }
 
-JSObject *
-js_InitCallClass(JSContext *cx, JSObject *obj)
-{
-    JSObject *proto;
-
-    proto = JS_InitClass(cx, obj, NULL, &js_CallClass, NULL, 0,
-                         NULL, NULL, NULL, NULL);
-    if (!proto)
-        return NULL;
-
-    /*
-     * Null Call.prototype's proto slot so that Object.prototype.* does not
-     * pollute the scope of heavyweight functions.
-     */
-    OBJ_CLEAR_PROTO(cx, proto);
-    return proto;
-}
-
 JSFunction *
 js_NewFunction(JSContext *cx, JSObject *funobj, JSNative native, uintN nargs,
                uintN flags, JSObject *parent, JSAtom *atom)
@@ -2090,12 +2415,14 @@ js_NewFunction(JSContext *cx, JSObject *funobj, JSNative native, uintN nargs,
 
     /* Initialize all function members. */
     fun->nargs = nargs;
-    fun->flags = flags & (JSFUN_FLAGS_MASK | JSFUN_INTERPRETED | JSFUN_TRACEABLE);
-    if (flags & JSFUN_INTERPRETED) {
+    fun->flags = flags & (JSFUN_FLAGS_MASK | JSFUN_KINDMASK | JSFUN_TRACEABLE);
+    if ((flags & JSFUN_KINDMASK) >= JSFUN_INTERPRETED) {
         JS_ASSERT(!native);
         JS_ASSERT(nargs == 0);
         fun->u.i.nvars = 0;
         fun->u.i.nupvars = 0;
+        fun->u.i.skipmin = 0;
+        fun->u.i.wrapper = false;
         fun->u.i.script = NULL;
 #ifdef DEBUG
         fun->u.i.names.taggedAtom = 0;
@@ -2103,18 +2430,21 @@ js_NewFunction(JSContext *cx, JSObject *funobj, JSNative native, uintN nargs,
     } else {
         fun->u.n.extra = 0;
         fun->u.n.spare = 0;
+        fun->u.n.clasp = NULL;
         if (flags & JSFUN_TRACEABLE) {
 #ifdef JS_TRACER
-            JSTraceableNative *trcinfo = (JSTraceableNative *) native;
+            JSTraceableNative *trcinfo =
+                JS_FUNC_TO_DATA_PTR(JSTraceableNative *, native);
             fun->u.n.native = (JSNative) trcinfo->native;
-            FUN_TRCINFO(fun) = trcinfo;
+            fun->u.n.trcinfo = trcinfo;
 #else
-            JS_ASSERT(0);
+            fun->u.n.trcinfo = NULL;
 #endif
         } else {
             fun->u.n.native = native;
-            FUN_CLASP(fun) = NULL;
+            fun->u.n.trcinfo = NULL;
         }
+        JS_ASSERT(fun->u.n.native);
     }
     fun->atom = atom;
 
@@ -2126,31 +2456,74 @@ js_NewFunction(JSContext *cx, JSObject *funobj, JSNative native, uintN nargs,
 JSObject *
 js_CloneFunctionObject(JSContext *cx, JSFunction *fun, JSObject *parent)
 {
-    JSObject *clone;
-
     /*
-     * The cloned function object does not need the extra fields beyond
-     * JSObject as it points to fun via the private slot.
+     * The cloned function object does not need the extra JSFunction members
+     * beyond JSObject as it points to fun via the private slot.
      */
-    clone = js_NewObject(cx, &js_FunctionClass, NULL, parent,
-                         sizeof(JSObject));
+    JSObject *clone = js_NewObject(cx, &js_FunctionClass, NULL, parent,
+                                   sizeof(JSObject));
     if (!clone)
         return NULL;
     clone->fslots[JSSLOT_PRIVATE] = PRIVATE_TO_JSVAL(fun);
     return clone;
 }
 
+JSObject *
+js_NewFlatClosure(JSContext *cx, JSFunction *fun)
+{
+    JS_ASSERT(FUN_FLAT_CLOSURE(fun));
+
+    JSObject *closure = js_CloneFunctionObject(cx, fun, cx->fp->scopeChain);
+    if (!closure || fun->u.i.script->upvarsOffset == 0)
+        return closure;
+
+    uint32 nslots = JSSLOT_FREE(&js_FunctionClass);
+    JS_ASSERT(nslots == JS_INITIAL_NSLOTS);
+    nslots += fun_reserveSlots(cx, closure);
+    if (!js_ReallocSlots(cx, closure, nslots, JS_TRUE))
+        return NULL;
+
+    JSUpvarArray *uva = JS_SCRIPT_UPVARS(fun->u.i.script);
+    JS_ASSERT(uva->length <= size_t(closure->dslots[-1]));
+
+    uintN level = fun->u.i.script->staticLevel;
+    for (uint32 i = 0, n = uva->length; i < n; i++)
+        closure->dslots[i] = js_GetUpvar(cx, level, uva->vector[i]);
+
+    return closure;
+}
+
+JSObject *
+js_NewDebuggableFlatClosure(JSContext *cx, JSFunction *fun)
+{
+    JS_ASSERT(cx->fp->fun->flags & JSFUN_HEAVYWEIGHT);
+    JS_ASSERT(!cx->fp->fun->optimizedClosure());
+
+    return WrapEscapingClosure(cx, cx->fp, FUN_OBJECT(fun), fun);
+}
+
 JSFunction *
 js_DefineFunction(JSContext *cx, JSObject *obj, JSAtom *atom, JSNative native,
                   uintN nargs, uintN attrs)
 {
-    JSFunction *fun;
     JSPropertyOp gsop;
+    JSFunction *fun;
 
+    if (attrs & JSFUN_STUB_GSOPS) {
+        /*
+         * JSFUN_STUB_GSOPS is a request flag only, not stored in fun->flags or
+         * the defined property's attributes. This allows us to encode another,
+         * internal flag using the same bit, JSFUN_EXPR_CLOSURE -- see jsfun.h
+         * for more on this.
+         */
+        attrs &= ~JSFUN_STUB_GSOPS;
+        gsop = JS_PropertyStub;
+    } else {
+        gsop = NULL;
+    }
     fun = js_NewFunction(cx, NULL, native, nargs, attrs, obj, atom);
     if (!fun)
         return NULL;
-    gsop = (attrs & JSFUN_STUB_GSOPS) ? JS_PropertyStub : NULL;
     if (!OBJ_DEFINE_PROPERTY(cx, obj, ATOM_TO_JSID(atom),
                              OBJECT_TO_JSVAL(FUN_OBJECT(fun)),
                              gsop, gsop,
@@ -2202,7 +2575,7 @@ js_ValueToFunctionObject(JSContext *cx, jsval *vp, uintN flags)
         return NULL;
     *vp = OBJECT_TO_JSVAL(FUN_OBJECT(fun));
 
-    caller = JS_GetScriptedCaller(cx, cx->fp);
+    caller = js_GetScriptedCaller(cx, NULL);
     if (caller) {
         principals = JS_StackFramePrincipals(cx, caller);
     } else {
@@ -2222,18 +2595,13 @@ js_ValueToFunctionObject(JSContext *cx, jsval *vp, uintN flags)
 JSObject *
 js_ValueToCallableObject(JSContext *cx, jsval *vp, uintN flags)
 {
-    JSObject *callable;
+    JSObject *callable = JSVAL_IS_OBJECT(*vp) ? JSVAL_TO_OBJECT(*vp) : NULL;
 
-    callable = JSVAL_IS_PRIMITIVE(*vp) ? NULL : JSVAL_TO_OBJECT(*vp);
-    if (callable &&
-        ((callable->map->ops == &js_ObjectOps)
-         ? OBJ_GET_CLASS(cx, callable)->call
-         : callable->map->ops->call)) {
+    if (callable && js_IsCallable(callable, cx)) {
         *vp = OBJECT_TO_JSVAL(callable);
-    } else {
-        callable = js_ValueToFunctionObject(cx, vp, flags);
+        return callable;
     }
-    return callable;
+    return js_ValueToFunctionObject(cx, vp, flags);
 }
 
 void
@@ -2244,7 +2612,7 @@ js_ReportIsNotFunction(JSContext *cx, jsval *vp, uintN flags)
     const char *name, *source;
     JSTempValueRooter tvr;
 
-    for (fp = cx->fp; fp && !fp->regs; fp = fp->down)
+    for (fp = js_GetTopStackFrame(cx); fp && !fp->regs; fp = fp->down)
         continue;
     name = source = NULL;
     JS_PUSH_TEMP_ROOT_STRING(cx, NULL, &tvr);
@@ -2396,7 +2764,7 @@ js_AddLocal(JSContext *cx, JSFunction *fun, JSAtom *atom, JSLocalKind kind)
         else
             JS_ASSERT(kind == JSLOCAL_VAR);
     }
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
+    n = fun->countLocalNames();
     if (n == 0) {
         JS_ASSERT(fun->u.i.names.taggedAtom == 0);
         fun->u.i.names.taggedAtom = taggedAtom;
@@ -2444,11 +2812,18 @@ js_AddLocal(JSContext *cx, JSFunction *fun, JSAtom *atom, JSLocalKind kind)
         map->lastdup = NULL;
         for (i = 0; i != MAX_ARRAY_LOCALS; ++i) {
             taggedAtom = array[i];
-            if (!HashLocalName(cx, map, (JSAtom *) (taggedAtom & ~1),
-                               (i < fun->nargs)
-                               ? JSLOCAL_ARG
-                               : (taggedAtom & 1) ? JSLOCAL_CONST : JSLOCAL_VAR,
-                               (i < fun->nargs) ? i : i - fun->nargs)) {
+            uintN j = i;
+            JSLocalKind k = JSLOCAL_ARG;
+            if (j >= fun->nargs) {
+                j -= fun->nargs;
+                if (j < fun->u.i.nvars) {
+                    k = (taggedAtom & 1) ? JSLOCAL_CONST : JSLOCAL_VAR;
+                } else {
+                    j -= fun->u.i.nvars;
+                    k = JSLOCAL_UPVAR;
+                }
+            }
+            if (!HashLocalName(cx, map, (JSAtom *) (taggedAtom & ~1), k, j)) {
                 FreeLocalNameHash(cx, map);
                 return JS_FALSE;
             }
@@ -2489,7 +2864,7 @@ js_LookupLocal(JSContext *cx, JSFunction *fun, JSAtom *atom, uintN *indexp)
     JSLocalNameHashEntry *entry;
 
     JS_ASSERT(FUN_INTERPRETED(fun));
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
+    n = fun->countLocalNames();
     if (n == 0)
         return JSLOCAL_NONE;
     if (n <= MAX_ARRAY_LOCALS) {
@@ -2497,7 +2872,7 @@ js_LookupLocal(JSContext *cx, JSFunction *fun, JSAtom *atom, uintN *indexp)
 
         /* Search from the tail to pick up the last duplicated name. */
         i = n;
-        upvar_base = JS_UPVAR_LOCAL_NAME_START(fun);
+        upvar_base = fun->countArgsAndVars();
         do {
             --i;
             if (atom == JS_LOCAL_NAME_TO_ATOM(array[i])) {
@@ -2560,10 +2935,14 @@ get_local_names_enumerator(JSDHashTable *table, JSDHashEntryHdr *hdr,
         constFlag = 0;
     } else {
         JS_ASSERT(entry->localKind == JSLOCAL_VAR ||
-                  entry->localKind == JSLOCAL_CONST);
-        JS_ASSERT(entry->index < args->fun->u.i.nvars);
-        JS_ASSERT(args->nCopiedVars++ < args->fun->u.i.nvars);
-        i = args->fun->nargs + entry->index;
+                  entry->localKind == JSLOCAL_CONST ||
+                  entry->localKind == JSLOCAL_UPVAR);
+        JS_ASSERT(entry->index < args->fun->u.i.nvars + args->fun->u.i.nupvars);
+        JS_ASSERT(args->nCopiedVars++ < args->fun->u.i.nvars + args->fun->u.i.nupvars);
+        i = args->fun->nargs;
+        if (entry->localKind == JSLOCAL_UPVAR)
+           i += args->fun->u.i.nvars;
+        i += entry->index;
         constFlag = (entry->localKind == JSLOCAL_CONST);
     }
     args->names[i] = (jsuword) entry->name | constFlag;
@@ -2579,9 +2958,8 @@ js_GetLocalNameArray(JSContext *cx, JSFunction *fun, JSArenaPool *pool)
     JSLocalNameEnumeratorArgs args;
     JSNameIndexPair *dup;
 
-    JS_ASSERT(FUN_INTERPRETED(fun));
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
-    JS_ASSERT(n != 0);
+    JS_ASSERT(fun->hasLocalNames());
+    n = fun->countLocalNames();
 
     if (n <= MAX_ARRAY_LOCALS)
         return (n == 1) ? &fun->u.i.names.taggedAtom : fun->u.i.names.array;
@@ -2616,7 +2994,7 @@ js_GetLocalNameArray(JSContext *cx, JSFunction *fun, JSArenaPool *pool)
 #if !JS_HAS_DESTRUCTURING
     JS_ASSERT(args.nCopiedArgs == fun->nargs);
 #endif
-    JS_ASSERT(args.nCopiedVars == fun->u.i.nvars);
+    JS_ASSERT(args.nCopiedVars == fun->u.i.nvars + fun->u.i.nupvars);
 
     return names;
 }
@@ -2646,7 +3024,7 @@ TraceLocalNames(JSTracer *trc, JSFunction *fun)
     jsuword *array;
 
     JS_ASSERT(FUN_INTERPRETED(fun));
-    n = JS_GET_LOCAL_NAME_COUNT(fun);
+    n = fun->countLocalNames();
     if (n == 0)
         return;
     if (n <= MAX_ARRAY_LOCALS) {
@@ -2678,7 +3056,7 @@ DestroyLocalNames(JSContext *cx, JSFunction *fun)
 {
     uintN n;
 
-    n = fun->nargs + fun->u.i.nvars;
+    n = fun->countLocalNames();
     if (n <= 1)
         return;
     if (n <= MAX_ARRAY_LOCALS)
@@ -2703,4 +3081,9 @@ js_FreezeLocalNames(JSContext *cx, JSFunction *fun)
         if (array)
             fun->u.i.names.array = array;
     }
+#ifdef DEBUG
+// XXX no JS_DHashMarkTableImmutable on 1.9.1
+//    if (n > MAX_ARRAY_LOCALS)
+//        JS_DHashMarkTableImmutable(&fun->u.i.names.map->names);
+#endif
 }

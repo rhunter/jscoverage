@@ -103,14 +103,10 @@ struct JSTitle {
 };
 
 /*
- * Title structures must be immediately preceded by JSObjectMap structures for
- * maps that use titles for threadsafety.  This is enforced by assertion in
- * jsscope.h; see bug 408416 for future remedies to this somewhat fragile
- * architecture.
+ * Title structure is always allocated as a field of JSScope.
  */
-
-#define TITLE_TO_MAP(title)                                                   \
-    ((JSObjectMap *)((char *)(title) - sizeof(JSObjectMap)))
+#define TITLE_TO_SCOPE(title)                                                 \
+    ((JSScope *)((uint8 *) (title) - offsetof(JSScope, title)))
 
 /*
  * Atomic increment and decrement for a reference counter, given jsrefcount *p.
@@ -119,6 +115,7 @@ struct JSTitle {
 #define JS_ATOMIC_INCREMENT(p)      PR_AtomicIncrement((PRInt32 *)(p))
 #define JS_ATOMIC_DECREMENT(p)      PR_AtomicDecrement((PRInt32 *)(p))
 #define JS_ATOMIC_ADD(p,v)          PR_AtomicAdd((PRInt32 *)(p), (PRInt32)(v))
+#define JS_ATOMIC_SET(p,v)          PR_AtomicSet((PRInt32 *)(p), (PRInt32)(v))
 
 #define js_CurrentThreadId()        (jsword)PR_GetCurrentThread()
 #define JS_NEW_LOCK()               PR_NewLock()
@@ -135,10 +132,10 @@ struct JSTitle {
 
 #ifdef JS_DEBUG_TITLE_LOCKS
 
-#define SET_OBJ_INFO(obj_, file_, line_)                                       \
-    SET_SCOPE_INFO(OBJ_SCOPE(obj_), file_, line_)
+#define JS_SET_OBJ_INFO(obj_, file_, line_)                                   \
+    JS_SET_SCOPE_INFO(OBJ_SCOPE(obj_), file_, line_)
 
-#define SET_SCOPE_INFO(scope_, file_, line_)                                   \
+#define JS_SET_SCOPE_INFO(scope_, file_, line_)                               \
     js_SetScopeInfo(scope_, file_, line_)
 
 #endif
@@ -156,25 +153,25 @@ struct JSTitle {
  * are for optimizations above the JSObjectOps layer, under which object locks
  * normally hide.
  */
-#define JS_LOCK_OBJ(cx,obj)       ((OBJ_SCOPE(obj)->title.ownercx == (cx))     \
-                                   ? (void)0                                   \
-                                   : (js_LockObj(cx, obj),                     \
-                                      SET_OBJ_INFO(obj,__FILE__,__LINE__)))
-#define JS_UNLOCK_OBJ(cx,obj)     ((OBJ_SCOPE(obj)->title.ownercx == (cx))     \
+#define JS_LOCK_OBJ(cx,obj)       ((OBJ_SCOPE(obj)->title.ownercx == (cx))    \
+                                   ? (void)0                                  \
+                                   : (js_LockObj(cx, obj),                    \
+                                      JS_SET_OBJ_INFO(obj,__FILE__,__LINE__)))
+#define JS_UNLOCK_OBJ(cx,obj)     ((OBJ_SCOPE(obj)->title.ownercx == (cx))    \
                                    ? (void)0 : js_UnlockObj(cx, obj))
 
-#define JS_LOCK_TITLE(cx,title)                                                \
-    ((title)->ownercx == (cx) ? (void)0                                        \
-     : (js_LockTitle(cx, (title)),                                             \
-        SET_TITLE_INFO(title,__FILE__,__LINE__)))
+#define JS_LOCK_TITLE(cx,title)                                               \
+    ((title)->ownercx == (cx) ? (void)0                                       \
+     : (js_LockTitle(cx, (title)),                                            \
+        JS_SET_TITLE_INFO(title,__FILE__,__LINE__)))
 
-#define JS_UNLOCK_TITLE(cx,title) ((title)->ownercx == (cx) ? (void)0          \
+#define JS_UNLOCK_TITLE(cx,title) ((title)->ownercx == (cx) ? (void)0         \
                                    : js_UnlockTitle(cx, title))
 
 #define JS_LOCK_SCOPE(cx,scope)   JS_LOCK_TITLE(cx,&(scope)->title)
 #define JS_UNLOCK_SCOPE(cx,scope) JS_UNLOCK_TITLE(cx,&(scope)->title)
 
-#define JS_TRANSFER_SCOPE_LOCK(cx, scope, newscope)                            \
+#define JS_TRANSFER_SCOPE_LOCK(cx, scope, newscope)                           \
     js_TransferTitle(cx, &scope->title, &newscope->title)
 
 
@@ -196,7 +193,15 @@ js_GetSlotThreadSafe(JSContext *, JSObject *, uint32);
 extern void js_SetSlotThreadSafe(JSContext *, JSObject *, uint32, jsval);
 extern void js_InitLock(JSThinLock *);
 extern void js_FinishLock(JSThinLock *);
-extern void js_FinishSharingTitle(JSContext *cx, JSTitle *title);
+
+/*
+ * This function must be called with the GC lock held.
+ */
+extern void
+js_ShareWaitingTitles(JSContext *cx);
+
+extern void
+js_NudgeOtherContexts(JSContext *cx);
 
 #ifdef DEBUG
 
@@ -237,6 +242,7 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
 #define JS_ATOMIC_INCREMENT(p)      (++*(p))
 #define JS_ATOMIC_DECREMENT(p)      (--*(p))
 #define JS_ATOMIC_ADD(p,v)          (*(p) += (v))
+#define JS_ATOMIC_SET(p,v)          (*(p) = (v))
 
 #define JS_CurrentThreadId() 0
 #define JS_NEW_LOCK()               NULL
@@ -284,17 +290,23 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
                                                     JS_NO_TIMEOUT)
 #define JS_NOTIFY_REQUEST_DONE(rt)  JS_NOTIFY_CONDVAR((rt)->requestDone)
 
-#ifndef SET_OBJ_INFO
-#define SET_OBJ_INFO(obj,f,l)       ((void)0)
+#ifndef JS_SET_OBJ_INFO
+#define JS_SET_OBJ_INFO(obj,f,l)        ((void)0)
 #endif
-#ifndef SET_TITLE_INFO
-#define SET_TITLE_INFO(title,f,l)   ((void)0)
+#ifndef JS_SET_TITLE_INFO
+#define JS_SET_TITLE_INFO(title,f,l)    ((void)0)
 #endif
 
 #ifdef JS_THREADSAFE
 
 extern JSBool
 js_CompareAndSwap(jsword *w, jsword ov, jsword nv);
+
+/* Atomically bitwise-or the mask into the word *w using compare and swap. */
+extern void
+js_AtomicSetMask(jsword *w, jsword mask);
+
+#define JS_ATOMIC_SET_MASK(w, mask) js_AtomicSetMask(w, mask)
 
 #else
 
@@ -304,7 +316,9 @@ js_CompareAndSwap(jsword *w, jsword ov, jsword nv)
     return (*w == ov) ? *w = nv, JS_TRUE : JS_FALSE;
 }
 
-#endif
+#define JS_ATOMIC_SET_MASK(w, mask) (*(w) |= (mask))
+
+#endif /* JS_THREADSAFE */
 
 JS_END_EXTERN_C
 

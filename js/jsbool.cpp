@@ -48,16 +48,18 @@
 #include "jsbool.h"
 #include "jscntxt.h"
 #include "jsversion.h"
-#include "jsinterp.h"
 #include "jslock.h"
 #include "jsnum.h"
 #include "jsobj.h"
 #include "jsstr.h"
 
 /* Check pseudo-booleans values. */
-JS_STATIC_ASSERT(JSVAL_VOID == JSVAL_TRUE + JSVAL_ALIGN);
-JS_STATIC_ASSERT(JSVAL_HOLE == JSVAL_VOID + JSVAL_ALIGN);
-JS_STATIC_ASSERT(JSVAL_ARETURN == JSVAL_HOLE + JSVAL_ALIGN);
+JS_STATIC_ASSERT(!(JSVAL_TRUE & JSVAL_HOLE_FLAG));
+JS_STATIC_ASSERT(!(JSVAL_FALSE & JSVAL_HOLE_FLAG));
+JS_STATIC_ASSERT(!(JSVAL_VOID & JSVAL_HOLE_FLAG));
+JS_STATIC_ASSERT((JSVAL_HOLE & JSVAL_HOLE_FLAG));
+JS_STATIC_ASSERT((JSVAL_HOLE & ~JSVAL_HOLE_FLAG) == JSVAL_VOID);
+JS_STATIC_ASSERT(!(JSVAL_ARETURN & JSVAL_HOLE_FLAG));
 
 JSClass js_BooleanClass = {
     "Boolean",
@@ -133,7 +135,7 @@ Boolean(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval)
     bval = (argc != 0)
            ? BOOLEAN_TO_JSVAL(js_ValueToBoolean(argv[0]))
            : JSVAL_FALSE;
-    if (!(cx->fp->flags & JSFRAME_CONSTRUCTING)) {
+    if (!JS_IsConstructing(cx)) {
         *rval = bval;
         return JS_TRUE;
     }

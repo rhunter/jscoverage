@@ -26,6 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// needed by jsparse.h
+#include <jsbit.h>
+#include <jscntxt.h>
+#include <jsscript.h>
+
 #include <jsapi.h>
 #include <jsarena.h>
 #include <jsatom.h>
@@ -349,7 +354,7 @@ static void output_array_comprehension_or_generator_expression(JSParseNode * nod
 static void instrument_function(JSParseNode * node, Stream * f, int indent, enum FunctionType type) {
   assert(node->pn_type == TOK_FUNCTION);
   assert(node->pn_arity == PN_FUNC);
-  JSObject * object = node->pn_funpob->object;
+  JSObject * object = node->pn_funbox->object;
   assert(JS_ObjectIsFunction(context, object));
   JSFunction * function = (JSFunction *) JS_GetPrivate(context, object);
   assert(function);
@@ -372,7 +377,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   JSArenaPool pool;
   JS_INIT_ARENA_POOL(&pool, "instrument_function", 256, 1, &context->scriptStackQuota);
   jsuword * local_names = NULL;
-  if (JS_GET_LOCAL_NAME_COUNT(function)) {
+  if (function->hasLocalNames()) {
     local_names = js_GetLocalNameArray(context, function, &pool);
     if (local_names == NULL) {
       fatal("out of memory");
@@ -386,9 +391,25 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
     JSAtom * param = JS_LOCAL_NAME_TO_ATOM(local_names[i]);
     if (param == NULL) {
       destructuring = true;
+
+      JSParseNode * p = node->pn_body;
+      if (p->pn_type == TOK_UPVARS) {
+        assert(p->pn_arity == PN_NAMESET);
+        p = p->pn_tree;
+      }
+
+      if (p->pn_type == TOK_ARGSBODY) {
+        assert(p->pn_arity == PN_LIST);
+        // the function body is the final element of the list
+        for (p = p->pn_head; p->pn_next != NULL; p = p->pn_next) {
+          ;
+        }
+      }
+
       JSParseNode * expression = NULL;
-      assert(node->pn_body->pn_type == TOK_LC || node->pn_body->pn_type == TOK_SEQ);
-      JSParseNode * semi = node->pn_body->pn_head;
+      assert(p->pn_type == TOK_LC || p->pn_type == TOK_SEQ);
+      assert(p->pn_arity == PN_LIST);
+      JSParseNode * semi = p->pn_head;
       assert(semi->pn_type == TOK_SEMI);
       JSParseNode * comma = semi->pn_kid;
       assert(comma->pn_type == TOK_COMMA);
@@ -396,7 +417,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
         assert(p->pn_type == TOK_ASSIGN);
         JSParseNode * rhs = p->pn_right;
         assert(JSSTRING_LENGTH(ATOM_TO_STRING(rhs->pn_atom)) == 0);
-        if (rhs->pn_slot == i) {
+        if (UPVAR_FRAME_SLOT(rhs->pn_cookie) == i) {
           expression = p->pn_left;
           break;
         }
@@ -412,21 +433,36 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
   Stream_write_string(f, ") {\n");
 
   /* function body */
+
+  JSParseNode * p = node->pn_body;
+  if (p->pn_type == TOK_UPVARS) {
+    assert(p->pn_arity == PN_NAMESET);
+    p = p->pn_tree;
+  }
+
+  if (p->pn_type == TOK_ARGSBODY) {
+    assert(p->pn_arity == PN_LIST);
+    // the function body is the final element of the list
+    for (p = p->pn_head; p->pn_next != NULL; p = p->pn_next) {
+      ;
+    }
+  }
+
   if (function->flags & JSFUN_EXPR_CLOSURE) {
     /* expression closure - use output_statement instead of instrument_statement */
-    if (node->pn_body->pn_type == TOK_SEQ) {
-      assert(node->pn_body->pn_arity == PN_LIST);
-      assert(node->pn_body->pn_count == 2);
-      output_statement(node->pn_body->pn_head->pn_next, f, indent + 2, false);
+    if (p->pn_type == TOK_SEQ) {
+      assert(p->pn_arity == PN_LIST);
+      assert(p->pn_count == 2);
+      output_statement(p->pn_head->pn_next, f, indent + 2, false);
     }
     else {
-      output_statement(node->pn_body, f, indent + 2, false);
+      output_statement(p, f, indent + 2, false);
     }
   }
   else {
-    assert(node->pn_body->pn_type == TOK_LC);
-    assert(node->pn_body->pn_arity == PN_LIST);
-    JSParseNode * p = node->pn_body->pn_head;
+    assert(p->pn_type == TOK_LC);
+    assert(p->pn_arity == PN_LIST); 
+    p = p->pn_head;
     if (destructuring) {
       p = p->pn_next;
     }
@@ -453,16 +489,21 @@ static void output_function_arguments(JSParseNode * node, Stream * f) {
 static void instrument_function_call(JSParseNode * node, Stream * f) {
   JSParseNode * function_node = node->pn_head;
   if (function_node->pn_type == TOK_FUNCTION) {
-    JSObject * object = function_node->pn_funpob->object;
+    JSObject * object = function_node->pn_funbox->object;
     assert(JS_ObjectIsFunction(context, object));
     JSFunction * function = (JSFunction *) JS_GetPrivate(context, object);
     assert(function);
     assert(object == &function->object);
 
-    if (function_node->pn_flags & TCF_GENEXP_LAMBDA) {
+    if (function_node->pn_funbox->tcflags & TCF_GENEXP_LAMBDA) {
       /* it's a generator expression */
       Stream_write_char(f, '(');
-      output_array_comprehension_or_generator_expression(function_node->pn_body, f);
+      JSParseNode * p = function_node->pn_body;
+      if (p->pn_type == TOK_UPVARS) {
+        assert(p->pn_arity == PN_NAMESET);
+        p = p->pn_tree;
+      }
+      output_array_comprehension_or_generator_expression(p, f);
       Stream_write_char(f, ')');
       return;
     }
@@ -477,7 +518,19 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
     if (p != list->pn_head) {
       Stream_write_string(f, ", ");
     }
-    output_expression(p, f, false);
+
+    switch (p->pn_type) {
+    case TOK_NAME:
+      print_string_atom(p->pn_atom, f);
+      if (p->pn_expr != NULL) {
+        Stream_write_string(f, " = ");
+        output_expression(p->pn_expr, f, false);
+      }
+      break;
+    default:
+      output_expression(p, f, false);
+      break;
+    }
   }
 }
 
@@ -728,7 +781,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
         output_expression(p, f, false);
       }
     }
-    if (node->pn_extra == PNX_ENDCOMMA) {
+    if (node->pn_xflags & PNX_ENDCOMMA) {
       Stream_write_char(f, ',');
     }
     Stream_write_char(f, ']');
@@ -782,10 +835,6 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     break;
   case TOK_NAME:
     print_string_atom(node->pn_atom, f);
-    if (node->pn_expr != NULL) {
-      Stream_write_string(f, " = ");
-      output_expression(node->pn_expr, f, false);
-    }
     break;
   case TOK_STRING:
     print_quoted_string_atom(node->pn_atom, f);
@@ -793,7 +842,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
   case TOK_REGEXP:
     assert(node->pn_op == JSOP_REGEXP);
     {
-      JSObject * object = node->pn_pob->object;
+      JSObject * object = node->pn_objbox->object;
       jsval result;
       js_regexp_toString(context, object, &result);
       print_regex(result, f);
@@ -1249,6 +1298,16 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       instrument_statement(p, f, indent, false);
     }
     break;
+  case TOK_NAME:
+    // this is a duplicate function
+    JSParseNode function_node;
+    function_node.pn_type = TOK_FUNCTION;
+    function_node.pn_arity = PN_FUNC;
+    function_node.pn_funbox = node->pn_u.name.funbox2;
+    function_node.pn_expr = node->pn_u.name.expr2;
+    instrument_function(&function_node, f, indent, FUNCTION_NORMAL);
+    Stream_write_char(f, '\n');
+    break;
   default:
     fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
   }
@@ -1318,12 +1377,12 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   file_id = id;
 
   /* parse the javascript */
-  JSParseContext parse_context;
-  if (! js_InitParseContext(context, &parse_context, NULL, NULL, characters, num_characters, NULL, NULL, 1)) {
+  JSCompiler compiler(context);
+  if (! compiler.init(characters, num_characters, NULL, id, 1)) {
     fatal("cannot create token stream from file %s", file_id);
   }
   JSErrorReporter old_error_reporter = JS_SetErrorReporter(context, error_reporter);
-  JSParseNode * node = js_ParseScript(context, global, &parse_context);
+  JSParseNode * node = compiler.parse(global);
   if (node == NULL) {
     js_ReportUncaughtException(context);
     fatal("parse error in file %s", file_id);
@@ -1410,7 +1469,6 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
 
   Stream * instrumented = Stream_new(0);
   instrument_statement(node, instrumented, 0, false);
-  js_FinishParseContext(context, &parse_context);
 
   /* write line number info to the output */
   Stream_write_string(output, JSCOVERAGE_INSTRUMENTED_HEADER);
@@ -1714,12 +1772,12 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
 
   JS_free(context, base);
 
-  JSParseContext parse_context;
-  if (! js_InitParseContext(context, &parse_context, NULL, NULL, parenthesized_json, length + 2, NULL, NULL, 1)) {
+  JSCompiler compiler(context);
+  if (! compiler.init(parenthesized_json, length + 2, NULL, NULL, 1)) {
     free(parenthesized_json);
     return -1;
   }
-  JSParseNode * root = js_ParseScript(context, global, &parse_context);
+  JSParseNode * root = compiler.parse(global);
   free(parenthesized_json);
 
   JSParseNode * semi = NULL;
@@ -1908,6 +1966,5 @@ int jscoverage_parse_json(Coverage * coverage, const uint8_t * json, size_t leng
   }
 
 done:
-  js_FinishParseContext(context, &parse_context);
   return result;
 }

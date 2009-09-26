@@ -46,10 +46,14 @@
 
 JS_BEGIN_EXTERN_C
 
-#ifdef DEBUG
-
+/*
+ * JS_Assert is present even in release builds, for the benefit of applications
+ * that build DEBUG and link against a non-DEBUG SpiderMonkey library.
+ */
 extern JS_PUBLIC_API(void)
 JS_Assert(const char *s, const char *file, JSIntn ln);
+
+#ifdef DEBUG
 
 #define JS_ASSERT(expr)                                                       \
     ((expr) ? (void)0 : JS_Assert(#expr, __FILE__, __LINE__))
@@ -86,6 +90,8 @@ JS_Assert(const char *s, const char *file, JSIntn ln);
 #define JS_STATIC_ASSERT(condition)                                           \
     extern void js_static_assert(int arg[(condition) ? 1 : -1])
 #endif
+
+#define JS_STATIC_ASSERT_IF(cond, expr) JS_STATIC_ASSERT(!(cond) || (expr))
 
 /*
  * Abort the process in a non-graceful manner. This will cause a core file,
@@ -144,7 +150,7 @@ JS_DumpHistogram(JSBasicStats *bs, FILE *fp);
 #endif /* JS_BASIC_STATS */
 
 
-#ifdef XP_UNIX
+#if defined(DEBUG_notme) && defined(XP_UNIX)
 
 typedef struct JSCallsite JSCallsite;
 
@@ -159,7 +165,11 @@ struct JSCallsite {
     void        *handy;
 };
 
-extern JSCallsite *JS_Backtrace(int skip);
+extern JS_FRIEND_API(JSCallsite *)
+JS_Backtrace(int skip);
+
+extern JS_FRIEND_API(void)
+JS_DumpBacktrace(JSCallsite *trace);
 
 #endif
 

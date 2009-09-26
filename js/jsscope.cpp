@@ -58,6 +58,7 @@
 #include "jsnum.h"
 #include "jsscope.h"
 #include "jsstr.h"
+#include "jsarray.h"
 
 JSScope *
 js_GetMutableScope(JSContext *cx, JSObject *obj)
@@ -70,23 +71,29 @@ js_GetMutableScope(JSContext *cx, JSObject *obj)
     JS_ASSERT(JS_IS_SCOPE_LOCKED(cx, scope));
     if (scope->object == obj)
         return scope;
-    newscope = js_NewScope(cx, 0, scope->map.ops, LOCKED_OBJ_GET_CLASS(obj),
-                           obj);
+
+    /*
+     * Compile-time block objects each have their own scope, created at
+     * birth, and runtime clone of a block objects are never mutated.
+     */
+    JS_ASSERT(STOBJ_GET_CLASS(obj) != &js_BlockClass);
+    newscope = js_NewScope(cx, scope->map.ops, LOCKED_OBJ_GET_CLASS(obj), obj);
     if (!newscope)
         return NULL;
     JS_LOCK_SCOPE(cx, newscope);
-    obj->map = js_HoldObjectMap(cx, &newscope->map);
-    JS_ASSERT(newscope->map.freeslot == JSSLOT_FREE(STOBJ_GET_CLASS(obj)));
+    obj->map = &newscope->map;
+
+    JS_ASSERT(newscope->freeslot == JSSLOT_FREE(STOBJ_GET_CLASS(obj)));
     clasp = STOBJ_GET_CLASS(obj);
     if (clasp->reserveSlots) {
         freeslot = JSSLOT_FREE(clasp) + clasp->reserveSlots(cx, obj);
         if (freeslot > STOBJ_NSLOTS(obj))
             freeslot = STOBJ_NSLOTS(obj);
-        if (newscope->map.freeslot < freeslot)
-            newscope->map.freeslot = freeslot;
+        if (newscope->freeslot < freeslot)
+            newscope->freeslot = freeslot;
     }
-    scope = (JSScope *) js_DropObjectMap(cx, &scope->map, obj);
     JS_TRANSFER_SCOPE_LOCK(cx, scope, newscope);
+    js_DropScope(cx, scope, obj);
     return newscope;
 }
 
@@ -101,8 +108,9 @@ js_GetMutableScope(JSContext *cx, JSObject *obj)
 #define SCOPE_TABLE_NBYTES(n)   ((n) * sizeof(JSScopeProperty *))
 
 static void
-InitMinimalScope(JSScope *scope)
+InitMinimalScope(JSContext *cx, JSScope *scope)
 {
+    js_LeaveTraceIfGlobalObject(cx, scope->object);
     scope->shape = 0;
     scope->hashShift = JS_DHASH_BITS - MIN_SCOPE_SIZE_LOG2;
     scope->entryCount = scope->removedCount = 0;
@@ -152,19 +160,21 @@ CreateScopeTable(JSContext *cx, JSScope *scope, JSBool report)
 }
 
 JSScope *
-js_NewScope(JSContext *cx, jsrefcount nrefs, JSObjectOps *ops, JSClass *clasp,
-            JSObject *obj)
+js_NewScope(JSContext *cx, JSObjectOps *ops, JSClass *clasp, JSObject *obj)
 {
-    JSScope *scope;
+    JS_ASSERT(OPS_IS_NATIVE(ops));
+    JS_ASSERT(obj);
 
-    scope = (JSScope *) JS_malloc(cx, sizeof(JSScope));
+    JSScope *scope = (JSScope *) JS_malloc(cx, sizeof(JSScope));
     if (!scope)
         return NULL;
 
-    js_InitObjectMap(&scope->map, nrefs, ops, clasp);
+    scope->map.ops = ops;
     scope->object = obj;
+    scope->nrefs = 1;
+    scope->freeslot = JSSLOT_FREE(clasp);
     scope->flags = 0;
-    InitMinimalScope(scope);
+    InitMinimalScope(cx, scope);
 
 #ifdef JS_THREADSAFE
     js_InitTitle(cx, &scope->title);
@@ -173,11 +183,6 @@ js_NewScope(JSContext *cx, jsrefcount nrefs, JSObjectOps *ops, JSClass *clasp,
     JS_RUNTIME_METER(cx->runtime, totalScopes);
     return scope;
 }
-
-#ifdef DEBUG_SCOPE_COUNT
-extern void
-js_unlog_scope(JSScope *scope);
-#endif
 
 #if defined DEBUG || defined JS_DUMP_PROPTREE_STATS
 # include "jsprf.h"
@@ -189,10 +194,6 @@ js_unlog_scope(JSScope *scope);
 void
 js_DestroyScope(JSContext *cx, JSScope *scope)
 {
-#ifdef DEBUG_SCOPE_COUNT
-    js_unlog_scope(scope);
-#endif
-
 #ifdef JS_THREADSAFE
     js_FinishTitle(cx, &scope->title);
 #endif
@@ -202,6 +203,28 @@ js_DestroyScope(JSContext *cx, JSScope *scope)
     LIVE_SCOPE_METER(cx, cx->runtime->liveScopeProps -= scope->entryCount);
     JS_RUNTIME_UNMETER(cx->runtime, liveScopes);
     JS_free(cx, scope);
+}
+
+void
+js_HoldScope(JSScope *scope)
+{
+    JS_ASSERT(scope->nrefs >= 0);
+    JS_ATOMIC_INCREMENT(&scope->nrefs);
+}
+
+JSBool
+js_DropScope(JSContext *cx, JSScope *scope, JSObject *obj)
+{
+    JS_ASSERT(scope->nrefs > 0);
+    JS_ATOMIC_DECREMENT(&scope->nrefs);
+
+    if (scope->nrefs == 0) {
+        js_DestroyScope(cx, scope);
+        return false;
+    }
+    if (scope->object == obj)
+        scope->object = NULL;
+    return true;
 }
 
 #ifdef JS_DUMP_PROPTREE_STATS
@@ -796,8 +819,8 @@ HashChunks(PropTreeKidsChunk *chunk, uintN n)
  * only when inserting a new child.  Thus there may be races to find or add a
  * node that result in duplicates.  We expect such races to be rare!
  *
- * We use rt->gcLock, not rt->rtLock, to allow the GC potentially to nest here
- * under js_GenerateShape.
+ * We use rt->gcLock, not rt->rtLock, to avoid nesting the former inside the
+ * latter in js_GenerateShape below.
  */
 static JSScopeProperty *
 GetPropertyTreeChild(JSContext *cx, JSScopeProperty *parent,
@@ -809,7 +832,6 @@ GetPropertyTreeChild(JSContext *cx, JSScopeProperty *parent,
     JSScopeProperty *sprop;
     PropTreeKidsChunk *chunk;
     uintN i, n;
-    uint32 shape;
 
     rt = cx->runtime;
     if (!parent) {
@@ -896,12 +918,6 @@ GetPropertyTreeChild(JSContext *cx, JSScopeProperty *parent,
     }
 
 locked_not_found:
-    /*
-     * Call js_GenerateShape before the allocation to prevent collecting the
-     * new property when the shape generation triggers the GC.
-     */
-    shape = js_GenerateShape(cx, JS_TRUE, NULL);
-
     sprop = NewScopeProperty(rt);
     if (!sprop)
         goto out_of_memory;
@@ -914,7 +930,7 @@ locked_not_found:
     sprop->flags = child->flags;
     sprop->shortid = child->shortid;
     sprop->parent = sprop->kids = NULL;
-    sprop->shape = shape;
+    sprop->shape = js_GenerateShape(cx, JS_TRUE);
 
     if (!parent) {
         entry->child = sprop;
@@ -1036,8 +1052,6 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
     spp = js_SearchScope(scope, id, JS_TRUE);
     sprop = overwriting = SPROP_FETCH(spp);
     if (!sprop) {
-        JS_COUNT_OPERATION(cx, JSOW_NEW_PROPERTY);
-
         /* Check whether we need to grow, if the load factor is >= .75. */
         size = SCOPE_CAPACITY(scope);
         if (scope->entryCount + scope->removedCount >= size - (size >> 2)) {
@@ -1078,13 +1092,12 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
         }
 
         /*
-         * If we are clearing sprop to force an existing property to be
-         * overwritten (apart from a duplicate formal parameter), we must
-         * unlink it from the ancestor line at scope->lastProp, lazily if
-         * sprop is not lastProp.  And we must remove the entry at *spp,
-         * precisely so the lazy "middle delete" fixup code further below
-         * won't find sprop in scope->table, in spite of sprop being on
-         * the ancestor line.
+         * If we are clearing sprop to force the existing property that it
+         * describes to be overwritten, then we have to unlink sprop from the
+         * ancestor line at scope->lastProp, lazily if sprop is not lastProp.
+         * And we must remove the entry at *spp, precisely so the lazy "middle
+         * delete" fixup code further below won't find sprop in scope->table,
+         * in spite of sprop being on the ancestor line.
          *
          * When we finally succeed in finding or creating a new sprop
          * and storing its pointer at *spp, we'll use the |overwriting|
@@ -1112,7 +1125,7 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
             }
             SCOPE_SET_MIDDLE_DELETE(scope);
         }
-        SCOPE_MAKE_UNIQUE_SHAPE(cx, scope);
+        js_MakeScopeShapeUnique(cx, scope);
 
         /*
          * If we fail later on trying to find or create a new sprop, we will
@@ -1140,15 +1153,37 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
             JS_ASSERT(scope->table);
             CHECK_ANCESTOR_LINE(scope, JS_TRUE);
 
-            splen = scope->entryCount;
-            if (splen == 0) {
-                JS_ASSERT(scope->lastProp == NULL);
-            } else {
+            /*
+             * Our forking heuristic tries to balance the desire to avoid
+             * over-compacting (over-forking) against the desire to
+             * *periodically* fork anyways, in order to prevent paying scan
+             * penalties on each insert indefinitely, on a lineage with only
+             * a few old middle-deletions. So we fork if either:
+             *
+             *  - A quick scan finds a true conflict.
+             *  - We are passing through a doubling-threshold in size and
+             *    have accumulated a nonzero count of uncompacted deletions.
+             */
+
+            bool conflicts = false;
+            uint32 count = 0;
+            uint32 threshold = JS_BIT(JS_CeilingLog2(scope->entryCount));
+            for (sprop = SCOPE_LAST_PROP(scope); sprop; sprop = sprop->parent) {
+                ++count;
+                if (sprop->id == id) {
+                    conflicts = true;
+                    break;
+                }
+            }
+
+            if (conflicts || count > threshold) {
                 /*
                  * Enumerate live entries in scope->table using a temporary
                  * vector, by walking the (possibly sparse, due to deletions)
                  * ancestor line from scope->lastProp.
                  */
+                splen = scope->entryCount;
+                JS_ASSERT(splen != 0);
                 spvec = (JSScopeProperty **)
                         JS_malloc(cx, SCOPE_TABLE_NBYTES(splen));
                 if (!spvec)
@@ -1158,41 +1193,16 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
                 JS_ASSERT(sprop);
                 do {
                     /*
-                     * NB: test SCOPE_GET_PROPERTY, not SCOPE_HAS_PROPERTY --
-                     * the latter insists that sprop->id maps to sprop, while
-                     * the former simply tests whether sprop->id is bound in
-                     * scope.  We must allow for duplicate formal parameters
-                     * along the ancestor line, and fork them as needed.
+                     * NB: test SCOPE_GET_PROPERTY, not SCOPE_HAS_PROPERTY,
+                     * as the latter macro insists that sprop->id maps to
+                     * sprop, while the former simply tests whether sprop->id
+                     * is bound in scope.
                      */
                     if (!SCOPE_GET_PROPERTY(scope, sprop->id))
                         continue;
 
                     JS_ASSERT(sprop != overwriting);
-                    if (i == 0) {
-                        /*
-                         * If our original splen estimate, scope->entryCount,
-                         * is less than the ancestor line height, there must
-                         * be duplicate formal parameters in this (function
-                         * object) scope.  Count remaining ancestors in order
-                         * to realloc spvec.
-                         */
-                        JSScopeProperty *tmp = sprop;
-                        do {
-                            if (SCOPE_GET_PROPERTY(scope, tmp->id))
-                                i++;
-                        } while ((tmp = tmp->parent) != NULL);
-                        spp2 = (JSScopeProperty **)
-                             JS_realloc(cx, spvec, SCOPE_TABLE_NBYTES(splen+i));
-                        if (!spp2) {
-                            JS_free(cx, spvec);
-                            goto fail_overwrite;
-                        }
-
-                        spvec = spp2;
-                        memmove(spvec + i, spvec, SCOPE_TABLE_NBYTES(splen));
-                        splen += i;
-                    }
-
+                    JS_ASSERT(i != 0);
                     spvec[--i] = sprop;
                 } while ((sprop = sprop->parent) != NULL);
                 JS_ASSERT(i == 0);
@@ -1222,15 +1232,13 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
                 /*
                  * Now sprop points to the last property in scope, where the
                  * ancestor line from sprop to the root is dense w.r.t. scope:
-                 * it contains no nodes not mapped by scope->table, apart from
-                 * any stinking ECMA-mandated duplicate formal parameters.
+                 * it contains no nodes not mapped by scope->table.
                  */
                 scope->lastProp = sprop;
                 CHECK_ANCESTOR_LINE(scope, JS_FALSE);
                 JS_RUNTIME_METER(cx->runtime, middleDeleteFixups);
+                SCOPE_CLR_MIDDLE_DELETE(scope);
             }
-
-            SCOPE_CLR_MIDDLE_DELETE(scope);
         }
 
         /*
@@ -1263,9 +1271,11 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
          */
         if (!JS_CLIST_IS_EMPTY(&cx->runtime->watchPointList) &&
             js_FindWatchPoint(cx->runtime, scope, id)) {
-            JS_PUSH_TEMP_ROOT_SPROP(cx, overwriting, &tvr);
+            if (overwriting)
+                JS_PUSH_TEMP_ROOT_SPROP(cx, overwriting, &tvr);
             setter = js_WrapWatchedSetter(cx, id, attrs, setter);
-            JS_POP_TEMP_ROOT(cx, &tvr);
+            if (overwriting)
+                JS_POP_TEMP_ROOT(cx, &tvr);
             if (!setter)
                 goto fail_overwrite;
         }
@@ -1287,7 +1297,7 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
          * be regenerated later as the scope diverges (from the property cache
          * point of view) from the structural type associated with sprop.
          */
-        SCOPE_EXTEND_SHAPE(cx, scope, sprop);
+        js_ExtendScopeShape(cx, scope, sprop);
 
         /* Store the tree node pointer in the table entry for id. */
         if (scope->table)
@@ -1313,6 +1323,10 @@ js_AddScopeProperty(JSContext *cx, JSScope *scope, jsid id,
         if (!scope->table && scope->entryCount >= SCOPE_HASH_THRESHOLD)
             (void) CreateScopeTable(cx, scope, JS_FALSE);
     }
+
+    jsuint index;
+    if (js_IdIsIndex(sprop->id, &index))
+        SCOPE_SET_INDEXED_PROPERTIES(scope);
 
     METER(adds);
     return sprop;
@@ -1423,10 +1437,11 @@ js_ChangeScopePropertyAttrs(JSContext *cx, JSScope *scope,
     }
 
     if (newsprop) {
+        js_LeaveTraceIfGlobalObject(cx, scope->object);
         if (scope->shape == sprop->shape)
             scope->shape = newsprop->shape;
         else
-            SCOPE_MAKE_UNIQUE_SHAPE(cx, scope);
+            js_MakeScopeShapeUnique(cx, scope);
     }
 #ifdef JS_DUMP_PROPTREE_STATS
     else
@@ -1493,10 +1508,12 @@ js_RemoveScopeProperty(JSContext *cx, JSScope *scope, jsid id)
                 break;
             sprop = SCOPE_LAST_PROP(scope);
         } while (sprop && !SCOPE_HAS_PROPERTY(scope, sprop));
+        if (!SCOPE_LAST_PROP(scope))
+            SCOPE_CLR_MIDDLE_DELETE(scope);
     } else if (!SCOPE_HAD_MIDDLE_DELETE(scope)) {
         SCOPE_SET_MIDDLE_DELETE(scope);
     }
-    SCOPE_MAKE_UNIQUE_SHAPE(cx, scope);
+    js_MakeScopeShapeUnique(cx, scope);
     CHECK_ANCESTOR_LINE(scope, JS_TRUE);
 
     /* Last, consider shrinking scope's table if its load factor is <= .25. */
@@ -1518,7 +1535,7 @@ js_ClearScope(JSContext *cx, JSScope *scope)
     if (scope->table)
         free(scope->table);
     SCOPE_CLR_MIDDLE_DELETE(scope);
-    InitMinimalScope(scope);
+    InitMinimalScope(cx, scope);
     JS_ATOMIC_INCREMENT(&cx->runtime->propertyRemovals);
 }
 
@@ -1569,16 +1586,12 @@ js_TraceScopeProperty(JSTracer *trc, JSScopeProperty *sprop)
 #if JS_HAS_GETTER_SETTER
     if (sprop->attrs & (JSPROP_GETTER | JSPROP_SETTER)) {
         if (sprop->attrs & JSPROP_GETTER) {
-            JS_ASSERT(JSVAL_IS_OBJECT((jsval) sprop->getter));
             JS_SET_TRACING_DETAILS(trc, PrintPropertyGetterOrSetter, sprop, 0);
-            JS_CallTracer(trc, JSVAL_TO_OBJECT((jsval) sprop->getter),
-                          JSTRACE_OBJECT);
+            JS_CallTracer(trc, js_CastAsObject(sprop->getter), JSTRACE_OBJECT);
         }
         if (sprop->attrs & JSPROP_SETTER) {
-            JS_ASSERT(JSVAL_IS_OBJECT((jsval) sprop->setter));
             JS_SET_TRACING_DETAILS(trc, PrintPropertyGetterOrSetter, sprop, 1);
-            JS_CallTracer(trc, JSVAL_TO_OBJECT((jsval) sprop->setter),
-                          JSTRACE_OBJECT);
+            JS_CallTracer(trc, js_CastAsObject(sprop->setter), JSTRACE_OBJECT);
         }
     }
 #endif /* JS_HAS_GETTER_SETTER */
@@ -1744,12 +1757,10 @@ js_SweepScopeProperties(JSContext *cx)
              */
             if (sprop->flags & SPROP_MARK) {
                 sprop->flags &= ~SPROP_MARK;
-                if (sprop->flags & SPROP_FLAG_SHAPE_REGEN) {
+                if (sprop->flags & SPROP_FLAG_SHAPE_REGEN)
                     sprop->flags &= ~SPROP_FLAG_SHAPE_REGEN;
-                } else {
-                    sprop->shape = ++cx->runtime->shapeGen;
-                    JS_ASSERT(sprop->shape != 0);
-                }
+                else
+                    sprop->shape = js_RegenerateShapeForGC(cx);
                 liveCount++;
                 continue;
             }

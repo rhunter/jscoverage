@@ -85,4 +85,5 @@ then
 fi
 
 AC_CONFIG_FILES([Makefile make-dist.sh make-bin-dist.sh tests/Makefile])
+AC_CONFIG_SUBDIRS([js])
 AC_OUTPUT
