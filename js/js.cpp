@@ -95,6 +95,7 @@
 
 #if defined(XP_WIN) || defined(XP_OS2)
 #include <io.h>     /* for isatty() */
+#include <windows.h>
 #endif
 
 typedef enum JSShellExitCode {

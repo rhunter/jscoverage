@@ -1371,10 +1371,6 @@ MakeDefIntoUse(JSDefinition *dn, JSParseNode *pn, JSAtom *atom, JSTreeContext *t
     } else if (dn->kind() == JSDefinition::FUNCTION) {
         JS_ASSERT(dn->isTopLevel());
         JS_ASSERT(dn->pn_op == JSOP_NOP);
-
-        dn->pn_u.name.funbox2 = dn->pn_funbox;
-        dn->pn_u.name.expr2 = dn->pn_expr;
-
         dn->pn_type = TOK_NAME;
         dn->pn_arity = PN_NAME;
         dn->pn_atom = atom;

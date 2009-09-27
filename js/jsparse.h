@@ -343,9 +343,6 @@ struct JSParseNode {
             uint32      dflags:12,      /* definition/use flags, see below */
                         blockid:20;     /* block number, for subset dominance
                                            computation */
-
-            JSFunctionBox *funbox2;
-            JSParseNode *expr2;
         } name;
         struct {                        /* lexical dependencies + sub-tree */
             JSAtomSet   names;          /* set of names with JSDefinitions */
