@@ -1300,13 +1300,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     break;
   case TOK_NAME:
     // this is a duplicate function
-    JSParseNode function_node;
-    function_node.pn_type = TOK_FUNCTION;
-    function_node.pn_arity = PN_FUNC;
-    function_node.pn_funbox = node->pn_u.name.funbox2;
-    function_node.pn_expr = node->pn_u.name.expr2;
-    instrument_function(&function_node, f, indent, FUNCTION_NORMAL);
-    Stream_write_char(f, '\n');
+    // FIXME
     break;
   default:
     fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);

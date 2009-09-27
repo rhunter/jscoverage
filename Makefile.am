@@ -39,7 +39,7 @@ jscoverage_SOURCES = encoding.c encoding.h \
                      stream.c stream.h \
                      util.c util.h \
                      $(resources)
-jscoverage_LDADD = js/libmozjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
+jscoverage_LDADD = @SPIDERMONKEY_LIBS@ -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 jscoverage_server_SOURCES = http-connection.c \
                             http-exchange.c \
                             http-host.c \
@@ -54,7 +54,7 @@ jscoverage_server_SOURCES = http-connection.c \
                             stream.c stream.h \
                             util.c util.h \
                             $(resources)
-jscoverage_server_LDADD = js/libmozjs.a -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@ @EXTRA_TIMER_LIBS@
+jscoverage_server_LDADD = @SPIDERMONKEY_LIBS@ -lm @EXTRA_SOCKET_LIBS@ @EXTRA_THREAD_LIBS@ @LIBICONV@ @EXTRA_TIMER_LIBS@
 
 noinst_PROGRAMS = generate-resources
 generate_resources_SOURCES = generate-resources.c

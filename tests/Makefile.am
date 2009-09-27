@@ -67,7 +67,7 @@ http_server_close_immediately_LDADD = @EXTRA_SOCKET_LIBS@
 http_server_empty_header_value_LDADD = @EXTRA_SOCKET_LIBS@
 
 json_SOURCES = json.c ../encoding.c ../highlight.cpp ../instrument-js.cpp ../resource-manager.c ../stream.c ../util.c
-json_LDADD = ../js/libmozjs.a -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
+json_LDADD = ../@SPIDERMONKEY_LIBS@ -lm @LIBICONV@ @EXTRA_TIMER_LIBS@
 
 make_path_SOURCES = make-path.c ../util.c
 

@@ -27,6 +27,13 @@ AC_PROG_CC
 AC_PROG_CC_C99
 AC_PROG_CXX
 
+case "$host_os" in
+  cygwin*)
+    CC="$CC -mno-cygwin"
+    CXX="$CXX -mno-cygwin"
+    ;;
+esac
+
 # Checks for libraries.
 AM_ICONV
 
@@ -52,7 +59,7 @@ AC_LINK_IFELSE(
 
 AC_SUBST([XP_DEF])
 case "$host_os" in
-  mingw*)
+  mingw*|cygwin*)
     XP_DEF='-DXP_WIN'
     ;;
   *)
@@ -64,7 +71,7 @@ AC_SUBST([EXTRA_SOCKET_LIBS])
 AC_SUBST([EXTRA_THREAD_LIBS])
 AC_SUBST([EXTRA_TIMER_LIBS])
 case "$host_os" in
-  mingw*)
+  mingw*|cygwin*)
     EXTRA_SOCKET_LIBS='-lws2_32'
     EXTRA_THREAD_LIBS=''
     EXTRA_TIMER_LIBS='-lwinmm'
@@ -73,6 +80,16 @@ case "$host_os" in
     EXTRA_SOCKET_LIBS=''
     EXTRA_THREAD_LIBS='-lpthread'
     EXTRA_TIMER_LIBS=''
+    ;;
+esac
+
+AC_SUBST([SPIDERMONKEY_LIBS])
+case "$host_os" in
+  mingw*|cygwin*)
+    SPIDERMONKEY_LIBS='js/libjs3250.a'
+    ;;
+  *)
+    SPIDERMONKEY_LIBS='js/libmozjs.a'
     ;;
 esac
 
