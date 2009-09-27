@@ -1,4 +1,4 @@
-export PATH=.:..:../js/obj:$PATH
+export PATH=.:..:../js:$PATH
 
 json_cmp() {
   echo 'EXPECTED = ' | cat - $1 > EXPECTED
