@@ -1,19 +1,19 @@
-function x() {}
+function f() {}
 
-function x() {
+function g() {
   ;
 }
 
-function x() {
+function h() {
   x();
   return 'x';
 }
 
-function x(a) {
+function i(a) {
   x();
 }
 
-function x(a, b) {
+function j(a, b) {
   x();
 }
 
@@ -21,7 +21,15 @@ x = function() {
   x();
 };
 
+x = function k() {
+  x();
+};
+
 (function () {
+  print('x');
+})();
+
+(function l() {
   print('x');
 })();
 
@@ -29,10 +37,22 @@ x = function() {
   print('x');
 })(1);
 
+(function m(a) {
+  print('x');
+})(1);
+
 (function (a, b) {
   print('x');
 })(1, 2);
 
+(function n(a, b) {
+  print('x');
+})(1, 2);
+
 (function () {
+  print('x');
+}).call(window);
+
+(function o() {
   print('x');
 }).call(window);
