@@ -993,7 +993,7 @@ NewToken(JSTokenStream *ts, ptrdiff_t adjust)
     tp->pos.begin.index = ts->linepos +
                           PTRDIFF(tp->ptr, ts->linebuf.base, jschar) -
                           ts->ungetpos;
-    tp->pos.begin.lineno = tp->pos.end.lineno = (uint16)ts->lineno;
+    tp->pos.begin.lineno = tp->pos.end.lineno = (uint32_t)ts->lineno;
     return tp;
 }
 
