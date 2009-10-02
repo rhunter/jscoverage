@@ -273,7 +273,7 @@
 #define JS_MIN(x,y)     ((x)<(y)?(x):(y))
 #define JS_MAX(x,y)     ((x)>(y)?(x):(y))
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 # include "jscpucfg.h"  /* We can't auto-detect MSVC configuration */
 #else
 # include "jsautocfg.h" /* Use auto-detected configuration */

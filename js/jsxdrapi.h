@@ -64,8 +64,6 @@
 #include "jspubtd.h"
 #include "jsprvtd.h"
 
-#include "jscpucfg.h"
-
 JS_BEGIN_EXTERN_C
 
 /* We use little-endian byteorder for all encoded data */
