@@ -851,8 +851,9 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
   case TOK_NUMBER:
     /*
     A 64-bit IEEE 754 floating point number has a 52-bit fraction.
-    2^(-52) = 2.22 x 10^(-16)
-    Thus there are 16 significant digits.
+    (This represents 53 bits of precision - the first bit is not stored.)
+    17 decimal digits are required to recover the floating-point number.
+    See http://docs.sun.com/source/806-3568/ncg_goldberg.html
     To keep the output simple, special-case zero.
     */
     if (node->pn_dval == 0.0) {
@@ -873,7 +874,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       Stream_write_string(f, "Number.NaN");
     }
     else {
-      Stream_printf(f, "%.15g", node->pn_dval);
+      Stream_printf(f, "%.17g", node->pn_dval);
     }
     break;
   case TOK_PRIMARY:

@@ -58,7 +58,7 @@ _$jscoverage['javascript-let.js'][15]++;
 if (x > y) {
   {
     _$jscoverage['javascript-let.js'][16]++;
-    let gamma = 12.7 + y;
+    let gamma = 12.699999999999999 + y;
     _$jscoverage['javascript-let.js'][17]++;
     i = gamma * x;
   }
