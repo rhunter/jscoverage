@@ -1240,6 +1240,13 @@ int main(int argc, char ** argv) {
     fatal_command_line("--port: option must be 16 bits");
   }
 
+  /* check the document root exists and is a directory */
+  struct stat buf;
+  xstat(document_root, &buf);
+  if (! S_ISDIR(buf.st_mode)) {
+    fatal_command_line("--document-root: option must be a directory");
+  }
+
   /* is this a shutdown? */
   if (shutdown) {
 #ifdef __MINGW32__

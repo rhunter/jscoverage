@@ -28,6 +28,16 @@ test -s ERR
 test ! -s OUT
 test -s ERR
 
+! jscoverage-server --document-root DOES-NOT-EXIST > OUT 2> ERR
+test ! -s OUT
+test -s ERR
+
+touch IS-NOT-DIR
+! jscoverage-server --document-root IS-NOT-DIR > OUT 2> ERR
+test ! -s OUT
+test -s ERR
+rm -f IS-NOT-DIR
+
 ! jscoverage-server --ip-address > OUT 2> ERR
 test ! -s OUT
 test -s ERR
