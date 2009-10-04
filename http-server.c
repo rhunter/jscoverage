@@ -149,8 +149,11 @@ void HTTPServer_run(const char * ip_address, uint16_t port, HTTPServerHandler ha
   }
 
   /* http://hea-www.harvard.edu/~fine/Tech/addrinuse.html */
+  /* note that SO_REUSEADDR has different semantics on Windows */
+#ifndef __MINGW32__
   int optval = 1;
   setsockopt(server->s, SOL_SOCKET, SO_REUSEADDR, (const char *) &optval, sizeof(optval));
+#endif
 
   struct sockaddr_in a;
   a.sin_family = AF_INET;
