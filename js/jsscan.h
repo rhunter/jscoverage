@@ -331,7 +331,7 @@ struct JSTokenStream {
 };
 
 #define CURRENT_TOKEN(ts)       ((ts)->tokens[(ts)->cursor])
-#define ON_CURRENT_LINE(ts,pos) ((uint16)(ts)->lineno == (pos).end.lineno)
+#define ON_CURRENT_LINE(ts,pos) ((uint32)(ts)->lineno == (pos).end.lineno)
 
 /* JSTokenStream flags */
 #define TSF_ERROR       0x01            /* fatal error while compiling */
