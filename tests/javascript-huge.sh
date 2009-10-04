@@ -27,7 +27,7 @@ rm -fr DIR DIR2
 # huge JavaScript file
 mkdir -p DIR
 perl -e 'for (1 .. 65536) {print "x = $_\n";}' > DIR/big.js
-$VALGRIND jscoverage --no-highlight DIR DIR2 > OUT 2> ERR
+$VALGRIND jscoverage DIR DIR2 > OUT 2> ERR
 test ! -s OUT
 test ! -s ERR
 grep -q -F "_\$jscoverage['big.js'][65536] = 0;" DIR2/big.js
