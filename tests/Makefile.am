@@ -83,6 +83,7 @@ TESTS = encodings.sh \
         invalid-option.sh \
         instrumented-source-directory.sh \
         javascript.sh \
+        javascript-huge.sh \
         javascript-ignore.sh \
         javascript-utf-8.sh \
         mozilla.sh \
