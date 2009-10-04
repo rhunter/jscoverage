@@ -53,8 +53,8 @@
 struct IfDirective {
   const jschar * condition_start;
   const jschar * condition_end;
-  uint16_t start_line;
-  uint16_t end_line;
+  uint32_t start_line;
+  uint32_t end_line;
   struct IfDirective * next;
 };
 
@@ -73,7 +73,7 @@ The lines array stores line numbers starting from 0.
 */
 static const char * file_id = NULL;
 static char * lines = NULL;
-static uint16_t num_lines = 0;
+static uint32_t num_lines = 0;
 
 void jscoverage_set_js_version(const char * version) {
   js_version = JS_StringToVersion(version);
@@ -653,7 +653,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       output_expression(node->pn_kid, f, false);
       break;
     default:
-      fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%d)", node->pn_op);
+      fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%ld)", node->pn_op);
       break;
     }
     break;
@@ -793,7 +793,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p->pn_type != TOK_COLON) {
-        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%d)", p->pn_type);
+        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%ld)", p->pn_type);
       }
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
@@ -956,7 +956,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     instrument_declarations(node, f);
     break;
   default:
-    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%ld)", node->pn_type);
   }
 }
 
@@ -983,7 +983,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
   {
     assert(node->pn_arity == PN_TERNARY);
 
-    uint16_t line = node->pn_pos.begin.lineno;
+    uint32_t line = node->pn_pos.begin.lineno;
     if (! is_jscoverage_if) {
       if (line > num_lines) {
         fatal("file %s contains more than 65,535 lines", file_id);
@@ -998,8 +998,8 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     output_expression(node->pn_kid1, f, false);
     Stream_write_string(f, ") {\n");
     if (is_jscoverage_if && node->pn_kid3) {
-      uint16_t else_start = node->pn_kid3->pn_pos.begin.lineno;
-      uint16_t else_end = node->pn_kid3->pn_pos.end.lineno + 1;
+      uint32_t else_start = node->pn_kid3->pn_pos.begin.lineno;
+      uint32_t else_end = node->pn_kid3->pn_pos.end.lineno + 1;
       Stream_printf(f, "%*s", indent + 2, "");
       Stream_printf(f, "_$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, else_start, else_end);
     }
@@ -1012,8 +1012,8 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       Stream_write_string(f, "else {\n");
 
       if (is_jscoverage_if) {
-        uint16_t if_start = node->pn_kid2->pn_pos.begin.lineno + 1;
-        uint16_t if_end = node->pn_kid2->pn_pos.end.lineno + 1;
+        uint32_t if_start = node->pn_kid2->pn_pos.begin.lineno + 1;
+        uint32_t if_end = node->pn_kid2->pn_pos.end.lineno + 1;
         Stream_printf(f, "%*s", indent + 2, "");
         Stream_printf(f, "_$jscoverage['%s'].conditionals[%d] = %d;\n", file_id, if_start, if_end);
       }
@@ -1304,7 +1304,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     // FIXME
     break;
   default:
-    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%d)", node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%ld)", node->pn_type);
   }
 }
 
@@ -1315,7 +1315,7 @@ TOK_EXPORT, TOK_IMPORT are not handled.
 */
 static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if) {
   if (node->pn_type != TOK_LC && node->pn_type != TOK_LEXICALSCOPE) {
-    uint16_t line = node->pn_pos.begin.lineno;
+    uint32_t line = node->pn_pos.begin.lineno;
     if (line > num_lines) {
       fatal("file %s contains more than 65,535 lines", file_id);
     }
@@ -1400,7 +1400,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   size_t line_number = 0;
   size_t i = 0;
   while (i < num_characters) {
-    if (line_number == UINT16_MAX) {
+    if (line_number == UINT32_MAX) {
       fatal("file %s contains more than 65,535 lines", file_id);
     }
     line_number++;
@@ -1488,7 +1488,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   }
   Stream_printf(output, "if (! _$jscoverage['%s']) {\n", file_id);
   Stream_printf(output, "  _$jscoverage['%s'] = [];\n", file_id);
-  for (int i = 0; i < num_lines; i++) {
+  for (uint32_t i = 0; i < num_lines; i++) {
     if (lines[i]) {
       Stream_printf(output, "  _$jscoverage['%s'][%d] = 0;\n", file_id, i + 1);
     }

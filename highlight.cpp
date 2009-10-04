@@ -30,8 +30,8 @@
 
 #include "util.h"
 
-#ifndef UINT16_MAX
-#define UINT16_MAX 65535
+#ifndef UINT32_MAX
+#define UINT32_MAX ((uint32_t) (-1))
 #endif
 
 enum Class {
@@ -90,8 +90,8 @@ static const jschar * g_characters;
 static size_t g_num_characters;
 static Stream * g_output;
 static size_t character_offset;
-static uint16_t line_num;
-static uint16_t column_num;
+static uint32_t line_num;
+static uint32_t column_num;
 static enum Class current_class;
 
 static void output_character(jschar c, enum Class class_) {
@@ -113,7 +113,7 @@ static void output_character(jschar c, enum Class class_) {
     }
   }
 
-  if (column_num == UINT16_MAX) {
+  if (column_num == UINT32_MAX) {
     fatal("%s: script contains a line with more than 65,535 columns", g_id);
   }
   column_num++;
@@ -139,7 +139,7 @@ static void output_character(jschar c, enum Class class_) {
     }
     Stream_write_char(g_output, '\n');
     column_num = 0;
-    if (line_num == UINT16_MAX) {
+    if (line_num == UINT32_MAX) {
       fatal("%s: script contains more than 65,535 lines", g_id);
     }
     line_num++;
@@ -156,7 +156,7 @@ static void output_character(jschar c, enum Class class_) {
   character_offset++;
 }
 
-static void mark_nontoken_chars(uint16_t end_line, uint16_t end_column) {
+static void mark_nontoken_chars(uint32_t end_line, uint32_t end_column) {
   enum State {
     STATE_NORMAL,
     STATE_LINE_COMMENT,
@@ -440,10 +440,10 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     }
 
-    uint16_t start_line = t.pos.begin.lineno;
-    uint16_t end_line = t.pos.end.lineno;
-    uint16_t start_column = t.pos.begin.index;
-    uint16_t end_column = t.pos.end.index;
+    uint32_t start_line = t.pos.begin.lineno;
+    uint32_t end_line = t.pos.end.lineno;
+    uint32_t start_column = t.pos.begin.index;
+    uint32_t end_column = t.pos.end.index;
     assert(line_num == start_line);
     assert(column_num == start_column);
     if (start_line == end_line && start_column >= end_column) {
