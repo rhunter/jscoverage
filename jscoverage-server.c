@@ -398,12 +398,12 @@ static bool is_javascript(HTTPExchange * exchange) {
   }
 }
 
-static bool should_instrument_request(HTTPExchange * exchange) {
+static bool should_instrument_request(HTTPExchange * exchange, const char * uri) {
   if (! is_javascript(exchange)) {
     return false;
   }
 
-  if (is_no_instrument(HTTPExchange_get_request_uri(exchange))) {
+  if (is_no_instrument(uri)) {
     return false;
   }
 
@@ -865,7 +865,7 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
 
   HTTPExchange_set_status_code(client_exchange, HTTPExchange_get_status_code(server_exchange));
 
-  if (HTTPExchange_response_has_body(server_exchange) && should_instrument_request(server_exchange)) {
+  if (HTTPExchange_response_has_body(server_exchange) && should_instrument_request(server_exchange, HTTPExchange_get_request_uri(client_exchange))) {
     /* needs instrumentation */
     Stream * input_stream = Stream_new(0);
     if (HTTPExchange_read_entire_response_entity_body(server_exchange, input_stream) != 0) {
