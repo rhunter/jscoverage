@@ -156,7 +156,7 @@ int main(void) {
                 "X-Bar: foo\r\n"
                 "\r\n";
     }
-    else if (strcmp(url, "http://127.0.0.1:8000/overflow") == 0) {
+    else if (strcmp(url, "http://127.0.0.1:8000/overflow") == 0 || strcmp(url, "/overflow") == 0) {
       message = "HTTP/1.1 200 OK\r\n"
                 "Connection: close\r\n"
                 "Content-type: text/html\r\n"
@@ -169,7 +169,7 @@ int main(void) {
                 "0\r\n"
                 "\r\n";
     }
-    else if (strcmp(url, "http://127.0.0.1:8000/multiple") == 0) {
+    else if (strcmp(url, "http://127.0.0.1:8000/multiple") == 0 || strcmp(url, "/multiple") == 0) {
       message = "HTTP/1.1 200 OK\r\n"
                 "Connection: close\r\n"
                 "Content-type: text/html\r\n"
