@@ -947,7 +947,12 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     break;
   case TOK_VAR:
     assert(node->pn_arity == PN_LIST);
-    Stream_write_string(f, "var ");
+    if (node->pn_op == JSOP_DEFCONST) {
+      Stream_write_string(f, "const ");
+    }
+    else {
+      Stream_write_string(f, "var ");
+    }
     instrument_declarations(node, f);
     break;
   case TOK_LET:
