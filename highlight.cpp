@@ -294,7 +294,8 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
         token_stream.flags |= TSF_OPERAND;
         break;
       default:
-        abort();
+        fatal_source(id, t.pos.begin.lineno, "unknown TOK_UNARYOP (%d)", t.t_op);
+        break;
       }
       break;
     case TOK_INC:
@@ -357,7 +358,8 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
         token_stream.flags &= ~TSF_OPERAND;
         break;
       default:
-        abort();
+        fatal_source(id, t.pos.begin.lineno, "unknown TOK_PRIMARY (%d)", t.t_op);
+        break;
       }
       break;
     case TOK_FUNCTION:
@@ -385,7 +387,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
       break;
     case TOK_DEFSHARP:
     case TOK_USESHARP:
-      abort();
+      fatal_source(id, t.pos.begin.lineno, "unknown token (%d)", tt);
       break;
     case TOK_TRY:
     case TOK_CATCH:
@@ -414,7 +416,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_FILTER:
     case TOK_XMLELEM:
     case TOK_XMLLIST:
-      abort();
+      fatal_source(id, t.pos.begin.lineno, "unknown token (%d)", tt);
       break;
     case TOK_YIELD:
       token_stream.flags |= TSF_OPERAND;
@@ -423,7 +425,7 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_ARRAYCOMP:
     case TOK_ARRAYPUSH:
     case TOK_LEXICALSCOPE:
-      abort();
+      fatal_source(id, t.pos.begin.lineno, "unknown token (%d)", tt);
       break;
     case TOK_LET:
       token_stream.flags |= TSF_OPERAND;
@@ -433,10 +435,10 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     case TOK_FORHEAD:
     case TOK_RESERVED:
     case TOK_LIMIT:
-      abort();
+      fatal_source(id, t.pos.begin.lineno, "unknown token (%d)", tt);
       break;
     default:
-      abort();
+      fatal_source(id, t.pos.begin.lineno, "unknown token (%d)", tt);
       break;
     }
 
