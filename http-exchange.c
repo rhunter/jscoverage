@@ -164,6 +164,10 @@ const char * HTTPExchange_get_abs_path(const HTTPExchange * exchange) {
   return exchange->abs_path;
 }
 
+const char * HTTPExchange_get_query(const HTTPExchange * exchange) {
+  return exchange->query;
+}
+
 void HTTPExchange_set_method(HTTPExchange * exchange, const char * method) {
   free(exchange->method);
   exchange->method = xstrdup(method);

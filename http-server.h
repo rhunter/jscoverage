@@ -156,6 +156,7 @@ const char * HTTPExchange_get_request_http_version(const HTTPExchange * exchange
 const char * HTTPExchange_get_host(const HTTPExchange * exchange);
 uint16_t HTTPExchange_get_port(const HTTPExchange * exchange);
 const char * HTTPExchange_get_abs_path(const HTTPExchange * exchange);
+const char * HTTPExchange_get_query(const HTTPExchange * exchange);
 void HTTPExchange_set_method(HTTPExchange * exchange, const char * method);
 void HTTPExchange_set_request_uri(HTTPExchange * exchange, const char * request_uri);
 

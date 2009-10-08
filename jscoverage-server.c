@@ -801,8 +801,28 @@ static void handle_proxy_request(HTTPExchange * client_exchange) {
 
   /* create a new exchange */
   server_exchange = HTTPExchange_new(server_connection);
+
   HTTPExchange_set_method(server_exchange, HTTPExchange_get_method(client_exchange));
-  HTTPExchange_set_request_uri(server_exchange, HTTPExchange_get_request_uri(client_exchange));
+
+  /* don't send full URI to origin server - just send abs_path and query */
+  const char * query = HTTPExchange_get_query(client_exchange);
+  char * origin_server_request_uri;
+  if (query == NULL) {
+    origin_server_request_uri = xstrdup(abs_path);
+  }
+  else {
+    size_t abs_path_length = strlen(abs_path);
+    size_t query_length = strlen(query);
+    size_t origin_server_request_uri_length = addst(abs_path_length, query_length);
+    origin_server_request_uri_length = addst(origin_server_request_uri_length, 2);
+    origin_server_request_uri = xmalloc(origin_server_request_uri_length);
+    strcpy(origin_server_request_uri, abs_path);
+    origin_server_request_uri[abs_path_length] = '?';
+    strcpy(origin_server_request_uri + abs_path_length + 1, query);
+  }
+  HTTPExchange_set_request_uri(server_exchange, origin_server_request_uri);
+  free(origin_server_request_uri);
+
   for (const HTTPHeader * h = HTTPExchange_get_request_headers(client_exchange); h != NULL; h = h->next) {
     if (strcasecmp(h->name, HTTP_TRAILER) == 0 || strcasecmp(h->name, HTTP_TRANSFER_ENCODING) == 0) {
       /* do nothing: we want to keep this header */
