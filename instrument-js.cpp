@@ -508,7 +508,24 @@ static void instrument_function_call(JSParseNode * node, Stream * f) {
       return;
     }
   }
-  output_expression(function_node, f, false);
+
+  // put parentheses around anything that isn't a name or dot
+  switch (function_node->pn_type) {
+  case TOK_NAME:
+  case TOK_DOT:
+
+  // FIXME: TOK_FUNCTION is here because parentheses are already added in output_expression
+  case TOK_FUNCTION:
+
+    output_expression(function_node, f, false);
+    break;
+  default:
+    Stream_write_char(f, '(');
+    output_expression(function_node, f, false);
+    Stream_write_char(f, ')');
+    break;
+  }
+
   output_function_arguments(node, f);
 }
 

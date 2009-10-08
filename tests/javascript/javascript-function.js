@@ -56,3 +56,6 @@ x = function k() {
 (function o() {
   print('x');
 }).call(window);
+
+// unusual call
+(b - a)();
