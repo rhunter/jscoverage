@@ -44,6 +44,7 @@ if (! window.jscoverage_report) {
     var json = [];
     for (var file in top._$jscoverage) {
       var coverage = top._$jscoverage[file];
+
       var array = [];
       var length = coverage.length;
       for (var line = 0; line < length; line++) {
@@ -53,7 +54,15 @@ if (! window.jscoverage_report) {
         }
         array.push(value);
       }
-      json.push(quote(file) + ':[' + array.join(',') + ']');
+
+      var source = coverage.source;
+      var lines = [];
+      length = source.length;
+      for (var line = 0; line < length; line++) {
+        lines.push(quote(source[line]));
+      }
+
+      json.push(quote(file) + ':{"coverage":[' + array.join(',') + '],"source":[' + lines.join(',') + ']}');
     }
     json = '{' + json.join(',') + '}';
 

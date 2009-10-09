@@ -988,6 +988,7 @@ function jscoverage_serializeCoverageToJSON() {
   var json = [];
   for (var file in _$jscoverage) {
     var coverage = _$jscoverage[file];
+
     var array = [];
     var length = coverage.length;
     for (var line = 0; line < length; line++) {
@@ -997,7 +998,15 @@ function jscoverage_serializeCoverageToJSON() {
       }
       array.push(value);
     }
-    json.push(jscoverage_quote(file) + ':[' + array.join(',') + ']');
+
+    var source = coverage.source;
+    var lines = [];
+    length = source.length;
+    for (var line = 0; line < length; line++) {
+      lines.push(jscoverage_quote(source[line]));
+    }
+
+    json.push(jscoverage_quote(file) + ':{"coverage":[' + array.join(',') + '],"source":[' + lines.join(',') + ']}');
   }
   return '{' + json.join(',') + '}';
 }
