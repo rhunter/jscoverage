@@ -19,7 +19,7 @@
         JSCoverage 0.5 is available for <a href="http://siliconforks.com/jscoverage/download.html">download</a>.
         </p>
         <p>
-        This release contains an assortment of new features and bug fixes:
+        This release contains a number of new features and bug fixes:
         </p>
         <ul class="list">
         <li>
@@ -37,9 +37,48 @@
         Liu Cougar).
         </li>
         <li>
-        Fixed a bug which resulted in an empty "Source" tab when code being
-        tested threw an uncaught exception
-        (<a href="http://siliconforks.com/jscoverage/bugs/5">bug #5</a>).
+        The "Source" tab is no longer empty when code being tested throws an
+        uncaught exception
+        (fixing <a href="http://siliconforks.com/jscoverage/bugs/5">bug #5</a>)
+        </li>
+        <li>
+        Previously, certain uses of the <code>new</code> operator were
+        instrumented incorrectly; this has now been fixed
+        (thanks to Guillaume Lung).
+        </li>
+        <li>
+        The <code>jscoverage-server</code> program now allows more characters in
+        URLs (thanks to Guillaume Lung).
+        </li>
+        <li>
+        The <code>jscoverage-server</code> program now handles HTTP headers with
+        empty values (thanks to Velo).
+        </li>
+        <li>
+        The <code>jscoverage</code> program now refuses to instrument code which
+        has already been instrumented (thanks to Velo).
+        </li>
+        <li>
+        URLs containing spaces now work correctly (thanks to Igor Papkov).
+        </li>
+        <li>
+        Previously, on Windows, the <code>jscoverage</code> program
+        was unable to instrument a directory in a drive root; this has now been
+        fixed.
+        </li>
+        <li>
+        A limitation of 65,535 lines per file and 65,535 characters per line has
+        been removed.
+        </li>
+        <li>
+        Floating-point numbers are how handled with improved precision.
+        </li>
+        <li>
+        The <code>jscoverage-server</code> program can no longer bind to the same port multiple times on Windows.
+        </li>
+        <li>
+        Some bugs in <code>jscoverage-server</code>'s handling of the "chunked"
+        Transfer-Encoding have been fixed.
         </li>
         </ul>
 
