@@ -48,11 +48,11 @@ origin_server_pid=$!
 
 sleep $delay
 
-echo 'hello world' > EXPECTED
+echo 'abcdefghijklmnopqrstuvwxyz' > EXPECTED
 curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/lower > ACTUAL
 diff EXPECTED ACTUAL
 
-echo 'HELLO WORLD' > EXPECTED
+echo 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' > EXPECTED
 curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/upper > ACTUAL
 diff EXPECTED ACTUAL
 

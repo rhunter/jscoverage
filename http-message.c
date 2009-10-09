@@ -813,7 +813,8 @@ static int read_chunked_entity_body(HTTPMessage * message, void * p, size_t capa
   }
 
   uint8_t * s = p;
-  for (*bytes_read = 0; *bytes_read < capacity; (*bytes_read)++) {
+  *bytes_read = 0;
+  while (*bytes_read < capacity) {
     if (message->bytes_remaining == 0) {
       result = read_chunk_size_line(message);
       if (result != 0) {
@@ -842,7 +843,30 @@ static int read_chunked_entity_body(HTTPMessage * message, void * p, size_t capa
       break;
     }
     s[*bytes_read] = (uint8_t) c;
+    ++(*bytes_read);
     message->bytes_remaining--;
+
+    if (message->bytes_remaining == 0) {
+      // read CRLF terminating chunk
+      result = HTTPConnection_read_octet(message->connection, &c);
+      if (result != 0) {
+        break;
+      }
+      if (c != '\r') {
+        result = -1;
+        message->chunked_body_state = CHUNKED_BODY_DONE;
+        break;
+      }
+      result = HTTPConnection_read_octet(message->connection, &c);
+      if (result != 0) {
+        break;
+      }
+      if (c != '\n') {
+        result = -1;
+        message->chunked_body_state = CHUNKED_BODY_DONE;
+        break;
+      }
+    }
   }
 
   return result;
