@@ -194,8 +194,7 @@ each line of code was executed.
 
 <p>
 The "Browser" tab contains an <code>&lt;iframe&gt;</code>, which is initially empty.
-You can load a page into this frame by
-entering its URL into the "URL" input field.
+You can load a URL into this frame by entering it into the "URL" input field and clicking the "Open in frame" button.
 You can load any page located in <code><var>DESTINATION-DIRECTORY</var>/</code>
 or a subdirectory underneath <code><var>DESTINATION-DIRECTORY</var>/</code>; loading a page
 from outside <code><var>DESTINATION-DIRECTORY</var>/</code>, or from a foreign web
@@ -254,14 +253,30 @@ the coverage report will combine the statistics from the previous report with an
 Reloading <code>jscoverage.html</code> resets all code coverage statistics to zero.
 </p>
 
+<h2>Window mode</h2>
+
+<p>
+In some situations it may be difficult to execute your code within the <code>&lt;iframe&gt;</code> in the
+JSCoverage "Browser" tab. For example, the code may assume that it is running in
+the top-level browser window, generating errors if it is executed from within a
+frame.  JSCoverage has an alternative mode of operation, called <dfn>window
+mode</dfn>, which may be useful in this case.
+</p>
+
+<p>
+To use JSCoverage in window mode, load your URL by clicking the "Open in window"
+button instead of the "Open in frame" button. This will cause your URL to be
+opened in a new window. (Depending on your browser settings, it may be opened in
+a new browser tab instead.)  Execute your code in this new window, and
+then return to the <code>jscoverage.html</code> window and click the "Summary"
+tab to get code coverage statistics.
+</p>
+
 <h2>Inverted mode</h2>
 
 <p>
-In some situations it may be difficult to execute your code within the
-JSCoverage "Browser" tab. For example, the code may assume that it is running in
-the top-level browser window, generating errors if it is executed from within a
-frame. JSCoverage has an alternative mode of operation, called <dfn>inverted
-mode</dfn>, which may be useful in this case.
+There is another alternative mode of operation, called <dfn>inverted
+mode</dfn>.  Like window mode, this allows you to avoid running your code inside an <code>&lt;iframe&gt;</code>.
 </p>
 
 <p>
@@ -369,14 +384,16 @@ given multiple times.
 When accessing <code>jscoverage.html</code> in a web browser, you may provide a
 query string consisting of options separated by ampersand (<code>&amp;</code>)
 or semicolon (<code>;</code>). Any option not containing an equals sign
-(<code>=</code>) is considered to be a URL which will be loaded in the "Browser"
-tab.
+(<code>=</code>) is considered to be a URL which will be loaded in the
+<code>&lt;iframe&gt;</code> within the "Browser" tab.
 </p>
 
 <dl>
-<dt><code>u=<var>URL</var></code>, <code>url=<var>URL</var></code>
-<dd>Load <var>URL</var> in the "Browser" tab.  (This is the same as specifying
+<dt><code>u=<var>URL</var></code>, <code>url=<var>URL</var></code>, <code>frame=<var>URL</var></code>, <code>f=<var>URL</var></code>
+<dd>Load <var>URL</var> in the <code>&lt;iframe&gt;</code> within the "Browser" tab.  (This is the same as specifying
 an option without an equals sign.)
+<dt><code>w=<var>URL</var></code>, <code>window=<var>URL</var></code>
+<dd>Load <var>URL</var> in a new window (window mode).
 <dt><code>m=<var>BOOLEAN</var></code>, <code>missing=<var>BOOLEAN</var></code>
 <dd>Determines whether to initially display the "Missing" column in the "Summary"
 tab.  <var>BOOLEAN</var> can be 
