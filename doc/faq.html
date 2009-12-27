@@ -135,6 +135,19 @@ http://127.0.0.1/jsunit/testRunner.html?testPage=http://127.0.0.1/test.html&amp;
       to get a coverage report.
       </p>
 
+      <h3 id="ie-proxy">Does Internet Explorer work with <code>jscoverage-server --proxy</code>?</h3>
+
+      <p>
+      Internet Explorer <a href="http://www.fiddler2.com/fiddler/help/hookup.asp#Q-LocalTraffic">does
+      not use a proxy for URLs with host <code>127.0.0.1</code> or
+      <code>localhost</code></a>.
+      The proxy <em>will</em> be used if you use your machine's actual IP
+      address or host name.
+      For example, if your IP address is <code>192.168.100.100</code>, you can
+      access a URL like <code>http://192.168.100.100/jscoverage.html</code> in
+      Internet Explorer and it will work.
+      (Under Windows, you can get your machine's IP address with the <code>ipconfig</code> command.)
+      </p>
       </div>
     </div> 
     <div id="jscoverage-sidebar" class="yui-b">
