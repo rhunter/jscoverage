@@ -234,6 +234,7 @@ tab.
 */
 function jscoverage_initTabContents(queryString) {
   var showMissingColumn = false;
+  var windowURL = null;
   var parameters, parameter, i, index, url, name, value;
   if (queryString.length > 0) {
     // chop off the question mark
@@ -252,8 +253,11 @@ function jscoverage_initTabContents(queryString) {
         if (name === 'missing' || name === 'm') {
           showMissingColumn = jscoverage_getBooleanValue(value);
         }
-        else if (name === 'url' || name === 'u') {
+        else if (name === 'url' || name === 'u' || name === 'frame' || name === 'f') {
           url = value;
+        }
+        else if (name === 'window' || name === 'w') {
+          windowURL = value;
         }
       }
     }
@@ -268,6 +272,9 @@ function jscoverage_initTabContents(queryString) {
   // this will automatically propagate to the input field
   if (url) {
     frames[0].location = url;
+  }
+  else if (windowURL !== null) {
+    window.open(windowURL);
   }
 
   // if the browser tab is absent, we have to initialize the summary tab
@@ -358,14 +365,29 @@ function jscoverage_updateBrowser() {
   frames[0].location = input.value;
 }
 
+function jscoverage_openWindow() {
+  var input = document.getElementById("location");
+  var url = input.value;
+  window.open(url);
+}
+
 function jscoverage_input_keypress(e) {
   if (e.keyCode === 13) {
-    jscoverage_updateBrowser();
+    if (e.shiftKey) {
+      jscoverage_openWindow();
+    }
+    else {
+      jscoverage_updateBrowser();
+    }
   }
 }
 
-function jscoverage_button_click() {
+function jscoverage_openInFrameButton_click() {
   jscoverage_updateBrowser();
+}
+
+function jscoverage_openInWindowButton_click() {
+  jscoverage_openWindow();
 }
 
 function jscoverage_browser_load() {

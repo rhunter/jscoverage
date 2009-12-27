@@ -1501,8 +1501,29 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
     Stream_write_string(output, "}\n");
     break;
   case JSCOVERAGE_NORMAL:
-    Stream_write_string(output, "if (! top._$jscoverage) {\n  top._$jscoverage = {};\n}\n");
-    Stream_write_string(output, "var _$jscoverage = top._$jscoverage;\n");
+    /*
+    // pseudo-code:
+    if (top && top.opener && top.opener._$jscoverage) {
+      var _$jscoverage = top._$jscoverage = top.opener._$jscoverage;
+    }
+    else if (top && top.opener) {
+      var _$jscoverage = top._$jscoverage = top.opener._$jscoverage = {};
+    }
+    else if (top && top._$jscoverage) {
+      var _$jscoverage = top._$jscoverage;
+    }
+    else if (top) {
+      var _$jscoverage = top._$jscoverage = {};
+    }
+    else if (_$jscoverage) {
+      // nothing to do!
+    }
+    else {
+      var _$jscoverage = {};
+    }
+    */
+    const struct Resource * resource = get_resource("header.js");
+    Stream_write(output, resource->data, resource->length);
     break;
   case JSCOVERAGE_NO_BROWSER:
     Stream_write_string(output, "if (typeof _$jscoverage === 'undefined') {\n  var _$jscoverage = {};\n}\n");

@@ -26,7 +26,7 @@ resources = jscoverage-help.txt jscoverage-server-help.txt \
             jscoverage.jsm jscoverage.manifest jscoverage.xul jscoverage-overlay.js \
             jscoverage.html \
             jscoverage.css jscoverage-ie.css jscoverage-highlight.css \
-            jscoverage.js report.js \
+            jscoverage.js header.js report.js \
             jscoverage-throbber.gif
 
 bin_PROGRAMS = jscoverage jscoverage-server
