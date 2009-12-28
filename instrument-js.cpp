@@ -1522,8 +1522,10 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
       var _$jscoverage = {};
     }
     */
-    const struct Resource * resource = get_resource("header.js");
-    Stream_write(output, resource->data, resource->length);
+    {
+      const struct Resource * resource = get_resource("header.js");
+      Stream_write(output, resource->data, resource->length);
+    }
     break;
   case JSCOVERAGE_NO_BROWSER:
     Stream_write_string(output, "if (typeof _$jscoverage === 'undefined') {\n  var _$jscoverage = {};\n}\n");
