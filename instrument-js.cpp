@@ -1492,7 +1492,7 @@ void jscoverage_instrument_js(const char * id, const uint16_t * characters, size
   switch (jscoverage_mode) {
   case JSCOVERAGE_MOZILLA:
     Stream_write_string(output, "try {\n");
-    Stream_write_string(output, "  Components.utils.import('resource://gre/modules/jscoverage.jsm');\n");
+    Stream_write_string(output, "  Components.utils.import('resource://app/modules/jscoverage.jsm');\n");
     Stream_printf(output, "  dump('%s: successfully imported jscoverage module\\n');\n", id);
     Stream_write_string(output, "}\n");
     Stream_write_string(output, "catch (e) {\n");

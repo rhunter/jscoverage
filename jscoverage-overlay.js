@@ -17,7 +17,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-Components.utils.import('resource://gre/modules/jscoverage.jsm');
+Components.utils.import('resource://app/modules/jscoverage.jsm');
 
 // https://developer.mozilla.org/en/Code_snippets/Tabbed_browser
 function openAndReuseOneTabPerURL(url) {
