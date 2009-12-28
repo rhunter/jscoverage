@@ -43,3 +43,15 @@ img.icon {
   vertical-align: middle;
   border-width: 0px;
 }
+
+div.warning {
+  margin-left: 3%;
+  margin-right: 3%;
+  padding: 1em;
+  border: 1px dotted red;
+}
+
+div.warning h4 {
+  margin-top: 0;
+  color: red;
+}

@@ -509,6 +509,8 @@ the <code>Content-Type</code> HTTP header.
 <dd>Use the specified JavaScript version; valid values for <var>VERSION</var>
 are <code>1.0</code>, <code>1.1</code>, <code>1.2</code>, ..., <code>1.8</code>,
 or <code>ECMAv3</code> (the default).
+<dt><code>--mozilla</code>
+<dd>Specify that the source directory contains an application based on the Mozilla platform (see <a href="#mozilla">below</a>).
 <dt><code>--no-highlight</code>
 <dd>Do not perform syntax highlighting of JavaScript code.
 <dt><code>--no-instrument=<var>URL</var></code>
@@ -698,6 +700,58 @@ function log(s) {
 
 <p>
 Currently, <code>//#JSCOVERAGE_IF</code> comments are not recorded in stored coverage reports.
+</p>
+
+<h3 id="mozilla">Code coverage for Mozilla platform applications</h3>
+
+<p>
+JSCoverage can be used to generate code coverage data for applications based on
+the Mozilla platform.
+</p>
+
+<div class="warning">
+  <h4>Warning</h4>
+  The functionality described here is highly experimental.  It may change in future versions.
+</div>
+
+<p>
+A simple example program is included in the <code>doc/example-mozilla/</code>
+directory.
+You can instrument and run this program as follows:
+</p>
+
+<pre>
+jscoverage --mozilla --no-instrument=defaults doc/example-mozilla doc/example-mozilla-instrumented
+xulrunner doc/example-mozilla-instrumented/application.ini -console
+</pre>
+
+<p>
+Note that the <code>--mozilla</code> option is used to specify that the program
+is based on the Mozilla platform.
+Also, the code in the <code>defaults/</code> directory is skipped because the
+<code>.js</code> files in this directory are preferences files (and are
+different from ordinary JavaScript files).
+XULRunner is used to run the instrumented application:
+</p>
+
+<p>
+<img src="mozilla-before-click.png" alt="Screenshot">
+</p>
+
+<p>
+The JavaScript code in the application is executed by selecting a radio button:
+</p>
+
+<p>
+<img src="mozilla-after-click.png" alt="Screenshot">
+</p>
+
+<p>
+When the application is exited, a coverage report is stored in a subdirectory of
+the application's directory named <code>jscoverage-report/</code>.
+You can view the report in a web browser by opening the
+<code>jscoverage.html</code> file in this directory (i.e.,
+<code>doc/example-mozilla-instrumented/jscoverage-report/jscoverage.html</code>).
 </p>
 
 <h2>Caveats</h2>
