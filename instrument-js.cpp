@@ -670,7 +670,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       output_expression(node->pn_kid, f, false);
       break;
     default:
-      fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%ld)", node->pn_op);
+      fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%u)", (unsigned int) node->pn_op);
       break;
     }
     break;
@@ -810,7 +810,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     Stream_write_char(f, '{');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p->pn_type != TOK_COLON) {
-        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%ld)", p->pn_type);
+        fatal_source(file_id, p->pn_pos.begin.lineno, "unsupported node type (%u)", (unsigned int) p->pn_type);
       }
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
@@ -978,7 +978,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     instrument_declarations(node, f);
     break;
   default:
-    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%ld)", node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%u)", (unsigned int) node->pn_type);
   }
 }
 
@@ -1326,7 +1326,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     // FIXME
     break;
   default:
-    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%ld)", node->pn_type);
+    fatal_source(file_id, node->pn_pos.begin.lineno, "unsupported node type (%u)", (unsigned int) node->pn_type);
   }
 }
 
