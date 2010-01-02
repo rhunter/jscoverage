@@ -1,6 +1,6 @@
 /*
     util.c - general purpose utility routines
-    Copyright (C) 2007, 2008, 2009 siliconforks.com
+    Copyright (C) 2007, 2008, 2009, 2010 siliconforks.com
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ void version(void) {
 #else
   printf("none\n");
 #endif
-  printf("Copyright (C) 2009 siliconforks.com\n");
+  printf("Copyright (C) 2010 siliconforks.com\n");
   printf("License GPLv2+: GNU GPL version 2 or later <http://siliconforks.com/jscoverage/license.html>\n");
   printf("This is free software: you are free to change and redistribute it.\n");
   printf("There is NO WARRANTY, to the extent permitted by law.\n");
