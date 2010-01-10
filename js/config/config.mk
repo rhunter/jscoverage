@@ -73,6 +73,8 @@ CHECK_VARS := \
  SHORT_LIBNAME \
  XPI_PKGNAME \
  INSTALL_EXTENSION_ID \
+ SHARED_LIBRARY_NAME \
+ STATIC_LIBRARY_NAME \
  $(NULL)
 
 # checks for internal spaces or trailing spaces in the variable
@@ -80,6 +82,8 @@ CHECK_VARS := \
 check-variable = $(if $(filter-out 0 1,$(words $($(x))z)),$(error Spaces are not allowed in $(x)))
 
 $(foreach x,$(CHECK_VARS),$(check-variable))
+
+core_abspath = $(if $(findstring :,$(1)),$(1),$(if $(filter /%,$(1)),$(1),$(CURDIR)/$(1)))
 
 # FINAL_TARGET specifies the location into which we copy end-user-shipped
 # build products (typelibs, components, chrome).
@@ -98,12 +102,7 @@ else
 MAKE_JARS_TARGET = $(FINAL_TARGET)
 endif
 
-#
 # The VERSION_NUMBER is suffixed onto the end of the DLLs we ship.
-# Since the longest of these is 5 characters without the suffix,
-# be sure to not set VERSION_NUMBER to anything longer than 3 
-# characters for Win16's sake.
-#
 VERSION_NUMBER		= 50
 
 ifeq ($(HOST_OS_ARCH),WINNT)
@@ -154,7 +153,7 @@ MOZ_UNICHARUTIL_LIBS = $(LIBXUL_DIST)/lib/$(LIB_PREFIX)unicharutil_s.$(LIB_SUFFI
 MOZ_WIDGET_SUPPORT_LIBS    = $(DIST)/lib/$(LIB_PREFIX)widgetsupport_s.$(LIB_SUFFIX)
 
 ifdef MOZ_MEMORY
-ifneq ($(OS_ARCH),WINNT)
+ifneq (,$(filter-out WINNT WINCE,$(OS_ARCH)))
 JEMALLOC_LIBS = $(MKSHLIB_FORCE_ALL) $(call EXPAND_LIBNAME_PATH,jemalloc,$(DIST)/lib) $(MKSHLIB_UNFORCE_ALL)
 endif
 endif
@@ -241,7 +240,7 @@ OS_CFLAGS += $(_DEBUG_CFLAGS)
 OS_CXXFLAGS += $(_DEBUG_CFLAGS)
 OS_LDFLAGS += $(_DEBUG_LDFLAGS)
 
-# MOZ_PROFILE equivs for win32
+# XXX: What does this? Bug 482434 filed for better explanation.
 ifeq ($(OS_ARCH)_$(GNU_CC),WINNT_)
 ifdef MOZ_DEBUG
 ifneq (,$(MOZ_BROWSE_INFO)$(MOZ_BSCFILE))
@@ -249,6 +248,14 @@ OS_CFLAGS += -FR
 OS_CXXFLAGS += -FR
 endif
 else # ! MOZ_DEBUG
+
+# We don't build a static CRT when building a custom CRT,
+# it appears to be broken. So don't link to jemalloc if
+# the Makefile wants static CRT linking.
+ifeq ($(MOZ_MEMORY)_$(USE_STATIC_LIBS),1_)
+# Disable default CRT libs and add the right lib path for the linker
+OS_LDFLAGS += $(MOZ_MEMORY_LDFLAGS)
+endif
 
 # MOZ_DEBUG_SYMBOLS generates debug symbols in separate PDB files.
 # Used for generating an optimized build with debugging symbols.
@@ -356,6 +363,18 @@ ifeq ($(OS_ARCH)_$(HAVE_GCC3_ABI),Darwin_1)
 DSO_PIC_CFLAGS=-mdynamic-no-pic
 else
 DSO_PIC_CFLAGS=
+endif
+endif
+
+ifndef SHARED_LIBRARY_NAME
+ifdef LIBRARY_NAME
+SHARED_LIBRARY_NAME=$(LIBRARY_NAME)
+endif
+endif
+
+ifndef STATIC_LIBRARY_NAME
+ifdef LIBRARY_NAME
+STATIC_LIBRARY_NAME=$(LIBRARY_NAME)
 endif
 endif
 
@@ -482,18 +501,22 @@ JAVA_GEN_DIR  = _javagen
 JAVA_DIST_DIR = $(DEPTH)/$(JAVA_GEN_DIR)
 JAVA_IFACES_PKG_NAME = org/mozilla/interfaces
 
-REQ_INCLUDES	= -I$(srcdir) -I. $(foreach d,$(REQUIRES),-I$(DIST)/include/$d) -I$(DIST)/include 
-ifdef LIBXUL_SDK
-REQ_INCLUDES_SDK = $(foreach d,$(REQUIRES),-I$(LIBXUL_SDK)/include/$d) -I$(LIBXUL_SDK)/include
-endif
-
-INCLUDES	= $(LOCAL_INCLUDES) $(REQ_INCLUDES) $(REQ_INCLUDES_SDK) -I$(PUBLIC) $(OS_INCLUDES)
-
-ifndef MOZILLA_INTERNAL_API
-INCLUDES	+= -I$(LIBXUL_DIST)/sdk/include
-endif
+INCLUDES = \
+  $(LOCAL_INCLUDES) \
+  -I$(srcdir) \
+  -I. \
+  -I$(DIST)/include -I$(DIST)/include/nsprpub \
+  $(if $(LIBXUL_SDK),-I$(LIBXUL_SDK)/include -I$(LIBXUL_SDK)/include/nsprpub) \
+  $(OS_INCLUDES) \
+  $(NULL) 
 
 include $(topsrcdir)/config/static-checking-config.mk
+
+ifdef MOZ_SHARK
+OS_CFLAGS += -F/System/Library/PrivateFrameworks
+OS_CXXFLAGS += -F/System/Library/PrivateFrameworks
+OS_LDFLAGS += -F/System/Library/PrivateFrameworks -framework CHUD
+endif # ifdef MOZ_SHARK
 
 CFLAGS		= $(OS_CFLAGS)
 CXXFLAGS	= $(OS_CXXFLAGS)
@@ -596,19 +619,12 @@ endif
 
 # Default location of include files
 IDL_DIR		= $(DIST)/idl
-ifdef MODULE
-PUBLIC		= $(DIST)/include/$(MODULE)
-else
-PUBLIC		= $(DIST)/include
-endif
 
 XPIDL_FLAGS = -I$(srcdir) -I$(IDL_DIR)
 ifdef LIBXUL_SDK
 XPIDL_FLAGS += -I$(LIBXUL_SDK)/idl
 endif
 
-SDK_PUBLIC  = $(DIST)/sdk/include
-SDK_IDL_DIR = $(DIST)/sdk/idl
 SDK_LIB_DIR = $(DIST)/sdk/lib
 SDK_BIN_DIR = $(DIST)/sdk/bin
 
@@ -758,21 +774,17 @@ ifeq ($(OS_ARCH),Darwin)
 ifndef NSDISTMODE
 NSDISTMODE=absolute_symlink
 endif
-PWD := $(shell pwd)
+PWD := $(CURDIR)
 endif
 
 ifdef NSINSTALL_BIN
 NSINSTALL	= $(CYGWIN_WRAPPER) $(NSINSTALL_BIN)
 else
-ifeq (WINNT,$(CROSS_COMPILE)$(OS_ARCH))
-NSINSTALL	= $(CYGWIN_WRAPPER) $(MOZ_TOOLS_DIR)/bin/nsinstall
-else
 ifeq (OS2,$(CROSS_COMPILE)$(OS_ARCH))
 NSINSTALL	= $(MOZ_TOOLS_DIR)/nsinstall
 else
-NSINSTALL	= $(CONFIG_TOOLS)/nsinstall
+NSINSTALL	= $(CONFIG_TOOLS)/nsinstall$(HOST_BIN_SUFFIX)
 endif # OS2
-endif # WINNT
 endif # NSINSTALL_BIN
 
 
@@ -796,11 +808,6 @@ INSTALL		= $(NSINSTALL) -R
 endif # absolute_symlink
 endif # copy
 endif # WINNT/OS2
-
-ifeq (,$(filter-out WINCE,$(OS_ARCH)))
-NSINSTALL	= $(CYGWIN_WRAPPER) nsinstall
-INSTALL     = $(CYGWIN_WRAPPER) nsinstall 
-endif
 
 # Use nsinstall in copy mode to install files on the system
 SYSINSTALL	= $(NSINSTALL) -t

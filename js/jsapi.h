@@ -54,35 +54,121 @@ JS_BEGIN_EXTERN_C
 /*
  * Type tags stored in the low bits of a jsval.
  */
-#define JSVAL_OBJECT            0x0     /* untagged reference to object */
-#define JSVAL_INT               0x1     /* tagged 31-bit integer value */
-#define JSVAL_DOUBLE            0x2     /* tagged reference to double */
-#define JSVAL_STRING            0x4     /* tagged reference to string */
-#define JSVAL_BOOLEAN           0x6     /* tagged boolean value */
+typedef enum jsvaltag {
+    JSVAL_OBJECT  =             0x0,     /* untagged reference to object */
+    JSVAL_INT     =             0x1,     /* tagged 31-bit integer value */
+    JSVAL_DOUBLE  =             0x2,     /* tagged reference to double */
+    JSVAL_STRING  =             0x4,     /* tagged reference to string */
+    JSVAL_SPECIAL =             0x6      /* tagged boolean or private value */
+} jsvaltag;
 
 /* Type tag bitfield length and derived macros. */
 #define JSVAL_TAGBITS           3
-#define JSVAL_TAGMASK           JS_BITMASK(JSVAL_TAGBITS)
-#define JSVAL_TAG(v)            ((v) & JSVAL_TAGMASK)
-#define JSVAL_SETTAG(v,t)       ((v) | (t))
-#define JSVAL_CLRTAG(v)         ((v) & ~(jsval)JSVAL_TAGMASK)
+#define JSVAL_TAGMASK           ((jsval) JS_BITMASK(JSVAL_TAGBITS))
 #define JSVAL_ALIGN             JS_BIT(JSVAL_TAGBITS)
 
+/* Not a function, because we have static asserts that use it */
+#define JSVAL_TAG(v)            ((jsvaltag)((v) & JSVAL_TAGMASK))
+
+/* Not a function, because we have static asserts that use it */
+#define JSVAL_SETTAG(v, t) ((v) | (t))
+
+static JS_ALWAYS_INLINE jsval
+JSVAL_CLRTAG(jsval v)
+{
+    return v & ~(jsval)JSVAL_TAGMASK;
+}
+
+/*
+ * Well-known JS values.  The extern'd variables are initialized when the
+ * first JSContext is created by JS_NewContext (see below).
+ */
+#define JSVAL_NULL              ((jsval) 0)
+#define JSVAL_ZERO              INT_TO_JSVAL(0)
+#define JSVAL_ONE               INT_TO_JSVAL(1)
+#define JSVAL_FALSE             SPECIAL_TO_JSVAL(JS_FALSE)
+#define JSVAL_TRUE              SPECIAL_TO_JSVAL(JS_TRUE)
+#define JSVAL_VOID              SPECIAL_TO_JSVAL(2)
+
+/*
+ * A "special" value is a 29-bit (for 32-bit jsval) or 61-bit (for 64-bit jsval)
+ * value whose tag is JSVAL_SPECIAL.  These values include the booleans 0 and 1.
+ *
+ * JSVAL_VOID is a non-boolean special value, but embedders MUST NOT rely on
+ * this. All other possible special values are implementation-reserved
+ * and MUST NOT be constructed by any embedding of SpiderMonkey.
+ */
+#define JSVAL_TO_SPECIAL(v) ((JSBool) ((v) >> JSVAL_TAGBITS))
+#define SPECIAL_TO_JSVAL(b)                                                   \
+    JSVAL_SETTAG((jsval) (b) << JSVAL_TAGBITS, JSVAL_SPECIAL)
+
 /* Predicates for type testing. */
-#define JSVAL_IS_OBJECT(v)      (JSVAL_TAG(v) == JSVAL_OBJECT)
-#define JSVAL_IS_NUMBER(v)      (JSVAL_IS_INT(v) || JSVAL_IS_DOUBLE(v))
-#define JSVAL_IS_INT(v)         ((v) & JSVAL_INT)
-#define JSVAL_IS_DOUBLE(v)      (JSVAL_TAG(v) == JSVAL_DOUBLE)
-#define JSVAL_IS_STRING(v)      (JSVAL_TAG(v) == JSVAL_STRING)
-#define JSVAL_IS_BOOLEAN(v)     (((v) & ~((jsval)1 << JSVAL_TAGBITS)) ==      \
-                                 JSVAL_BOOLEAN)
-#define JSVAL_IS_NULL(v)        ((v) == JSVAL_NULL)
-#define JSVAL_IS_VOID(v)        ((v) == JSVAL_VOID)
-#define JSVAL_IS_PRIMITIVE(v)   (!JSVAL_IS_OBJECT(v) || JSVAL_IS_NULL(v))
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_OBJECT(jsval v)
+{
+    return JSVAL_TAG(v) == JSVAL_OBJECT;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_INT(jsval v)
+{
+    return v & JSVAL_INT;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_DOUBLE(jsval v)
+{
+    return JSVAL_TAG(v) == JSVAL_DOUBLE;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_NUMBER(jsval v)
+{
+    return JSVAL_IS_INT(v) || JSVAL_IS_DOUBLE(v);
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_STRING(jsval v)
+{
+    return JSVAL_TAG(v) == JSVAL_STRING;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_SPECIAL(jsval v)
+{
+    return JSVAL_TAG(v) == JSVAL_SPECIAL;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_BOOLEAN(jsval v)
+{
+    return (v & ~((jsval)1 << JSVAL_TAGBITS)) == JSVAL_SPECIAL;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_NULL(jsval v)
+{
+    return v == JSVAL_NULL;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_VOID(jsval v)
+{
+    return v == JSVAL_VOID;
+}
+
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_PRIMITIVE(jsval v)
+{
+    return !JSVAL_IS_OBJECT(v) || JSVAL_IS_NULL(v);
+}
 
 /* Objects, strings, and doubles are GC'ed. */
-#define JSVAL_IS_GCTHING(v)     (!((v) & JSVAL_INT) &&                        \
-                                 JSVAL_TAG(v) != JSVAL_BOOLEAN)
+static JS_ALWAYS_INLINE JSBool
+JSVAL_IS_GCTHING(jsval v)
+{
+    return !(v & JSVAL_INT) && JSVAL_TAG(v) != JSVAL_SPECIAL;
+}
 
 static JS_ALWAYS_INLINE void *
 JSVAL_TO_GCTHING(jsval v)
@@ -145,49 +231,41 @@ STRING_TO_JSVAL(JSString *str)
 #define JSVAL_INT_POW2(n)       ((jsval)1 << (n))
 #define JSVAL_INT_MIN           (-JSVAL_INT_POW2(30))
 #define JSVAL_INT_MAX           (JSVAL_INT_POW2(30) - 1)
-#define INT_FITS_IN_JSVAL(i)    ((jsuint)(i) - (jsuint)JSVAL_INT_MIN <=      \
+
+/* Not a function, because we have static asserts that use it */
+#define INT_FITS_IN_JSVAL(i)    ((jsuint)(i) - (jsuint)JSVAL_INT_MIN <=       \
                                  (jsuint)(JSVAL_INT_MAX - JSVAL_INT_MIN))
-#define JSVAL_TO_INT(v)         ((jsint)(v) >> 1)
-#define INT_TO_JSVAL(i)         (((jsval)(i) << 1) | JSVAL_INT)
 
-/*
- * A pseudo-boolean is a 29-bit (for 32-bit jsval) or 61-bit (for 64-bit jsval)
- * value other than 0 or 1 encoded as a jsval whose tag is JSVAL_BOOLEAN.
- *
- * JSVAL_VOID happens to be defined as a jsval encoding a pseudo-boolean, but
- * embedders MUST NOT rely on this. All other possible pseudo-boolean values
- * are implementation-reserved and MUST NOT be constructed by any embedding of
- * SpiderMonkey.
- */
-#define JSVAL_TO_PSEUDO_BOOLEAN(v) ((JSBool) ((v) >> JSVAL_TAGBITS))
-#define PSEUDO_BOOLEAN_TO_JSVAL(b)                                            \
-    JSVAL_SETTAG((jsval) (b) << JSVAL_TAGBITS, JSVAL_BOOLEAN)
+static JS_ALWAYS_INLINE jsint
+JSVAL_TO_INT(jsval v)
+{
+    JS_ASSERT(JSVAL_IS_INT(v));
+    return (jsint) v >> 1;
+}
 
-/*
- * Well-known JS values.  The extern'd variables are initialized when the
- * first JSContext is created by JS_NewContext (see below).
- */
-#define JSVAL_NULL              ((jsval) 0)
-#define JSVAL_ZERO              INT_TO_JSVAL(0)
-#define JSVAL_ONE               INT_TO_JSVAL(1)
-#define JSVAL_FALSE             PSEUDO_BOOLEAN_TO_JSVAL(JS_FALSE)
-#define JSVAL_TRUE              PSEUDO_BOOLEAN_TO_JSVAL(JS_TRUE)
-#define JSVAL_VOID              PSEUDO_BOOLEAN_TO_JSVAL(2)
+/* Not a function, because we have static asserts that use it */
+#define INT_TO_JSVAL_CONSTEXPR(i)  (((jsval)(i) << 1) | JSVAL_INT)
 
+static JS_ALWAYS_INLINE jsval
+INT_TO_JSVAL(jsint i)
+{
+    JS_ASSERT(INT_FITS_IN_JSVAL(i));
+    return INT_TO_JSVAL_CONSTEXPR(i);
+}
 
 /* Convert between boolean and jsval, asserting that inputs are valid. */
 static JS_ALWAYS_INLINE JSBool
 JSVAL_TO_BOOLEAN(jsval v)
 {
     JS_ASSERT(v == JSVAL_TRUE || v == JSVAL_FALSE);
-    return JSVAL_TO_PSEUDO_BOOLEAN(v);
+    return JSVAL_TO_SPECIAL(v);
 }
 
 static JS_ALWAYS_INLINE jsval
 BOOLEAN_TO_JSVAL(JSBool b)
 {
     JS_ASSERT(b == JS_TRUE || b == JS_FALSE);
-    return PSEUDO_BOOLEAN_TO_JSVAL(b);
+    return SPECIAL_TO_JSVAL(b);
 }
 
 /* A private data pointer (2-byte-aligned) can be stored as an int jsval. */
@@ -447,6 +525,12 @@ JS_TypeOfValue(JSContext *cx, jsval v);
 extern JS_PUBLIC_API(const char *)
 JS_GetTypeName(JSContext *cx, JSType type);
 
+extern JS_PUBLIC_API(JSBool)
+JS_StrictlyEqual(JSContext *cx, jsval v1, jsval v2);
+
+extern JS_PUBLIC_API(JSBool)
+JS_SameValue(JSContext *cx, jsval v1, jsval v2);
+
 /************************************************************************/
 
 /*
@@ -463,6 +547,9 @@ JS_GetTypeName(JSContext *cx, JSType type);
 
 extern JS_PUBLIC_API(JSRuntime *)
 JS_NewRuntime(uint32 maxbytes);
+
+extern JS_PUBLIC_API(void)
+JS_CommenceRuntimeShutDown(JSRuntime *rt);
 
 extern JS_PUBLIC_API(void)
 JS_DestroyRuntime(JSRuntime *rt);
@@ -497,7 +584,9 @@ JS_END_EXTERN_C
 
 class JSAutoRequest {
   public:
-    JSAutoRequest(JSContext *cx) : mContext(cx), mSaveDepth(0) {
+    JSAutoRequest(JSContext *cx JS_GUARD_OBJECT_NOTIFIER_PARAM)
+        : mContext(cx), mSaveDepth(0) {
+        JS_GUARD_OBJECT_NOTIFIER_INIT;
         JS_BeginRequest(mContext);
     }
     ~JSAutoRequest() {
@@ -514,6 +603,7 @@ class JSAutoRequest {
   protected:
     JSContext *mContext;
     jsrefcount mSaveDepth;
+    JS_DECL_USE_GUARD_OBJECT_NOTIFIER
 
 #if 0
   private:
@@ -524,7 +614,9 @@ class JSAutoRequest {
 
 class JSAutoSuspendRequest {
   public:
-    JSAutoSuspendRequest(JSContext *cx) : mContext(cx), mSaveDepth(0) {
+    JSAutoSuspendRequest(JSContext *cx JS_GUARD_OBJECT_NOTIFIER_PARAM)
+        : mContext(cx), mSaveDepth(0) {
+        JS_GUARD_OBJECT_NOTIFIER_INIT;
         if (mContext) {
             mSaveDepth = JS_SuspendRequest(mContext);
         }
@@ -543,6 +635,7 @@ class JSAutoSuspendRequest {
   protected:
     JSContext *mContext;
     jsrefcount mSaveDepth;
+    JS_DECL_USE_GUARD_OBJECT_NOTIFIER
 
 #if 0
   private:
@@ -902,7 +995,9 @@ JS_END_EXTERN_C
 
 class JSAutoLocalRootScope {
   public:
-    JSAutoLocalRootScope(JSContext *cx) : mContext(cx) {
+    JSAutoLocalRootScope(JSContext *cx JS_GUARD_OBJECT_NOTIFIER_PARAM)
+        : mContext(cx) {
+        JS_GUARD_OBJECT_NOTIFIER_INIT;
         JS_EnterLocalRootScope(mContext);
     }
     ~JSAutoLocalRootScope() {
@@ -915,6 +1010,7 @@ class JSAutoLocalRootScope {
 
   protected:
     JSContext *mContext;
+    JS_DECL_USE_GUARD_OBJECT_NOTIFIER
 
 #if 0
   private:
@@ -1018,11 +1114,9 @@ JS_MarkGCThing(JSContext *cx, void *thing, const char *name, void *arg);
 struct JSTracer {
     JSContext           *context;
     JSTraceCallback     callback;
-#ifdef DEBUG
     JSTraceNamePrinter  debugPrinter;
     const void          *debugPrintArg;
     size_t              debugPrintIndex;
-#endif
 };
 
 /*
@@ -1126,7 +1220,9 @@ JS_CallTracer(JSTracer *trc, void *thing, uint32 kind);
     JS_BEGIN_MACRO                                                            \
         (trc)->context = (cx_);                                               \
         (trc)->callback = (callback_);                                        \
-        JS_SET_TRACING_DETAILS(trc, NULL, NULL, (size_t)-1);                  \
+        (trc)->debugPrinter = NULL;                                           \
+        (trc)->debugPrintArg = NULL;                                          \
+        (trc)->debugPrintIndex = (size_t)-1;                                  \
     JS_END_MACRO
 
 extern JS_PUBLIC_API(void)
@@ -1224,6 +1320,15 @@ JS_SetGCParameterForThread(JSContext *cx, JSGCParamKey key, uint32 value);
 
 extern JS_PUBLIC_API(uint32)
 JS_GetGCParameterForThread(JSContext *cx, JSGCParamKey key);
+
+/*
+ * Flush the code cache for the current thread. The operation might be
+ * delayed if the cache cannot be flushed currently because native
+ * code is currently executing.
+ */
+
+extern JS_PUBLIC_API(void)
+JS_FlushCaches(JSContext *cx);
 
 /*
  * Add a finalizer for external strings created by JS_NewExternalString (see
@@ -2226,14 +2331,14 @@ JS_CallFunctionValue(JSContext *cx, JSObject *obj, jsval fval, uintN argc,
  * These functions allow setting an operation callback that will be called
  * from the thread the context is associated with some time after any thread
  * triggered the callback using JS_TriggerOperationCallback(cx).
- * 
+ *
  * In a threadsafe build the engine internally triggers operation callbacks
  * under certain circumstances (i.e. GC and title transfer) to force the
- * context to yield its current request, which the engine always 
+ * context to yield its current request, which the engine always
  * automatically does immediately prior to calling the callback function.
  * The embedding should thus not rely on callbacks being triggered through
  * the external API only.
- * 
+ *
  * Important note: Additional callbacks can occur inside the callback handler
  * if it re-enters the JS engine. The embedding must ensure that the callback
  * is disconnected before attempting such re-entry.
@@ -2614,6 +2719,7 @@ JS_SetErrorReporter(JSContext *cx, JSErrorReporter er);
 #define JSREG_MULTILINE 0x04    /* treat ^ and $ as begin and end of line */
 #define JSREG_STICKY    0x08    /* only match starting at lastIndex */
 #define JSREG_FLAT      0x10    /* parse as a flat regexp */
+#define JSREG_NOCOMPILE 0x20    /* do not try to compile to native code */
 
 extern JS_PUBLIC_API(JSObject *)
 JS_NewRegExpObject(JSContext *cx, char *bytes, size_t length, uintN flags);

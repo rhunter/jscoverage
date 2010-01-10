@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -40,15 +40,15 @@
 /*
  * Portable double to alphanumeric string and back converters.
  */
-#include "jsstddef.h"
-#include "jslibmath.h"
 #include "jstypes.h"
+#include "jsstdint.h"
 #include "jsdtoa.h"
 #include "jsprf.h"
 #include "jsutil.h" /* Added by JSIFY */
-#include "jspubtd.h"
+#include "jsprvtd.h"
 #include "jsnum.h"
 #include "jsbit.h"
+#include "jslibmath.h"
 
 #ifdef JS_THREADSAFE
 #include "jslock.h"
@@ -368,7 +368,7 @@ JS_dtobasestr(int base, double dinput)
     JS_ASSERT(base >= 2 && base <= 36);
 
     dval(d) = dinput;
-    buffer = (char*) malloc(DTOBASESTR_BUFFER_SIZE);
+    buffer = (char*) js_malloc(DTOBASESTR_BUFFER_SIZE);
     if (buffer) {
         p = buffer;
         if (dval(d) < 0.0
@@ -412,7 +412,7 @@ JS_dtobasestr(int base, double dinput)
               nomem1:
                 Bfree(b);
                 UNLOCK_DTOA();
-                free(buffer);
+                js_free(buffer);
                 return NULL;
             }
             do {
@@ -449,7 +449,7 @@ JS_dtobasestr(int base, double dinput)
                     Bfree(mlo);
                 Bfree(mhi);
                 UNLOCK_DTOA();
-                free(buffer);
+                js_free(buffer);
                 return NULL;
             }
             JS_ASSERT(e < 0);

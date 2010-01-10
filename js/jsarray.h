@@ -50,15 +50,18 @@ JS_BEGIN_EXTERN_C
 
 #define ARRAY_CAPACITY_MIN      7
 
-/* Generous sanity-bound on length (in elements) of array initialiser. */
-#define ARRAY_INIT_LIMIT        JS_BIT(24)
-
 extern JSBool
 js_IdIsIndex(jsval id, jsuint *indexp);
 
 extern JSClass js_ArrayClass, js_SlowArrayClass;
 
-#define OBJ_IS_DENSE_ARRAY(cx,obj)  (OBJ_GET_CLASS(cx, obj) == &js_ArrayClass)
+static JS_INLINE JSBool
+js_IsDenseArray(JSObject *obj)
+{
+    return STOBJ_GET_CLASS(obj) == &js_ArrayClass;
+}
+
+#define OBJ_IS_DENSE_ARRAY(cx, obj) js_IsDenseArray(obj)
 
 #define OBJ_IS_ARRAY(cx,obj)    (OBJ_IS_DENSE_ARRAY(cx, obj) ||               \
                                  OBJ_GET_CLASS(cx, obj) == &js_SlowArrayClass)
@@ -82,18 +85,33 @@ extern JSClass js_ArrayClass, js_SlowArrayClass;
  * Callers of js_GetProtoIfDenseArray must take care to use the original object
  * (obj) for the |this| value of a getter, setter, or method call (bug 476447).
  */
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 static JS_INLINE JSObject *
 js_GetProtoIfDenseArray(JSContext *cx, JSObject *obj)
 {
     return OBJ_IS_DENSE_ARRAY(cx, obj) ? OBJ_GET_PROTO(cx, obj) : obj;
 }
+#endif
 
 extern JSObject *
 js_InitArrayClass(JSContext *cx, JSObject *obj);
 
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+extern bool
+#else
+extern JSBool
+#endif
+js_InitContextBusyArrayTable(JSContext *cx);
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 extern JSObject *
 js_NewArrayObject(JSContext *cx, jsuint length, jsval *vector,
                   JSBool holey = JS_FALSE);
+#else
+extern JSObject *
+js_NewArrayObject(JSContext *cx, jsuint length, jsval *vector,
+                  JSBool holey);
+#endif
 
 /* Create an array object that starts out already made slow/sparse. */
 extern JSObject *
@@ -109,14 +127,14 @@ js_MakeArraySlow(JSContext *cx, JSObject *obj);
 static JS_INLINE uint32
 js_DenseArrayCapacity(JSObject *obj)
 {
-    JS_ASSERT(OBJ_IS_DENSE_ARRAY(BOGUS_CX, obj));
+    JS_ASSERT(js_IsDenseArray(obj));
     return obj->dslots ? (uint32) obj->dslots[-1] : 0;
 }
 
 static JS_INLINE void
 js_SetDenseArrayCapacity(JSObject *obj, uint32 capacity)
 {
-    JS_ASSERT(OBJ_IS_DENSE_ARRAY(BOGUS_CX, obj));
+    JS_ASSERT(js_IsDenseArray(obj));
     JS_ASSERT(obj->dslots);
     obj->dslots[-1] = (jsval) capacity;
 }
@@ -156,7 +174,7 @@ typedef JSBool (*JSComparator)(void *arg, const void *a, const void *b,
  * comparator function cmp returns an error inside a comparison, so remember
  * to check the return value of this function.
  */
-extern JS_REQUIRES_STACK JSBool
+extern JSBool
 js_MergeSort(void *vec, size_t nel, size_t elsize, JSComparator cmp,
              void *arg, void *tmp);
 
@@ -169,59 +187,24 @@ extern JSBool JS_FASTCALL
 js_ArrayCompPush(JSContext *cx, JSObject *obj, jsval v);
 
 /*
- * Fast dense-array-to-buffer conversions.
+ * Fast dense-array-to-buffer conversion for use by canvas.
  *
- * If the array is a dense array, fill [offset..offset+count] values
- * into destination, assuming that types are consistent.  Return
- * JS_TRUE if successful, otherwise JS_FALSE -- note that the
- * destination buffer may be modified even if JS_FALSE is returned
- * (e.g. due to finding an inappropriate type later on in the array).
- * If JS_FALSE is returned, no error conditions or exceptions are set
- * on the context.
+ * If the array is a dense array, fill [offset..offset+count] values into
+ * destination, assuming that types are consistent.  Return JS_TRUE if
+ * successful, otherwise JS_FALSE -- note that the destination buffer may be
+ * modified even if JS_FALSE is returned (e.g. due to finding an inappropriate
+ * type later on in the array).  If JS_FALSE is returned, no error conditions
+ * or exceptions are set on the context.
  *
- * For ArrayToJSUint8, ArrayToJSUint16, and ArrayToJSUint32, each element
- * in the array a) must be an integer; b) must be >= 0.  Integers
- * are clamped to fit in the destination size.  Only JSVAL_IS_INT values
- * are considered to be valid, so for JSUint32, the maximum value that
- * can be fast-converted is less than the full unsigned 32-bit range.
- *
- * For ArrayToJSInt8, ArrayToJSInt16, ArrayToJSInt32, each element in
- * the array must be an integer.  Integers are clamped to fit in the
- * destination size.  Only JSVAL_IS_INT values are considered to be
- * valid, so for JSInt32, the maximum value that can be
- * fast-converted is less than the full signed 32-bit range.
- * 
- * For ArrayToJSDouble, each element in the array must be an
- * integer -or- a double (JSVAL_IS_NUMBER).
+ * This method succeeds if each element of the array is an integer or a double.
+ * Values outside the 0-255 range are clamped to that range.  Double values are
+ * converted to integers in this range by clamping and then rounding to
+ * nearest, ties to even.
  */
 
 JS_FRIEND_API(JSBool)
-js_ArrayToJSUint8Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                        JSUint8 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSUint16Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                         JSUint16 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSUint32Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                         JSUint32 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSInt8Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                       JSInt8 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSInt16Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                        JSInt16 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSInt32Buffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                        JSInt32 *dest);
-
-JS_FRIEND_API(JSBool)
-js_ArrayToJSDoubleBuffer(JSContext *cx, JSObject *obj, jsuint offset, jsuint count,
-                         jsdouble *dest);
+js_CoerceArrayToCanvasImageData(JSObject *obj, jsuint offset, jsuint count,
+                                JSUint8 *dest);
 
 JSBool
 js_PrototypeHasIndexedProperties(JSContext *cx, JSObject *obj);
@@ -232,6 +215,24 @@ js_PrototypeHasIndexedProperties(JSContext *cx, JSObject *obj);
 JSBool
 js_GetDenseArrayElementValue(JSContext *cx, JSObject *obj, JSProperty *prop,
                              jsval *vp);
+
+/* Array constructor native. Exposed only so the JIT can know its address. */
+JSBool
+js_Array(JSContext* cx, JSObject* obj, uintN argc, jsval* argv, jsval* rval);
+
+/*
+ * Friend api function that allows direct creation of an array object with a
+ * given capacity.  Non-null return value means allocation of the internal
+ * buffer for a capacity of at least |capacity| succeeded.  A pointer to the
+ * first element of this internal buffer is returned in the |vector| out
+ * parameter.  The caller promises to fill in the first |capacity| values
+ * starting from that pointer immediately after this function returns and
+ * without triggering GC (so this method is allowed to leave those
+ * uninitialized) and to set them to non-JSVAL_HOLE values, so that the
+ * resulting array has length and count both equal to |capacity|.
+ */
+JS_FRIEND_API(JSObject *)
+js_NewArrayObjectWithCapacity(JSContext *cx, jsuint capacity, jsval **vector);
 
 JS_END_EXTERN_C
 

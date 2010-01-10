@@ -71,9 +71,9 @@ struct JSStackFrame {
     jsbytecode      *imacpc;        /* null or interpreter macro call pc */
     jsval           *slots;         /* variables, locals and operand stack */
     JSObject        *callobj;       /* lazily created Call object */
-    JSObject        *argsobj;       /* lazily created arguments object */
+    jsval           argsobj;        /* lazily created arguments object, must be
+                                       JSVAL_OBJECT */
     JSObject        *varobj;        /* variables object, where vars go */
-    JSObject        *callee;        /* function or script object */
     JSScript        *script;        /* script being interpreted */
     JSFunction      *fun;           /* function being called or null */
     JSObject        *thisp;         /* "this" pointer if in method */
@@ -90,7 +90,7 @@ struct JSStackFrame {
      * variables on the stack initially, note when they are closed
      * over, and copy those that are out to the heap when we leave
      * their dynamic scope.
-     * 
+     *
      * The bytecode compiler produces a tree of block objects
      * accompanying each JSScript representing those lexical blocks in
      * the script that have let-bound variables associated with them.
@@ -102,7 +102,7 @@ struct JSStackFrame {
      * When we are in the static scope of such a block, blockChain
      * points to its compiler-allocated block object; otherwise, it is
      * NULL.
-     * 
+     *
      * scopeChain is the current scope chain, including 'call' and
      * 'block' objects for those function calls and lexical blocks
      * whose static scope we are currently executing in, and 'with'
@@ -126,22 +126,40 @@ struct JSStackFrame {
     JSObject        *sharpArray;    /* scope for #n= initializer vars */
     uint32          flags;          /* frame flags -- see below */
     JSStackFrame    *dormantNext;   /* next dormant frame chain */
-    JSObject        *xmlNamespace;  /* null or default xml namespace in E4X */
     JSStackFrame    *displaySave;   /* previous value of display entry for
                                        script->staticLevel */
 
-#ifdef __cplusplus /* Aargh, LiveConnect, bug 442399. */
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+
     inline void assertValidStackDepth(uintN depth);
-#endif
+
+    void putActivationObjects(JSContext *cx) {
+        /*
+         * The order of calls here is important as js_PutCallObject needs to
+         * access argsobj.
+         */
+        if (callobj) {
+            js_PutCallObject(cx, this);
+            JS_ASSERT(!argsobj);
+        } else if (argsobj) {
+            js_PutArgsObject(cx, this);
+        }
+    }
+
+    JSObject *callee() {
+        return argv ? JSVAL_TO_OBJECT(argv[-2]) : NULL;
+    }
+
+#endif /* __cplusplus */
 };
 
 #ifdef __cplusplus
+
 static JS_INLINE uintN
 FramePCOffset(JSStackFrame* fp)
 {
     return uintN((fp->imacpc ? fp->imacpc : fp->regs->pc) - fp->script->code);
 }
-#endif
 
 static JS_INLINE jsval *
 StackBase(JSStackFrame *fp)
@@ -149,26 +167,26 @@ StackBase(JSStackFrame *fp)
     return fp->slots + fp->script->nfixed;
 }
 
-#ifdef __cplusplus /* Aargh, LiveConnect, bug 442399. */
 void
 JSStackFrame::assertValidStackDepth(uintN depth)
 {
     JS_ASSERT(0 <= regs->sp - StackBase(this));
     JS_ASSERT(depth <= uintptr_t(regs->sp - StackBase(this)));
 }
-#endif
 
 static JS_INLINE uintN
 GlobalVarCount(JSStackFrame *fp)
 {
     uintN n;
-    
+
     JS_ASSERT(!fp->fun);
     n = fp->script->nfixed;
     if (fp->script->regexpsOffset != 0)
-        n -= JS_SCRIPT_REGEXPS(fp->script)->length;
+        n -= fp->script->regexps()->length;
     return n;
 }
+
+#endif /* __cplusplus */
 
 typedef struct JSInlineFrame {
     JSStackFrame    frame;          /* base struct */
@@ -189,17 +207,14 @@ typedef struct JSInlineFrame {
 #define JSFRAME_YIELDING       0x40 /* js_Interpret dispatched JSOP_YIELD */
 #define JSFRAME_ITERATOR       0x80 /* trying to get an iterator for for-in */
 #define JSFRAME_GENERATOR     0x200 /* frame belongs to generator-iterator */
-
-#define JSFRAME_OVERRIDE_SHIFT 24   /* override bit-set params; see jsfun.c */
-#define JSFRAME_OVERRIDE_BITS  8
+#define JSFRAME_OVERRIDE_ARGS 0x400 /* overridden arguments local variable */
 
 #define JSFRAME_SPECIAL       (JSFRAME_DEBUGGER | JSFRAME_EVAL)
 
 /*
  * Property cache with structurally typed capabilities for invalidation, for
- * polymorphic callsite method/get/set speedups.
- *
- * See bug https://bugzilla.mozilla.org/show_bug.cgi?id=365851.
+ * polymorphic callsite method/get/set speedups.  For details, see
+ * <https://developer.mozilla.org/en/SpiderMonkey/Internals/Property_cache>.
  */
 #define PROPERTY_CACHE_LOG2     12
 #define PROPERTY_CACHE_SIZE     JS_BIT(PROPERTY_CACHE_LOG2)
@@ -217,7 +232,7 @@ typedef struct JSInlineFrame {
 #define PROPERTY_CACHE_HASH_PC(pc,kshape)                                     \
     PROPERTY_CACHE_HASH(pc, kshape)
 
-#define PROPERTY_CACHE_HASH_ATOM(atom,obj,pobj)                               \
+#define PROPERTY_CACHE_HASH_ATOM(atom,obj)                                    \
     PROPERTY_CACHE_HASH((jsuword)(atom) >> 2, OBJ_SHAPE(obj))
 
 /*
@@ -242,18 +257,17 @@ typedef struct JSInlineFrame {
 
 #define SHAPE_OVERFLOW_BIT      JS_BIT(32 - PCVCAP_TAGBITS)
 
-#ifndef JS_THREADSAFE
-# define js_GenerateShape(cx, gcLocked)    js_GenerateShape (cx)
-#endif
-
-extern uint32
-js_GenerateShape(JSContext *cx, JSBool gcLocked);
-
 struct JSPropCacheEntry {
     jsbytecode          *kpc;           /* pc if vcap tag is <= 1, else atom */
     jsuword             kshape;         /* key shape if pc, else obj for atom */
     jsuword             vcap;           /* value capability, see above */
     jsuword             vword;          /* value word, see PCVAL_* below */
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+    bool adding() const {
+        return PCVCAP_TAG(vcap) == 0 && kshape != PCVCAP_SHAPE(vcap);
+    }
+#endif
 };
 
 /*
@@ -380,23 +394,18 @@ js_FillPropertyCache(JSContext *cx, JSObject *obj,
         if (entry->kpc == pc && entry->kshape == kshape_) {                   \
             JSObject *tmp_;                                                   \
             pobj = obj;                                                       \
-            JS_LOCK_OBJ(cx, pobj);                                            \
             JS_ASSERT(PCVCAP_TAG(entry->vcap) <= 1);                          \
             if (PCVCAP_TAG(entry->vcap) == 1 &&                               \
-                (tmp_ = LOCKED_OBJ_GET_PROTO(pobj)) != NULL &&                \
-                OBJ_IS_NATIVE(tmp_)) {                                        \
-                JS_UNLOCK_OBJ(cx, pobj);                                      \
+                (tmp_ = OBJ_GET_PROTO(cx, pobj)) != NULL) {                   \
                 pobj = tmp_;                                                  \
-                JS_LOCK_OBJ(cx, pobj);                                        \
             }                                                                 \
-            if (PCVCAP_SHAPE(entry->vcap) == OBJ_SHAPE(pobj)) {               \
+                                                                              \
+            if (JS_LOCK_OBJ_IF_SHAPE(cx, pobj, PCVCAP_SHAPE(entry->vcap))) {  \
                 PCMETER(cache_->pchits++);                                    \
                 PCMETER(!PCVCAP_TAG(entry->vcap) || cache_->protopchits++);   \
-                pobj = OBJ_SCOPE(pobj)->object;                               \
                 atom = NULL;                                                  \
                 break;                                                        \
             }                                                                 \
-            JS_UNLOCK_OBJ(cx, pobj);                                          \
         }                                                                     \
         atom = js_FullTestPropertyCache(cx, pc, &obj, &pobj, &entry);         \
         if (atom)                                                             \
@@ -469,10 +478,9 @@ extern const uint16 js_PrimitiveTestFlags[];
 static JS_INLINE JSObject *
 js_ComputeThisForFrame(JSContext *cx, JSStackFrame *fp)
 {
-    JSObject* obj;
     if (fp->flags & JSFRAME_COMPUTED_THIS)
         return fp->thisp;
-    obj = js_ComputeThis(cx, JS_TRUE, fp->argv);
+    JSObject* obj = js_ComputeThis(cx, JS_TRUE, fp->argv);
     if (!obj)
         return NULL;
     fp->thisp = obj;
@@ -551,11 +559,14 @@ js_CheckRedeclaration(JSContext *cx, JSObject *obj, jsid id, uintN attrs,
 extern JSBool
 js_StrictlyEqual(JSContext *cx, jsval lval, jsval rval);
 
+/* === except that NaN is the same as NaN and -0 is not the same as +0. */
+extern JSBool
+js_SameValue(jsval v1, jsval v2, JSContext *cx);
+
 extern JSBool
 js_InternNonIntElementId(JSContext *cx, JSObject *obj, jsval idval, jsid *idp);
 
-/* Work around liveconnect building this file as C on 1.9.1 branch */
-#ifdef __cplusplus 
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 
 /*
  * Given an active context, a static scope level, and an upvar cookie, return
@@ -564,7 +575,7 @@ js_InternNonIntElementId(JSContext *cx, JSObject *obj, jsval idval, jsid *idp);
 extern jsval&
 js_GetUpvar(JSContext *cx, uintN level, uintN cookie);
 
-#endif
+#endif /* __cplusplus */
 
 /*
  * JS_LONE_INTERPRET indicates that the compiler should see just the code for

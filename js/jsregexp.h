@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -66,8 +66,8 @@ struct JSRegExpStatics {
 };
 
 extern JS_FRIEND_API(void)
-js_SaveRegExpStatics(JSContext *cx, JSRegExpStatics *statics,
-                     JSTempValueRooter *tvr);
+js_SaveAndClearRegExpStatics(JSContext *cx, JSRegExpStatics *statics,
+                             JSTempValueRooter *tvr);
 
 extern JS_FRIEND_API(void)
 js_RestoreRegExpStatics(JSContext *cx, JSRegExpStatics *statics,
@@ -185,14 +185,23 @@ js_XDRRegExpObject(JSXDRState *xdr, JSObject **objp);
 extern JSObject *
 js_CloneRegExpObject(JSContext *cx, JSObject *obj, JSObject *parent);
 
-/*
- * Get and set the per-object (clone or clone-parent) lastIndex slot.
- */
-extern JSBool
-js_GetLastIndex(JSContext *cx, JSObject *obj, jsdouble *lastIndex);
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 
-extern JSBool
-js_SetLastIndex(JSContext *cx, JSObject *obj, jsdouble lastIndex);
+const uint32 JSSLOT_REGEXP_LAST_INDEX = JSSLOT_PRIVATE + 1;
+const uint32 REGEXP_CLASS_FIXED_RESERVED_SLOTS = 1;
+
+static inline void
+js_ClearRegExpLastIndex(JSObject *obj)
+{
+    JS_ASSERT(obj->getClass() == &js_RegExpClass);
+    obj->fslots[JSSLOT_REGEXP_LAST_INDEX] = JSVAL_ZERO;
+}
+
+#endif /* __cplusplus */
+
+/* Return whether the given character array contains RegExp meta-characters. */
+extern bool
+js_ContainsRegExpMetaChars(const jschar *chars, size_t length);
 
 JS_END_EXTERN_C
 

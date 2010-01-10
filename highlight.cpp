@@ -225,8 +225,8 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
   current_class = CLASS_NONE;
 
   /* tokenize the JavaScript */
-  JSTokenStream token_stream;
-  if (! js_InitTokenStream(context, &token_stream, characters, num_characters, NULL, NULL, 1)) {
+  JSTokenStream token_stream(context);
+  if (! token_stream.init(context, characters, num_characters, NULL, NULL, 1)) {
     fatal("cannot create token stream from JavaScript file %s", id);
   }
 
@@ -480,5 +480,5 @@ void jscoverage_highlight_js(JSContext * context, const char * id, const jschar 
     output_character('\n', CLASS_NONE);
   }
 
-  js_CloseTokenStream(context, &token_stream);
+  token_stream.close(context);
 }

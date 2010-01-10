@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  *
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -40,10 +40,10 @@
 /*
  * JS atom table.
  */
-#include "jsstddef.h"
 #include <stdlib.h>
 #include <string.h>
 #include "jstypes.h"
+#include "jsstdint.h"
 #include "jsutil.h" /* Added by JSIFY */
 #include "jshash.h" /* Added by JSIFY */
 #include "jsprf.h"
@@ -58,6 +58,7 @@
 #include "jsscan.h"
 #include "jsstr.h"
 #include "jsversion.h"
+#include "jsstrinlines.h"
 
 /*
  * ATOM_HASH assumes that JSHashNumber is 32-bit even on 64-bit systems.
@@ -98,7 +99,7 @@ js_AtomToPrintableString(JSContext *cx, JSAtom *atom)
  * The elements of the array after the first empty string define strings
  * corresponding to the two boolean literals, false and true, followed by the
  * JSType enumerators from jspubtd.h starting with "undefined" for JSTYPE_VOID
- * (which is pseudo-boolean 2) and continuing as initialized below. The static
+ * (which is special-value 2) and continuing as initialized below. The static
  * asserts check these relations.
  */
 JS_STATIC_ASSERT(JSTYPE_LIMIT == 8);
@@ -325,11 +326,8 @@ static const JSDHashTableOps StringHashOps = {
 static JSDHashNumber
 HashDouble(JSDHashTable *table, const void *key)
 {
-    jsdouble d;
-
     JS_ASSERT(IS_DOUBLE_TABLE(table));
-    d = *(jsdouble *)key;
-    return JSDOUBLE_HI32(d) ^ JSDOUBLE_LO32(d);
+    return JS_HASH_DOUBLE(*(jsdouble *)key);
 }
 
 static JSDHashNumber
@@ -559,9 +557,9 @@ js_pinned_atom_tracer(JSDHashTable *table, JSDHashEntryHdr *hdr,
 void
 js_TraceAtomState(JSTracer *trc, JSBool allAtoms)
 {
-    JSAtomState *state;
+    JSRuntime *rt = trc->context->runtime;
+    JSAtomState *state = &rt->atomState;
 
-    state = &trc->context->runtime->atomState;
     if (allAtoms) {
         JS_DHashTableEnumerate(&state->doubleAtoms, js_locked_atom_tracer, trc);
         JS_DHashTableEnumerate(&state->stringAtoms, js_locked_atom_tracer, trc);
@@ -673,6 +671,38 @@ js_AtomizeString(JSContext *cx, JSString *str, uintN flags)
     JS_ASSERT(!(flags & ~(ATOM_PINNED|ATOM_INTERNED|ATOM_TMPSTR|ATOM_NOCOPY)));
     JS_ASSERT_IF(flags & ATOM_NOCOPY, flags & ATOM_TMPSTR);
 
+    if (str->isAtomized())
+        return (JSAtom *) STRING_TO_JSVAL(str);
+
+    size_t length = str->length();
+    if (length == 1) {
+        jschar c = str->chars()[0];
+        if (c < UNIT_STRING_LIMIT)
+            return (JSAtom *) STRING_TO_JSVAL(JSString::unitString(c));
+    }
+
+    /*
+     * Here we know that JSString::intStringTable covers only 256 (or at least
+     * not 1000 or more) chars. We rely on order here to resolve the unit vs.
+     * int string atom identity issue by giving priority to unit strings for
+     * '0' through '9' (see JSString::intString in jsstrinlines.h).
+     */
+    JS_STATIC_ASSERT(INT_STRING_LIMIT <= 999);
+    if (2 <= length && length <= 3) {
+        const jschar *chars = str->chars();
+
+        if ('1' <= chars[0] && chars[0] <= '9' &&
+            '0' <= chars[1] && chars[1] <= '9' &&
+            (length == 2 || ('0' <= chars[2] && chars[2] <= '9'))) {
+            jsint i = (chars[0] - '0') * 10 + chars[1] - '0';
+
+            if (length == 3)
+                i = i * 10 + chars[2] - '0'; 
+            if (jsuint(i) < INT_STRING_LIMIT)
+                return (JSAtom *) STRING_TO_JSVAL(JSString::intString(i));
+        }
+    }
+
     state = &cx->runtime->atomState;
     table = &state->stringAtoms;
 
@@ -690,8 +720,8 @@ js_AtomizeString(JSContext *cx, JSString *str, uintN flags)
          * trigger GC which may rehash the table and make the entry invalid.
          */
         ++table->generation;
-        if (!(flags & ATOM_TMPSTR) && JSSTRING_IS_FLAT(str)) {
-            JSFLATSTR_CLEAR_MUTABLE(str);
+        if (!(flags & ATOM_TMPSTR) && str->isFlat()) {
+            str->flatClearMutable();
             key = str;
         } else {
             gen = table->generation;
@@ -699,21 +729,19 @@ js_AtomizeString(JSContext *cx, JSString *str, uintN flags)
 
             if (flags & ATOM_TMPSTR) {
                 if (flags & ATOM_NOCOPY) {
-                    key = js_NewString(cx, JSFLATSTR_CHARS(str),
-                                       JSFLATSTR_LENGTH(str));
+                    key = js_NewString(cx, str->flatChars(), str->flatLength());
                     if (!key)
                         return NULL;
 
                     /* Finish handing off chars to the GC'ed key string. */
-                    str->u.chars = NULL;
+                    str->mChars = NULL;
                 } else {
-                    key = js_NewStringCopyN(cx, JSFLATSTR_CHARS(str),
-                                            JSFLATSTR_LENGTH(str));
+                    key = js_NewStringCopyN(cx, str->flatChars(), str->flatLength());
                     if (!key)
                         return NULL;
                 }
            } else {
-                JS_ASSERT(JSSTRING_IS_DEPENDENT(str));
+                JS_ASSERT(str->isDependent());
                 if (!js_UndependString(cx, str))
                     return NULL;
                 key = str;
@@ -735,12 +763,12 @@ js_AtomizeString(JSContext *cx, JSString *str, uintN flags)
             }
         }
         INIT_ATOM_ENTRY(entry, key);
-        JSFLATSTR_SET_ATOMIZED(key);
+        key->flatSetAtomized();
     }
 
   finish:
     ADD_ATOM_ENTRY_FLAGS(entry, flags & (ATOM_PINNED | ATOM_INTERNED));
-    JS_ASSERT(JSSTRING_IS_ATOMIZED(key));
+    JS_ASSERT(key->isAtomized());
     v = STRING_TO_JSVAL(key);
     cx->weakRoots.lastAtom = v;
     JS_UNLOCK(cx, &state->lock);
@@ -782,10 +810,10 @@ js_Atomize(JSContext *cx, const char *bytes, size_t length, uintN flags)
         flags |= ATOM_NOCOPY;
     }
 
-    JSFLATSTR_INIT(&str, (jschar *)chars, inflatedLength);
+    str.initFlat(chars, inflatedLength);
     atom = js_AtomizeString(cx, &str, ATOM_TMPSTR | flags);
-    if (chars != inflated && str.u.chars)
-        JS_free(cx, chars);
+    if (chars != inflated && str.flatChars())
+        cx->free(chars);
     return atom;
 }
 
@@ -794,7 +822,7 @@ js_AtomizeChars(JSContext *cx, const jschar *chars, size_t length, uintN flags)
 {
     JSString str;
 
-    JSFLATSTR_INIT(&str, (jschar *)chars, length);
+    str.initFlat((jschar *)chars, length);
     return js_AtomizeString(cx, &str, ATOM_TMPSTR | flags);
 }
 
@@ -805,7 +833,13 @@ js_GetExistingStringAtom(JSContext *cx, const jschar *chars, size_t length)
     JSAtomState *state;
     JSDHashEntryHdr *hdr;
 
-    JSFLATSTR_INIT(&str, (jschar *)chars, length);
+    if (length == 1) {
+        jschar c = *chars;
+        if (c < UNIT_STRING_LIMIT)
+            return (JSAtom *) STRING_TO_JSVAL(JSString::unitString(c));
+    }
+
+    str.initFlat((jschar *)chars, length);
     state = &cx->runtime->atomState;
 
     JS_LOCK(cx, &state->lock);
@@ -837,38 +871,6 @@ js_AtomizePrimitiveValue(JSContext *cx, jsval v, JSAtom **atomp)
         atom = (JSAtom *)v;
     }
     *atomp = atom;
-    return JS_TRUE;
-}
-
-JSBool
-js_ValueToStringId(JSContext *cx, jsval v, jsid *idp)
-{
-    JSString *str;
-    JSAtom *atom;
-
-    /*
-     * Optimize for the common case where v is an already-atomized string. The
-     * comment in jsstr.h before the JSSTRING_SET_ATOMIZED macro's definition
-     * explains why this is thread-safe. The extra rooting via lastAtom (which
-     * would otherwise be done in js_js_AtomizeString) ensures the caller that
-     * the resulting id at is least weakly rooted.
-     */
-    if (JSVAL_IS_STRING(v)) {
-        str = JSVAL_TO_STRING(v);
-        if (JSSTRING_IS_ATOMIZED(str)) {
-            cx->weakRoots.lastAtom = v;
-            *idp = ATOM_TO_JSID((JSAtom *) v);
-            return JS_TRUE;
-        }
-    } else {
-        str = js_ValueToString(cx, v);
-        if (!str)
-            return JS_FALSE;
-    }
-    atom = js_AtomizeString(cx, str, 0);
-    if (!atom)
-        return JS_FALSE;
-    *idp = ATOM_TO_JSID(atom);
     return JS_TRUE;
 }
 
@@ -1128,6 +1130,7 @@ JSAtomList::add(JSCompiler *jsc, JSAtom *atom, AddHow how)
              * with the given key.
              */
             if (how == HOIST && ale->entry.next) {
+                JS_ASSERT(*hep == &ale->entry);
                 *hep = ale->entry.next;
                 ale->entry.next = NULL;
                 do {

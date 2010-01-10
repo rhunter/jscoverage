@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  * vim: set ts=8 sw=4 et tw=99:
  *
  * ***** BEGIN LICENSE BLOCK *****
@@ -41,13 +41,13 @@
 /*
  * JS bytecode generation.
  */
-#include "jsstddef.h"
 #ifdef HAVE_MEMORY_H
 #include <memory.h>
 #endif
 #include <new>
 #include <string.h>
 #include "jstypes.h"
+#include "jsstdint.h"
 #include "jsarena.h" /* Added by JSIFY */
 #include "jsutil.h" /* Added by JSIFY */
 #include "jsbit.h"
@@ -112,10 +112,10 @@ JSCodeGenerator::~JSCodeGenerator()
 
     /* NB: non-null only after OOM. */
     if (spanDeps)
-        JS_free(compiler->context, spanDeps);
+        compiler->context->free(spanDeps);
 
     if (upvarMap.vector)
-        JS_free(compiler->context, upvarMap.vector);
+        compiler->context->free(upvarMap.vector);
 }
 
 static ptrdiff_t
@@ -128,7 +128,7 @@ EmitCheck(JSContext *cx, JSCodeGenerator *cg, JSOp op, ptrdiff_t delta)
     base = CG_BASE(cg);
     next = CG_NEXT(cg);
     limit = CG_LIMIT(cg);
-    offset = PTRDIFF(next, base, jsbytecode);
+    offset = next - base;
     if (next + delta > limit) {
         length = offset + delta;
         length = (length <= BYTECODE_CHUNK)
@@ -138,7 +138,7 @@ EmitCheck(JSContext *cx, JSCodeGenerator *cg, JSOp op, ptrdiff_t delta)
         if (!base) {
             JS_ARENA_ALLOCATE_CAST(base, jsbytecode *, cg->codePool, incr);
         } else {
-            size = BYTECODE_SIZE(PTRDIFF(limit, base, jsbytecode));
+            size = BYTECODE_SIZE(limit - base);
             incr -= size;
             JS_ARENA_GROW_CAST(base, jsbytecode *, cg->codePool, size, incr);
         }
@@ -549,7 +549,7 @@ AddSpanDep(JSContext *cx, JSCodeGenerator *cg, jsbytecode *pc, jsbytecode *pc2,
     if ((index & (index - 1)) == 0 &&
         (!(sdbase = cg->spanDeps) || index >= SPANDEPS_MIN)) {
         size = sdbase ? SPANDEPS_SIZE(index) : SPANDEPS_SIZE_MIN / 2;
-        sdbase = (JSSpanDep *) JS_realloc(cx, sdbase, size + size);
+        sdbase = (JSSpanDep *) cx->realloc(sdbase, size + size);
         if (!sdbase)
             return JS_FALSE;
         cg->spanDeps = sdbase;
@@ -557,8 +557,8 @@ AddSpanDep(JSContext *cx, JSCodeGenerator *cg, jsbytecode *pc, jsbytecode *pc2,
 
     cg->numSpanDeps = index + 1;
     sd = cg->spanDeps + index;
-    sd->top = PTRDIFF(pc, CG_BASE(cg), jsbytecode);
-    sd->offset = sd->before = PTRDIFF(pc2, CG_BASE(cg), jsbytecode);
+    sd->top = pc - CG_BASE(cg);
+    sd->offset = sd->before = pc2 - CG_BASE(cg);
 
     if (js_CodeSpec[*pc].format & JOF_BACKPATCH) {
         /* Jump offset will be backpatched if off is a non-zero "bpdelta". */
@@ -673,7 +673,7 @@ GetSpanDep(JSCodeGenerator *cg, jsbytecode *pc)
     if (index != SPANDEP_INDEX_HUGE)
         return cg->spanDeps + index;
 
-    offset = PTRDIFF(pc, CG_BASE(cg), jsbytecode);
+    offset = pc - CG_BASE(cg);
     lo = 0;
     hi = cg->numSpanDeps - 1;
     while (lo <= hi) {
@@ -910,7 +910,7 @@ OptimizeSpanDeps(JSContext *cx, JSCodeGenerator *cg)
         next = base + length;
         if (next > limit) {
             JS_ASSERT(length > BYTECODE_CHUNK);
-            size = BYTECODE_SIZE(PTRDIFF(limit, base, jsbytecode));
+            size = BYTECODE_SIZE(limit - base);
             incr = BYTECODE_SIZE(length) - size;
             JS_ARENA_GROW_CAST(base, jsbytecode *, cg->codePool, size, incr);
             if (!base) {
@@ -1165,7 +1165,7 @@ OptimizeSpanDeps(JSContext *cx, JSCodeGenerator *cg)
      * can span top-level statements, because JS lacks goto.
      */
     size = SPANDEPS_SIZE(JS_BIT(JS_CeilingLog2(cg->numSpanDeps)));
-    JS_free(cx, cg->spanDeps);
+    cx->free(cg->spanDeps);
     cg->spanDeps = NULL;
     FreeJumpTargets(cg, cg->jumpTargets);
     cg->jumpTargets = NULL;
@@ -1427,7 +1427,7 @@ BackPatch(JSContext *cx, JSCodeGenerator *cg, ptrdiff_t last,
     stop = CG_CODE(cg, -1);
     while (pc != stop) {
         delta = GetJumpOffset(cg, pc);
-        span = PTRDIFF(target, pc, jsbytecode);
+        span = target - pc;
         CHECK_AND_SET_JUMP_OFFSET(cx, cg, pc, span);
 
         /*
@@ -1525,9 +1525,9 @@ js_LexicalLookup(JSTreeContext *tc, JSAtom *atom, jsint *slotp, JSStmtInfo *stmt
             continue;
 
         obj = stmt->blockObj;
-        JS_ASSERT(LOCKED_OBJ_GET_CLASS(obj) == &js_BlockClass);
+        JS_ASSERT(obj->getClass() == &js_BlockClass);
         scope = OBJ_SCOPE(obj);
-        sprop = SCOPE_GET_PROPERTY(scope, ATOM_TO_JSID(atom));
+        sprop = scope->lookup(ATOM_TO_JSID(atom));
         if (sprop) {
             JS_ASSERT(sprop->flags & SPROP_HAS_SHORTID);
 
@@ -1601,8 +1601,7 @@ LookupCompileTimeConstant(JSContext *cx, JSCodeGenerator *cg, JSAtom *atom,
             } else {
                 JS_ASSERT(cg->flags & TCF_COMPILE_N_GO);
                 obj = cg->scopeChain;
-                ok = OBJ_LOOKUP_PROPERTY(cx, obj, ATOM_TO_JSID(atom), &objbox,
-                                         &prop);
+                ok = obj->lookupProperty(cx, ATOM_TO_JSID(atom), &objbox, &prop);
                 if (!ok)
                     return JS_FALSE;
                 if (objbox == obj) {
@@ -1612,15 +1611,14 @@ LookupCompileTimeConstant(JSContext *cx, JSCodeGenerator *cg, JSAtom *atom,
                      * variable object.  Therefore we can get constant values
                      * from our variable object here.
                      */
-                    ok = OBJ_GET_ATTRIBUTES(cx, obj, ATOM_TO_JSID(atom), prop,
-                                            &attrs);
+                    ok = obj->getAttributes(cx, ATOM_TO_JSID(atom), prop, &attrs);
                     if (ok && IS_CONSTANT_PROPERTY(attrs)) {
-                        ok = OBJ_GET_PROPERTY(cx, obj, ATOM_TO_JSID(atom), vp);
+                        ok = obj->getProperty(cx, ATOM_TO_JSID(atom), vp);
                         JS_ASSERT_IF(ok, *vp != JSVAL_HOLE);
                     }
                 }
                 if (prop)
-                    OBJ_DROP_PROPERTY(cx, objbox, prop);
+                    objbox->dropProperty(cx, prop);
                 if (!ok)
                     return JS_FALSE;
                 if (prop)
@@ -1822,8 +1820,7 @@ EmitEnterBlock(JSContext *cx, JSParseNode *pn, JSCodeGenerator *cg)
     }
 
     OBJ_SCOPE(blockObj)->freeslot = JSSLOT_FREE(&js_BlockClass);
-    js_ReallocSlots(cx, blockObj, JSSLOT_FREE(&js_BlockClass), JS_TRUE);
-    return true;
+    return js_GrowSlots(cx, blockObj, JSSLOT_FREE(&js_BlockClass));
 }
 
 /*
@@ -1900,7 +1897,7 @@ MakeUpvarForEval(JSParseNode *pn, JSCodeGenerator *cg)
         JS_ASSERT(ALE_INDEX(ale) <= length);
         if (ALE_INDEX(ale) == length) {
             length = 2 * JS_MAX(2, length);
-            vector = (uint32 *) JS_realloc(cx, vector, length * sizeof *vector);
+            vector = (uint32 *) cx->realloc(vector, length * sizeof *vector);
             if (!vector)
                 return false;
             cg->upvarMap.vector = vector;
@@ -2112,9 +2109,9 @@ BindNameToSlot(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         if (op != JSOP_NAME)
             return JS_TRUE;
 
-#ifdef DEBUG
         JSStackFrame *caller = cg->compiler->callerFrame;
         JS_ASSERT(caller);
+        JS_ASSERT(caller->script);
 
         JSTreeContext *tc = cg;
         while (tc->staticLevel != level)
@@ -2123,10 +2120,14 @@ BindNameToSlot(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
 
         JSCodeGenerator *evalcg = (JSCodeGenerator *) tc;
         JS_ASSERT(evalcg->flags & TCF_COMPILE_N_GO);
-        JS_ASSERT(!(evalcg->flags & TCF_IN_FOR_INIT));
-        JS_ASSERT(caller->script);
         JS_ASSERT(caller->fun && caller->varobj == evalcg->scopeChain);
-#endif
+
+        /*
+         * Don't generate upvars on the left side of a for loop. See
+         * bug 470758 and bug 520513.
+         */
+        if (evalcg->flags & TCF_IN_FOR_INIT)
+            return JS_TRUE;
 
         if (cg->staticLevel == level) {
             pn->pn_op = JSOP_GETUPVAR;
@@ -2141,7 +2142,8 @@ BindNameToSlot(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
     uintN skip = cg->staticLevel - level;
     if (skip != 0) {
         JS_ASSERT(cg->flags & TCF_IN_FUNCTION);
-        JS_ASSERT(cg->lexdeps.lookup(atom));
+        JS_ASSERT_IF(UPVAR_FRAME_SLOT(cookie) != CALLEE_UPVAR_SLOT,
+                     cg->lexdeps.lookup(atom));
         JS_ASSERT(JOF_OPTYPE(op) == JOF_ATOM);
         JS_ASSERT(cg->fun->u.i.skipmin <= skip);
 
@@ -2198,7 +2200,7 @@ BindNameToSlot(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
             if (!vector) {
                 uint32 length = cg->lexdeps.count;
 
-                vector = (uint32 *) calloc(length, sizeof *vector);
+                vector = (uint32 *) js_calloc(length * sizeof *vector);
                 if (!vector) {
                     JS_ReportOutOfMemory(cx);
                     return JS_FALSE;
@@ -2208,7 +2210,7 @@ BindNameToSlot(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
             }
 
             uintN slot = UPVAR_FRAME_SLOT(cookie);
-            if (dn_kind != JSDefinition::ARG) {
+            if (slot != CALLEE_UPVAR_SLOT && dn_kind != JSDefinition::ARG) {
                 JSTreeContext *tc = cg;
                 do {
                     tc = tc->parent;
@@ -2434,10 +2436,6 @@ CheckSideEffects(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn,
 
       case PN_UNARY:
         switch (pn->pn_type) {
-          case TOK_RP:
-            ok = CheckSideEffects(cx, cg, pn->pn_kid, answer);
-            break;
-
           case TOK_DELETE:
             pn2 = pn->pn_kid;
             switch (pn2->pn_type) {
@@ -3145,9 +3143,8 @@ EmitSwitch(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn,
                     /* Just grab 8K for the worst-case bitmap. */
                     intmap_bitlen = JS_BIT(16);
                     intmap = (jsbitmap *)
-                        JS_malloc(cx,
-                                  (JS_BIT(16) >> JS_BITS_PER_WORD_LOG2)
-                                  * sizeof(jsbitmap));
+                        cx->malloc((JS_BIT(16) >> JS_BITS_PER_WORD_LOG2)
+                                   * sizeof(jsbitmap));
                     if (!intmap) {
                         JS_ReportOutOfMemory(cx);
                         return JS_FALSE;
@@ -3164,7 +3161,7 @@ EmitSwitch(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn,
 
       release:
         if (intmap && intmap != intmap_space)
-            JS_free(cx, intmap);
+            cx->free(intmap);
         if (!ok)
             return JS_FALSE;
 
@@ -3308,7 +3305,7 @@ EmitSwitch(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn,
              */
             if (tableLength != 0) {
                 tableSize = (size_t)tableLength * sizeof *table;
-                table = (JSParseNode **) JS_malloc(cx, tableSize);
+                table = (JSParseNode **) cx->malloc(tableSize);
                 if (!table)
                     return JS_FALSE;
                 memset(table, 0, tableSize);
@@ -3476,7 +3473,7 @@ EmitSwitch(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn,
 
 out:
     if (table)
-        JS_free(cx, table);
+        cx->free(table);
     if (ok) {
         ok = js_PopStatementCG(cx, cg);
 
@@ -3502,6 +3499,13 @@ js_EmitFunctionScript(JSContext *cx, JSCodeGenerator *cg, JSParseNode *body)
         if (js_Emit1(cx, cg, JSOP_GENERATOR) < 0)
             return JS_FALSE;
         CG_SWITCH_TO_MAIN(cg);
+    } else {
+        /*
+         * Emit a trace hint opcode only if not in a generator, since generators
+         * are not yet traced and both want to be the first instruction.
+         */
+        if (js_Emit1(cx, cg, JSOP_TRACE) < 0)
+            return JS_FALSE;
     }
 
     return js_EmitTree(cx, cg, body) &&
@@ -3633,10 +3637,6 @@ static JSBool
 EmitDestructuringLHS(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
 {
     jsuint slot;
-
-    /* Skip any parenthesization. */
-    while (pn->pn_type == TOK_RP)
-        pn = pn->pn_kid;
 
     /*
      * Now emit the lvalue opcode sequence.  If the lvalue is a nested
@@ -3862,7 +3862,7 @@ EmitGroupAssignment(JSContext *cx, JSCodeGenerator *cg, JSOp prologOp,
         }
 
         /* MaybeEmitGroupAssignment won't call us if rhs is holey. */
-        JS_ASSERT(pn->pn_type != TOK_COMMA);
+        JS_ASSERT(!(pn->pn_type == TOK_COMMA && pn->pn_arity == PN_NULLARY));
         if (!js_EmitTree(cx, cg, pn))
             return JS_FALSE;
         ++limit;
@@ -4490,8 +4490,8 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         jmp = EmitJump(cx, cg, JSOP_GOTO, 0);
         if (jmp < 0)
             return JS_FALSE;
-        top = CG_OFFSET(cg);
-        if (!js_Emit1(cx, cg, JSOP_LOOP))
+        top = js_Emit1(cx, cg, JSOP_TRACE);
+        if (top < 0)
             return JS_FALSE;
         if (!js_EmitTree(cx, cg, pn->pn_right))
             return JS_FALSE;
@@ -4513,8 +4513,8 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
             return JS_FALSE;
 
         /* Compile the loop body. */
-        top = CG_OFFSET(cg);
-        if (!js_Emit1(cx, cg, JSOP_LOOP))
+        top = js_Emit1(cx, cg, JSOP_TRACE);
+        if (top < 0)
             return JS_FALSE;
         js_PushStatement(cg, &stmtInfo, STMT_DO_LOOP, top);
         if (!js_EmitTree(cx, cg, pn->pn_left))
@@ -4613,7 +4613,7 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
 
             top = CG_OFFSET(cg);
             SET_STATEMENT_TOP(&stmtInfo, top);
-            if (!js_Emit1(cx, cg, JSOP_LOOP))
+            if (js_Emit1(cx, cg, JSOP_TRACE) < 0)
                 return JS_FALSE;
 
 #ifdef DEBUG
@@ -4842,7 +4842,7 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
             SET_STATEMENT_TOP(&stmtInfo, top);
 
             /* Emit code for the loop body. */
-            if (!js_Emit1(cx, cg, JSOP_LOOP))
+            if (js_Emit1(cx, cg, JSOP_TRACE) < 0)
                 return JS_FALSE;
             if (!js_EmitTree(cx, cg, pn->pn_right))
                 return JS_FALSE;
@@ -5608,7 +5608,6 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
          * stack, which impose pervasive runtime "GetValue" costs.
          */
         pn2 = pn->pn_left;
-        JS_ASSERT(pn2->pn_type != TOK_RP);
         atomIndex = (jsatomid) -1;              /* quell GCC overwarning */
         switch (pn2->pn_type) {
           case TOK_NAME:
@@ -5907,6 +5906,37 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         }
         break;
 
+      case TOK_PLUS:
+        /* For TCF_IN_FUNCTION test, see TOK_RB concerning JSOP_NEWARRAY. */
+        if (pn->pn_arity == PN_LIST && pn->pn_count < JS_BIT(16) &&
+            (cg->flags & TCF_IN_FUNCTION)) {
+            /* Emit up to the first string literal conventionally. */
+            for (pn2 = pn->pn_head; pn2; pn2 = pn2->pn_next) {
+                if (pn2->pn_type == TOK_STRING)
+                    break;
+                if (!js_EmitTree(cx, cg, pn2))
+                    return JS_FALSE;
+                if (pn2 != pn->pn_head && js_Emit1(cx, cg, JSOP_ADD) < 0)
+                    return JS_FALSE;
+            }
+
+            /* Emit remainder as a single JSOP_CONCATN. */
+            for (index = 0; pn2; pn2 = pn2->pn_next, index++) {
+                if (!js_EmitTree(cx, cg, pn2))
+                    return JS_FALSE;
+            }
+
+            if (index != 0) {
+                EMIT_UINT16_IMM_OP(JSOP_CONCATN, index);
+
+                /* If we had a prefix, we need to be added to it now. */
+                if (pn->pn_head->pn_type != TOK_STRING &&
+                    js_Emit1(cx, cg, JSOP_ADD) < 0) {
+                    return JS_FALSE;
+                }
+            }
+            break;
+        }
       case TOK_BITOR:
       case TOK_BITXOR:
       case TOK_BITAND:
@@ -5915,7 +5945,6 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
       case TOK_IN:
       case TOK_INSTANCEOF:
       case TOK_SHOP:
-      case TOK_PLUS:
       case TOK_MINUS:
       case TOK_STAR:
       case TOK_DIVOP:
@@ -5987,12 +6016,10 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         }
 #endif
         pn2 = pn->pn_kid;
-        if (op == JSOP_TYPEOF) {
-            for (pn3 = pn2; pn3->pn_type == TOK_RP; pn3 = pn3->pn_kid)
-                continue;
-            if (pn3->pn_type != TOK_NAME)
-                op = JSOP_TYPEOFEXPR;
-        }
+
+        /* See js_FoldConstants for why this assertion holds true. */
+        JS_ASSERT_IF(op == JSOP_TYPEOF, pn2->pn_type == TOK_NAME);
+
         oldflags = cg->flags;
         cg->flags &= ~TCF_IN_FOR_INIT;
         if (!js_EmitTree(cx, cg, pn2))
@@ -6154,8 +6181,8 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         jmp = js_Emit3(cx, cg, JSOP_FILTER, 0, 0);
         if (jmp < 0)
             return JS_FALSE;
-        top = CG_OFFSET(cg);
-        if (!js_Emit1(cx, cg, JSOP_LOOP))
+        top = js_Emit1(cx, cg, JSOP_TRACE);
+        if (top < 0)
             return JS_FALSE;
         if (!js_EmitTree(cx, cg, pn->pn_right))
             return JS_FALSE;
@@ -6440,7 +6467,7 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         for (atomIndex = 0; pn2; atomIndex++, pn2 = pn2->pn_next) {
             if (op == JSOP_NEWINIT && !EmitNumberOp(cx, atomIndex, cg))
                 return JS_FALSE;
-            if (pn2->pn_type == TOK_COMMA) {
+            if (pn2->pn_type == TOK_COMMA && pn2->pn_arity == PN_NULLARY) {
                 if (js_Emit1(cx, cg, JSOP_HOLE) < 0)
                     return JS_FALSE;
             } else {
@@ -6564,23 +6591,6 @@ js_EmitTree(JSContext *cx, JSCodeGenerator *cg, JSParseNode *pn)
         EMIT_UINT16_IMM_OP(JSOP_USESHARP, (jsatomid) pn->pn_num);
         break;
 #endif /* JS_HAS_SHARP_VARS */
-
-      case TOK_RP:
-      {
-        uintN oldflags;
-
-        /*
-         * The node for (e) has e as its kid, enabling users who want to nest
-         * assignment expressions in conditions to avoid the error correction
-         * done by Condition (from x = y to x == y) by double-parenthesizing.
-         */
-        oldflags = cg->flags;
-        cg->flags &= ~TCF_IN_FOR_INIT;
-        if (!js_EmitTree(cx, cg, pn->pn_kid))
-            return JS_FALSE;
-        cg->flags |= oldflags & TCF_IN_FOR_INIT;
-        break;
-      }
 
       case TOK_NAME:
         /*
@@ -7053,7 +7063,7 @@ js_SetSrcNoteOffset(JSContext *cx, JSCodeGenerator *cg, uintN index,
         /* Maybe this offset was already set to a three-byte value. */
         if (!(*sn & SN_3BYTE_OFFSET_FLAG)) {
             /* Losing, need to insert another two bytes for this offset. */
-            index = PTRDIFF(sn, CG_NOTES(cg), jssrcnote);
+            index = sn - CG_NOTES(cg);
 
             /*
              * Simultaneously test to see if the source note array must grow to
@@ -7239,7 +7249,7 @@ js_FinishTakingTryNotes(JSCodeGenerator *cg, JSTryNoteArray *array)
  * If the code being compiled is function code, allocate a reserved slot in
  * the cloned function object that shares its precompiled script with other
  * cloned function objects and with the compiler-created clone-parent. There
- * are nregexps = JS_SCRIPT_REGEXPS(script)->length such reserved slots in each
+ * are nregexps = script->regexps()->length such reserved slots in each
  * function object cloned from fun->object. NB: during compilation, a funobj
  * slots element must never be allocated, because js_AllocSlot could hand out
  * one of the slots that should be given to a regexp clone.

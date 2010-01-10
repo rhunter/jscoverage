@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  * vim: set ts=8 sw=4 et tw=99:
  *
  * ***** BEGIN LICENSE BLOCK *****
@@ -51,11 +51,11 @@
  *
  * This parser attempts no error recovery.
  */
-#include "jsstddef.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "jstypes.h"
+#include "jsstdint.h"
 #include "jsarena.h" /* Added by JSIFY */
 #include "jsutil.h" /* Added by JSIFY */
 #include "jsapi.h"
@@ -77,6 +77,8 @@
 #include "jsscript.h"
 #include "jsstr.h"
 #include "jsstaticcheck.h"
+#include "jslibmath.h"
+#include "jsvector.h"
 
 #if JS_HAS_XML_SUPPORT
 #include "jsxml.h"
@@ -188,6 +190,7 @@ JSParseNode::become(JSParseNode *pn2)
     pn_type = pn2->pn_type;
     pn_op = pn2->pn_op;
     pn_arity = pn2->pn_arity;
+    pn_parens = pn2->pn_parens;
     pn_u = pn2->pn_u;
     pn2->clear();
 }
@@ -199,6 +202,7 @@ JSParseNode::clear()
     pn_op = JSOP_NOP;
     pn_used = pn_defn = false;
     pn_arity = PN_NULLARY;
+    pn_parens = false;
 }
 
 bool
@@ -208,7 +212,7 @@ JSCompiler::init(const jschar *base, size_t length,
     JSContext *cx = context;
 
     tempPoolMark = JS_ARENA_MARK(&cx->tempPool);
-    if (!js_InitTokenStream(cx, TS(this), base, length, fp, filename, lineno)) {
+    if (!tokenStream.init(cx, base, length, fp, filename, lineno)) {
         JS_ARENA_RELEASE(&cx->tempPool, tempPoolMark);
         return false;
     }
@@ -228,7 +232,7 @@ JSCompiler::~JSCompiler()
     JS_ASSERT(tempRoot.u.compiler == this);
     JS_POP_TEMP_ROOT(cx, &tempRoot);
     JS_UNKEEP_ATOMS(cx->runtime);
-    js_CloseTokenStream(cx, TS(this));
+    tokenStream.close(cx);
     JS_ARENA_RELEASE(&cx->tempPool, tempPoolMark);
 }
 
@@ -532,6 +536,7 @@ InitParseNode(JSParseNode *pn, JSTokenType type, JSOp op, JSParseNodeArity arity
     pn->pn_type = type;
     pn->pn_op = op;
     pn->pn_arity = arity;
+    pn->pn_parens = false;
     JS_ASSERT(!pn->pn_used);
     JS_ASSERT(!pn->pn_defn);
     pn->pn_next = pn->pn_link = NULL;
@@ -599,6 +604,7 @@ NewBinary(JSTokenType tt, JSOp op, JSParseNode *left, JSParseNode *right,
         if (left->pn_arity != PN_LIST) {
             pn1 = left->pn_left, pn2 = left->pn_right;
             left->pn_arity = PN_LIST;
+            left->pn_parens = false;
             left->initList(pn1);
             left->append(pn2);
             if (tt == TOK_PLUS) {
@@ -871,6 +877,11 @@ JSCompiler::compileScript(JSContext *cx, JSObject *scopeChain, JSStackFrame *cal
     bool onlyXML;
     onlyXML = true;
 #endif
+
+    CG_SWITCH_TO_PROLOG(&cg);
+    if (js_Emit1(cx, &cg, JSOP_TRACE) < 0)
+        goto out;
+    CG_SWITCH_TO_MAIN(&cg);
 
     for (;;) {
         jsc.tokenStream.flags |= TSF_OPERAND;
@@ -1269,7 +1280,7 @@ Define(JSParseNode *pn, JSAtom *atom, JSTreeContext *tc, bool let = false)
             while ((pnu = *pnup) != NULL && pnu->pn_blockid >= start) {
                 JS_ASSERT(pnu->pn_used);
                 pnu->pn_lexdef = (JSDefinition *) pn;
-                pn->pn_dflags |= pnu->pn_dflags & (PND_ASSIGNED | PND_FUNARG);
+                pn->pn_dflags |= pnu->pn_dflags & PND_USE2DEF_FLAGS;
                 pnup = &pnu->pn_link;
             }
 
@@ -1301,6 +1312,7 @@ LinkUseToDef(JSParseNode *pn, JSDefinition *dn, JSTreeContext *tc)
     JS_ASSERT(pn != dn->dn_uses);
     pn->pn_link = dn->dn_uses;
     dn->dn_uses = pn;
+    dn->pn_dflags |= pn->pn_dflags & PND_USE2DEF_FLAGS;
     pn->pn_used = true;
     pn->pn_lexdef = dn;
 }
@@ -1343,6 +1355,7 @@ MakeAssignment(JSParseNode *pn, JSParseNode *rhs, JSTreeContext *tc)
     pn->pn_type = TOK_ASSIGN;
     pn->pn_op = JSOP_NOP;
     pn->pn_arity = PN_BINARY;
+    pn->pn_parens = false;
     pn->pn_used = pn->pn_defn = false;
     pn->pn_left = lhs;
     pn->pn_right = rhs;
@@ -1385,9 +1398,9 @@ MakeDefIntoUse(JSDefinition *dn, JSParseNode *pn, JSAtom *atom, JSTreeContext *t
         JS_ASSERT(pnu->pn_used);
         JS_ASSERT(!pnu->pn_defn);
         pnu->pn_lexdef = (JSDefinition *) pn;
-        pn->pn_dflags |= pnu->pn_dflags & (PND_ASSIGNED | PND_FUNARG);
+        pn->pn_dflags |= pnu->pn_dflags & PND_USE2DEF_FLAGS;
     }
-    pn->pn_dflags |= dn->pn_dflags & (PND_ASSIGNED | PND_FUNARG);
+    pn->pn_dflags |= dn->pn_dflags & PND_USE2DEF_FLAGS;
     pn->dn_uses = dn;
 
     dn->pn_defn = false;
@@ -1558,7 +1571,7 @@ struct BindData {
 
 static JSBool
 BindLocalVariable(JSContext *cx, JSFunction *fun, JSAtom *atom,
-                  JSLocalKind localKind)
+                  JSLocalKind localKind, bool isArg)
 {
     JS_ASSERT(localKind == JSLOCAL_VAR || localKind == JSLOCAL_CONST);
 
@@ -1567,8 +1580,11 @@ BindLocalVariable(JSContext *cx, JSFunction *fun, JSAtom *atom,
      * Instead 'var arguments' always restates the predefined property of the
      * activation objects whose name is 'arguments'. Assignment to such a
      * variable must be handled specially.
+     *
+     * Special case: an argument named 'arguments' *does* shadow the predefined
+     * arguments property.
      */
-    if (atom == cx->runtime->atomState.argumentsAtom)
+    if (atom == cx->runtime->atomState.argumentsAtom && !isArg)
         return JS_TRUE;
 
     return js_AddLocal(cx, fun, atom, localKind);
@@ -1586,7 +1602,6 @@ static JSBool
 BindDestructuringArg(JSContext *cx, BindData *data, JSAtom *atom,
                      JSTreeContext *tc)
 {
-    JSAtomListElement *ale;
     JSParseNode *pn;
 
     /* Flag tc so we don't have to lookup arguments on every use. */
@@ -1594,10 +1609,6 @@ BindDestructuringArg(JSContext *cx, BindData *data, JSAtom *atom,
         tc->flags |= TCF_FUN_PARAM_ARGUMENTS;
 
     JS_ASSERT(tc->flags & TCF_IN_FUNCTION);
-    ale = tc->decls.lookup(atom);
-    pn = data->pn;
-    if (!ale && !Define(pn, atom, tc))
-        return JS_FALSE;
 
     JSLocalKind localKind = js_LookupLocal(cx, tc->fun, atom, NULL);
     if (localKind != JSLOCAL_NONE) {
@@ -1605,9 +1616,14 @@ BindDestructuringArg(JSContext *cx, BindData *data, JSAtom *atom,
                                     JSREPORT_ERROR, JSMSG_DESTRUCT_DUP_ARG);
         return JS_FALSE;
     }
+    JS_ASSERT(!tc->decls.lookup(atom));
+
+    pn = data->pn;
+    if (!Define(pn, atom, tc))
+        return JS_FALSE;
 
     uintN index = tc->fun->u.i.nvars;
-    if (!BindLocalVariable(cx, tc->fun, atom, JSLOCAL_VAR))
+    if (!BindLocalVariable(cx, tc->fun, atom, JSLOCAL_VAR, true))
         return JS_FALSE;
     pn->pn_op = JSOP_SETLOCAL;
     pn->pn_cookie = MAKE_UPVAR_COOKIE(tc->staticLevel, index);
@@ -2441,7 +2457,8 @@ FunctionDef(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
     JSAtomListElement *ale;
 #if JS_HAS_DESTRUCTURING
     JSParseNode *item, *list = NULL;
-    bool destructuringArg = false, duplicatedArg = false;
+    bool destructuringArg = false;
+    JSAtom *duplicatedArg = NULL;
 #endif
 
     /* Make a TOK_FUNCTION node. */
@@ -2670,23 +2687,24 @@ FunctionDef(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
 
               case TOK_NAME:
               {
-                /*
-                 * Check for a duplicate parameter name, a "feature" that
-                 * ECMA-262 requires. This is a SpiderMonkey strict warning,
-                 * soon to be an ES3.1 strict error.
-                 *
-                 * Further, if any argument is a destructuring pattern, forbid
-                 * duplicates. We will report the error either now if we have
-                 * seen a destructuring pattern already, or later when we find
-                 * the first pattern.
-                 */
                 JSAtom *atom = CURRENT_TOKEN(ts).t_atom;
-                if (JS_HAS_STRICT_OPTION(cx) &&
-                    js_LookupLocal(cx, fun, atom, NULL) != JSLOCAL_NONE) {
+                if (!DefineArg(pn, atom, fun->nargs, &funtc))
+                    return NULL;
 #if JS_HAS_DESTRUCTURING
+                /* 
+                 * ECMA-262 requires us to support duplicate parameter names, but if the
+                 * parameter list includes destructuring, we consider the code to have
+                 * opted in to higher standards, and forbid duplicates. We may see a
+                 * destructuring parameter later, so always note duplicates now.
+                 *
+                 * Duplicates are warned about (strict option) or cause errors (strict
+                 * mode code), but we do those tests in one place below, after having
+                 * parsed the body.
+                 */
+                if (js_LookupLocal(cx, fun, atom, NULL) != JSLOCAL_NONE) {
+                    duplicatedArg = atom;
                     if (destructuringArg)
                         goto report_dup_and_destructuring;
-                    duplicatedArg = true;
 #endif
                     const char *name = js_AtomToPrintableString(cx, atom);
                     if (!name ||
@@ -2699,8 +2717,6 @@ FunctionDef(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
                         return NULL;
                     }
                 }
-                if (!DefineArg(pn, atom, fun->nargs, &funtc))
-                    return NULL;
                 if (!js_AddLocal(cx, fun, atom, JSLOCAL_ARG))
                     return NULL;
                 break;
@@ -2715,7 +2731,8 @@ FunctionDef(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
 
 #if JS_HAS_DESTRUCTURING
               report_dup_and_destructuring:
-                js_ReportCompileErrorNumber(cx, TS(tc->compiler), NULL,
+                JSDefinition *dn = ALE_DEFN(funtc.decls.lookup(duplicatedArg));
+                js_ReportCompileErrorNumber(cx, TS(tc->compiler), dn,
                                             JSREPORT_ERROR,
                                             JSMSG_DESTRUCT_DUP_ARG);
                 return NULL;
@@ -2956,20 +2973,15 @@ Condition(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
         return NULL;
     MUST_MATCH_TOKEN(TOK_RP, JSMSG_PAREN_AFTER_COND);
 
-    /*
-     * Check for (a = b) and warn about possible (a == b) mistype iff b's
-     * operator has greater precedence than ==.
-     */
+    /* Check for (a = b) and warn about possible (a == b) mistype. */
     if (pn->pn_type == TOK_ASSIGN &&
         pn->pn_op == JSOP_NOP &&
-        pn->pn_right->pn_type > TOK_EQOP)
-    {
-        if (!js_ReportCompileErrorNumber(cx, ts, NULL,
-                                         JSREPORT_WARNING | JSREPORT_STRICT,
-                                         JSMSG_EQUAL_AS_ASSIGN,
-                                         "")) {
-            return NULL;
-        }
+        !pn->pn_parens &&
+        !js_ReportCompileErrorNumber(cx, ts, NULL,
+                                     JSREPORT_WARNING | JSREPORT_STRICT,
+                                     JSMSG_EQUAL_AS_ASSIGN,
+                                     "")) {
+        return NULL;
     }
     return pn;
 }
@@ -3049,18 +3061,11 @@ BindLet(JSContext *cx, BindData *data, JSAtom *atom, JSTreeContext *tc)
     pn->pn_dflags |= PND_LET | PND_BOUND;
 
     /*
-     * Use JSPROP_ENUMERATE to aid the disassembler. Define the let binding's
-     * property before storing pn in a reserved slot, since block_reserveSlots
-     * depends on OBJ_SCOPE(blockObj)->entryCount.
+     * Define the let binding's property before storing pn in a reserved slot,
+     * since block_reserveSlots depends on OBJ_SCOPE(blockObj)->entryCount.
      */
-    if (!js_DefineNativeProperty(cx, blockObj, ATOM_TO_JSID(atom), JSVAL_VOID,
-                                 NULL, NULL,
-                                 JSPROP_ENUMERATE |
-                                 JSPROP_PERMANENT |
-                                 JSPROP_SHARED,
-                                 SPROP_HAS_SHORTID, (int16) n, NULL)) {
+    if (!js_DefineBlockVariable(cx, blockObj, ATOM_TO_JSID(atom), n))
         return JS_FALSE;
-    }
 
     /*
      * Store pn temporarily in what would be reserved slots in a cloned block
@@ -3070,7 +3075,7 @@ BindLet(JSContext *cx, BindData *data, JSAtom *atom, JSTreeContext *tc)
      */
     uintN slot = JSSLOT_FREE(&js_BlockClass) + n;
     if (slot >= STOBJ_NSLOTS(blockObj) &&
-        !js_ReallocSlots(cx, blockObj, slot + 1, JS_FALSE)) {
+        !js_GrowSlots(cx, blockObj, slot + 1)) {
         return JS_FALSE;
     }
     OBJ_SCOPE(blockObj)->freeslot = slot + 1;
@@ -3086,7 +3091,7 @@ PopStatement(JSTreeContext *tc)
     if (stmt->flags & SIF_SCOPE) {
         JSObject *obj = stmt->blockObj;
         JSScope *scope = OBJ_SCOPE(obj);
-        JS_ASSERT(scope->object == obj);
+        JS_ASSERT(!OBJ_IS_CLONED_BLOCK(obj));
 
         for (JSScopeProperty *sprop = scope->lastProp; sprop; sprop = sprop->parent) {
             JSAtom *atom = JSID_TO_ATOM(sprop->id);
@@ -3096,6 +3101,12 @@ PopStatement(JSTreeContext *tc)
                 continue;
             tc->decls.remove(tc->compiler, atom);
         }
+
+        /*
+         * The block scope will not be modified again. It may be shared. Clear
+         * scope->object to make scope->owned() false.
+         */
+        scope->object = NULL;
     }
     js_PopStatement(tc);
 }
@@ -3314,7 +3325,7 @@ BindVarOrConst(JSContext *cx, BindData *data, JSAtom *atom, JSTreeContext *tc)
         localKind = (data->op == JSOP_DEFCONST) ? JSLOCAL_CONST : JSLOCAL_VAR;
 
         uintN index = tc->fun->u.i.nvars;
-        if (!BindLocalVariable(cx, tc->fun, atom, localKind))
+        if (!BindLocalVariable(cx, tc->fun, atom, localKind, false))
             return JS_FALSE;
         pn->pn_op = JSOP_GETLOCAL;
         pn->pn_cookie = MAKE_UPVAR_COOKIE(tc->staticLevel, index);
@@ -3454,9 +3465,6 @@ BindDestructuringVar(JSContext *cx, BindData *data, JSParseNode *pn,
 static JSBool
 BindDestructuringLHS(JSContext *cx, JSParseNode *pn, JSTreeContext *tc)
 {
-    while (pn->pn_type == TOK_RP)
-        pn = pn->pn_kid;
-
     switch (pn->pn_type) {
       case TOK_NAME:
         NoteLValue(cx, pn, tc);
@@ -3509,7 +3517,7 @@ typedef struct FindPropValEntry {
                ((pnkey)->pn_type == TOK_NUMBER ||                             \
                 (pnkey)->pn_type == TOK_STRING ||                             \
                 (pnkey)->pn_type == TOK_NAME)) ||                             \
-               (pnkey)->pn_arity == PN_NAME && (pnkey)->pn_type == TOK_NAME)
+               ((pnkey)->pn_arity == PN_NAME && (pnkey)->pn_type == TOK_NAME))
 
 static JSDHashNumber
 HashFindPropValKey(JSDHashTable *table, const void *key)
@@ -3518,8 +3526,7 @@ HashFindPropValKey(JSDHashTable *table, const void *key)
 
     ASSERT_VALID_PROPERTY_KEY(pnkey);
     return (pnkey->pn_type == TOK_NUMBER)
-           ? (JSDHashNumber) (JSDOUBLE_HI32(pnkey->pn_dval) ^
-                              JSDOUBLE_LO32(pnkey->pn_dval))
+           ? (JSDHashNumber) JS_HASH_DOUBLE(pnkey->pn_dval)
            : ATOM_HASH(pnkey->pn_atom);
 }
 
@@ -3673,15 +3680,6 @@ CheckDestructuring(JSContext *cx, BindData *data,
 
         while (lhs) {
             pn = lhs, pn2 = rhs;
-            if (!data) {
-                /* Skip parenthesization if not in a variable declaration. */
-                while (pn->pn_type == TOK_RP)
-                    pn = pn->pn_kid;
-                if (pn2) {
-                    while (pn2->pn_type == TOK_RP)
-                        pn2 = pn2->pn_kid;
-                }
-            }
 
             /* Nullary comma is an elision; binary comma is an expression.*/
             if (pn->pn_type != TOK_COMMA || pn->pn_arity != PN_NULLARY) {
@@ -3714,21 +3712,10 @@ CheckDestructuring(JSContext *cx, BindData *data,
         while (lhs) {
             JS_ASSERT(lhs->pn_type == TOK_COLON);
             pn = lhs->pn_right;
-            if (!data) {
-                /* Skip parenthesization if not in a variable declaration. */
-                while (pn->pn_type == TOK_RP)
-                    pn = pn->pn_kid;
-            }
 
             if (pn->pn_type == TOK_RB || pn->pn_type == TOK_RC) {
-                if (right) {
+                if (right)
                     rhs = FindPropertyValue(right, lhs->pn_left, &fpvd);
-                    if (rhs && !data) {
-                        while (rhs->pn_type == TOK_RP)
-                            rhs = rhs->pn_kid;
-                    }
-                }
-
                 ok = CheckDestructuring(cx, data, pn, rhs, tc);
             } else if (data) {
                 if (pn->pn_type != TOK_NAME)
@@ -3795,7 +3782,7 @@ CheckDestructuring(JSContext *cx, BindData *data,
 /*
  * This is a greatly pared down version of CheckDestructuring that extends the
  * pn_pos.end source coordinate of each name in a destructuring binding such as
- * 
+ *
  *   var [x, y] = [function () y, 42];
  *
  * to cover its corresponding initializer, so that the initialized binding does
@@ -3909,6 +3896,7 @@ CloneParseTree(JSParseNode *opn, JSTreeContext *tc)
     pn->pn_used = opn->pn_used;
     pn->pn_defn = opn->pn_defn;
     pn->pn_arity = opn->pn_arity;
+    pn->pn_parens = opn->pn_parens;
 
     switch (pn->pn_arity) {
 #define NULLCHECK(e)    JS_BEGIN_MACRO if (!(e)) return NULL; JS_END_MACRO
@@ -4334,7 +4322,6 @@ RebindLets(JSParseNode *pn, JSTreeContext *tc)
                     JSDefinition *dn = ALE_DEFN(ale);
                     dn->pn_type = TOK_NAME;
                     dn->pn_op = JSOP_NOP;
-                    dn->pn_dflags |= pn->pn_dflags & PND_FUNARG;
                 }
                 LinkUseToDef(pn, ALE_DEFN(ale), tc);
             }
@@ -4647,10 +4634,6 @@ Statement(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
 #endif
             } else {
                 pn1 = Expr(cx, ts, tc);
-                if (pn1) {
-                    while (pn1->pn_type == TOK_RP)
-                        pn1 = pn1->pn_kid;
-                }
             }
             tc->flags &= ~TCF_IN_FOR_INIT;
             if (!pn1)
@@ -5434,6 +5417,9 @@ Statement(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
                                         JSMSG_BAD_DEFAULT_XML_NAMESPACE);
             return NULL;
         }
+
+        /* Is this an E4X dagger I see before me? */
+        tc->flags |= TCF_FUN_HEAVYWEIGHT;
         pn2 = Expr(cx, ts, tc);
         if (!pn2)
             return NULL;
@@ -5715,7 +5701,7 @@ Expr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
         do {
 #if JS_HAS_GENERATORS
             pn2 = pn->last();
-            if (pn2->pn_type == TOK_YIELD) {
+            if (pn2->pn_type == TOK_YIELD && !pn2->pn_parens) {
                 js_ReportCompileErrorNumber(cx, ts, pn2, JSREPORT_ERROR,
                                             JSMSG_BAD_GENERATOR_SYNTAX,
                                             js_yield_str);
@@ -5735,7 +5721,7 @@ Expr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
 static JSParseNode *
 AssignExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
 {
-    JSParseNode *pn, *pn2;
+    JSParseNode *pn, *rhs;
     JSTokenType tt;
     JSOp op;
 
@@ -5768,18 +5754,16 @@ AssignExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
     }
 
     op = CURRENT_TOKEN(ts).t_op;
-    for (pn2 = pn; pn2->pn_type == TOK_RP; pn2 = pn2->pn_kid)
-        continue;
-    switch (pn2->pn_type) {
+    switch (pn->pn_type) {
       case TOK_NAME:
-        pn2->pn_op = JSOP_SETNAME;
-        NoteLValue(cx, pn2, tc);
+        pn->pn_op = JSOP_SETNAME;
+        NoteLValue(cx, pn, tc);
         break;
       case TOK_DOT:
-        pn2->pn_op = JSOP_SETPROP;
+        pn->pn_op = JSOP_SETPROP;
         break;
       case TOK_LB:
-        pn2->pn_op = JSOP_SETELEM;
+        pn->pn_op = JSOP_SETELEM;
         break;
 #if JS_HAS_DESTRUCTURING
       case TOK_RB:
@@ -5789,21 +5773,21 @@ AssignExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
                                         JSMSG_BAD_DESTRUCT_ASS);
             return NULL;
         }
-        pn = AssignExpr(cx, ts, tc);
-        if (!pn || !CheckDestructuring(cx, NULL, pn2, pn, tc))
+        rhs = AssignExpr(cx, ts, tc);
+        if (!rhs || !CheckDestructuring(cx, NULL, pn, rhs, tc))
             return NULL;
-        return NewBinary(TOK_ASSIGN, op, pn2, pn, tc);
+        return NewBinary(TOK_ASSIGN, op, pn, rhs, tc);
 #endif
 #if JS_HAS_LVALUE_RETURN
       case TOK_LP:
-        if (!MakeSetCall(cx, pn2, tc, JSMSG_BAD_LEFTSIDE_OF_ASS))
+        if (!MakeSetCall(cx, pn, tc, JSMSG_BAD_LEFTSIDE_OF_ASS))
             return NULL;
         break;
 #endif
 #if JS_HAS_XML_SUPPORT
       case TOK_UNARYOP:
-        if (pn2->pn_op == JSOP_XMLNAME) {
-            pn2->pn_op = JSOP_SETXMLNAME;
+        if (pn->pn_op == JSOP_XMLNAME) {
+            pn->pn_op = JSOP_SETXMLNAME;
             break;
         }
         /* FALL THROUGH */
@@ -5814,9 +5798,9 @@ AssignExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
         return NULL;
     }
 
-    JSParseNode *pn3 = AssignExpr(cx, ts, tc);
-    if (pn3 && PN_TYPE(pn2) == TOK_NAME && pn2->pn_used) {
-        JSDefinition *dn = pn2->pn_lexdef;
+    rhs = AssignExpr(cx, ts, tc);
+    if (rhs && PN_TYPE(pn) == TOK_NAME && pn->pn_used) {
+        JSDefinition *dn = pn->pn_lexdef;
 
         /*
          * If the definition is not flagged as assigned, we must have imputed
@@ -5827,11 +5811,11 @@ AssignExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
          */
         if (!dn->isAssigned()) {
             JS_ASSERT(dn->isInitialized());
-            dn->pn_pos.end = pn3->pn_pos.end;
+            dn->pn_pos.end = rhs->pn_pos.end;
         }
     }
 
-    return NewBinary(TOK_ASSIGN, op, pn2, pn3, tc);
+    return NewBinary(TOK_ASSIGN, op, pn, rhs, tc);
 }
 
 static JSParseNode *
@@ -6031,8 +6015,6 @@ static JSParseNode *
 SetLvalKid(JSContext *cx, JSTokenStream *ts, JSParseNode *pn, JSParseNode *kid,
            const char *name)
 {
-    while (kid->pn_type == TOK_RP)
-        kid = kid->pn_kid;
     if (kid->pn_type != TOK_NAME &&
         kid->pn_type != TOK_DOT &&
 #if JS_HAS_LVALUE_RETURN
@@ -6155,12 +6137,9 @@ UnaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc)
 
         /*
          * Under ECMA3, deleting any unary expression is valid -- it simply
-         * returns true. Here we strip off any parentheses and fold constants
-         * before checking for a call expression, in order to rule out delete
-         * of a generator expression.
+         * returns true. Here we fold constants before checking for a call
+         * expression, in order to rule out delete of a generator expression.
          */
-        while (pn2->pn_type == TOK_RP)
-            pn2 = pn2->pn_kid;
         if (!js_FoldConstants(cx, pn2, tc))
             return NULL;
         switch (pn2->pn_type) {
@@ -6402,7 +6381,7 @@ CompExprTransplanter::transplant(JSParseNode *pn)
                         JSParseNode *pnu;
                         while ((pnu = *pnup) != NULL && pnu->pn_pos >= root->pn_pos) {
                             pnu->pn_lexdef = dn2;
-                            dn2->pn_dflags |= pnu->pn_dflags & (PND_ASSIGNED | PND_FUNARG);
+                            dn2->pn_dflags |= pnu->pn_dflags & PND_USE2DEF_FLAGS;
                             pnup = &pnu->pn_link;
                         }
                         dn2->dn_uses = dn->dn_uses;
@@ -6622,8 +6601,7 @@ ComprehensionTail(JSParseNode *kid, uintN blockid, JSTreeContext *tc,
     pn2->pn_kid = kid;
     *pnp = pn2;
 
-    if (type == TOK_ARRAYPUSH)
-        PopStatement(tc);
+    PopStatement(tc);
     return pn;
 }
 
@@ -6651,9 +6629,10 @@ GeneratorExpr(JSParseNode *pn, JSParseNode *kid, JSTreeContext *tc)
     JS_ASSERT(pn->pn_arity == PN_UNARY);
     pn->pn_type = TOK_YIELD;
     pn->pn_op = JSOP_YIELD;
+    pn->pn_parens = true;
     pn->pn_pos = kid->pn_pos;
     pn->pn_kid = kid;
-    pn->pn_hidden = JS_TRUE;
+    pn->pn_hidden = true;
 
     /* Make a new node for the desugared generator function. */
     JSParseNode *genfn = NewParseNode(PN_FUNC, tc);
@@ -6731,6 +6710,7 @@ ArgumentList(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
                 return JS_FALSE;
 #if JS_HAS_GENERATORS
             if (argNode->pn_type == TOK_YIELD &&
+                !argNode->pn_parens &&
                 js_PeekToken(cx, ts) == TOK_COMMA) {
                 js_ReportCompileErrorNumber(cx, ts, argNode, JSREPORT_ERROR,
                                             JSMSG_BAD_GENERATOR_SYNTAX,
@@ -6832,6 +6812,7 @@ MemberExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
             pn2->pn_pos = pn->pn_pos;
             pn2->pn_op = JSOP_XMLNAME;
             pn2->pn_arity = PN_UNARY;
+            pn2->pn_parens = false;
             pn2->pn_kid = pn;
             pn = pn2;
         }
@@ -6849,28 +6830,23 @@ MemberExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
             pn3 = PrimaryExpr(cx, ts, tc, tt, JS_TRUE);
             if (!pn3)
                 return NULL;
-            tt = PN_TYPE(pn3);
-            if (tt == TOK_NAME) {
+
+            /* Check both tt and pn_type, to distinguish |x.(y)| and |x.y::z| from |x.y|. */
+            if (tt == TOK_NAME && pn3->pn_type == TOK_NAME) {
                 pn2->pn_op = JSOP_GETPROP;
                 pn2->pn_expr = pn;
                 pn2->pn_atom = pn3->pn_atom;
                 RecycleTree(pn3, tc);
             } else {
-                if (TOKEN_TYPE_IS_XML(tt)) {
-                    pn2->pn_type = TOK_LB;
-                    pn2->pn_op = JSOP_GETELEM;
-                } else if (tt == TOK_RP) {
-                    JSParseNode *group = pn3;
-
-                    /* Recycle the useless TOK_RP node. */
-                    pn3 = group->pn_kid;
-                    group->pn_kid = NULL;
-                    RecycleTree(group, tc);
+                if (tt == TOK_LP) {
                     pn2->pn_type = TOK_FILTER;
                     pn2->pn_op = JSOP_FILTER;
 
                     /* A filtering predicate is like a with statement. */
                     tc->flags |= TCF_FUN_HEAVYWEIGHT;
+                } else if (TOKEN_TYPE_IS_XML(PN_TYPE(pn3))) {
+                    pn2->pn_type = TOK_LB;
+                    pn2->pn_op = JSOP_GETELEM;
                 } else {
                     js_ReportCompileErrorNumber(cx, ts, NULL, JSREPORT_ERROR,
                                                 JSMSG_NAME_AFTER_DOT);
@@ -6902,7 +6878,7 @@ MemberExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
             if (!pn3)
                 return NULL;
             tt = PN_TYPE(pn3);
-            if (tt == TOK_NAME) {
+            if (tt == TOK_NAME && !pn3->pn_parens) {
                 pn3->pn_type = TOK_STRING;
                 pn3->pn_arity = PN_NULLARY;
                 pn3->pn_op = JSOP_QNAMEPART;
@@ -7578,7 +7554,7 @@ XMLElementOrList(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
                 js_ReportCompileErrorNumber(cx, ts, pn2,
                                             JSREPORT_UC | JSREPORT_ERROR,
                                             JSMSG_XML_TAG_NAME_MISMATCH,
-                                            JSSTRING_CHARS(str));
+                                            str->chars());
                 return NULL;
             }
 
@@ -7766,7 +7742,7 @@ PrimaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
         ts->flags &= ~TSF_OPERAND;
         if (!matched) {
             for (index = 0; ; index++) {
-                if (index == ARRAY_INIT_LIMIT) {
+                if (index == JS_ARGS_LENGTH_MAX) {
                     js_ReportCompileErrorNumber(cx, ts, NULL, JSREPORT_ERROR,
                                                 JSMSG_ARRAY_INIT_TOO_BIG);
                     return NULL;
@@ -7938,13 +7914,6 @@ PrimaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
                     pn3->pn_atom = CURRENT_TOKEN(ts).t_atom;
                 break;
               case TOK_RC:
-                if (afterComma &&
-                    !js_ReportCompileErrorNumber(cx, ts, NULL,
-                                                 JSREPORT_WARNING |
-                                                 JSREPORT_STRICT,
-                                                 JSMSG_TRAILING_COMMA)) {
-                        return NULL;
-                }
                 goto end_obj_init;
               default:
                 js_ReportCompileErrorNumber(cx, ts, NULL, JSREPORT_ERROR,
@@ -8060,27 +8029,12 @@ PrimaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
       {
         JSBool genexp;
 
-        pn = NewParseNode(PN_UNARY, tc);
+        pn = ParenExpr(cx, ts, tc, NULL, &genexp);
         if (!pn)
             return NULL;
-        pn2 = ParenExpr(cx, ts, tc, pn, &genexp);
-        if (!pn2)
-            return NULL;
-        if (genexp)
-            return pn2;
-        MUST_MATCH_TOKEN(TOK_RP, JSMSG_PAREN_IN_PAREN);
-
-        /* Check if parentheses were unnecessary. */
-        if (pn2->pn_type == TOK_RP ||
-            (js_CodeSpec[pn2->pn_op].prec >= js_CodeSpec[JSOP_GETPROP].prec &&
-             !afterDot)) {
-            RecycleTree(pn, tc);
-            pn = pn2;
-        } else {
-            pn->pn_type = TOK_RP;
-            pn->pn_kid = pn2;
-        }
-        pn->pn_pos.end = CURRENT_TOKEN(ts).pos.end;
+        pn->pn_parens = true;
+        if (!genexp)
+            MUST_MATCH_TOKEN(TOK_RP, JSMSG_PAREN_IN_PAREN);
         break;
       }
 
@@ -8243,7 +8197,7 @@ PrimaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
                  * . or .. is not treated as a property name.
                  */
                 str = ATOM_TO_STRING(pn->pn_atom);
-                tt = js_CheckKeyword(JSSTRING_CHARS(str), JSSTRING_LENGTH(str));
+                tt = js_CheckKeyword(str->chars(), str->length());
                 if (tt == TOK_FUNCTION) {
                     pn->pn_arity = PN_NULLARY;
                     pn->pn_type = TOK_FUNCTION;
@@ -8268,11 +8222,9 @@ PrimaryExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
         if (!pn)
             return NULL;
 
-        /* Token stream ensures that tokenbuf is NUL-terminated. */
-        JS_ASSERT(*ts->tokenbuf.ptr == (jschar) 0);
         obj = js_NewRegExpObject(cx, ts,
-                                 ts->tokenbuf.base,
-                                 ts->tokenbuf.ptr - ts->tokenbuf.base,
+                                 ts->tokenbuf.begin(),
+                                 ts->tokenbuf.length(),
                                  CURRENT_TOKEN(ts).t_reflags);
         if (!obj)
             return NULL;
@@ -8334,13 +8286,13 @@ ParenExpr(JSContext *cx, JSTokenStream *ts, JSTreeContext *tc,
 
 #if JS_HAS_GENERATOR_EXPRS
     if (js_MatchToken(cx, ts, TOK_FOR)) {
-        if (pn->pn_type == TOK_YIELD) {
+        if (pn->pn_type == TOK_YIELD && !pn->pn_parens) {
             js_ReportCompileErrorNumber(cx, ts, pn, JSREPORT_ERROR,
                                         JSMSG_BAD_GENERATOR_SYNTAX,
                                         js_yield_str);
             return NULL;
         }
-        if (pn->pn_type == TOK_COMMA) {
+        if (pn->pn_type == TOK_COMMA && !pn->pn_parens) {
             js_ReportCompileErrorNumber(cx, ts, pn->last(), JSREPORT_ERROR,
                                         JSMSG_BAD_GENERATOR_SYNTAX,
                                         js_generator_str);
@@ -8462,7 +8414,7 @@ FoldBinaryNumeric(JSContext *cx, JSOp op, JSParseNode *pn1, JSParseNode *pn2,
 #endif
             if (d == 0 || JSDOUBLE_IS_NaN(d))
                 d = *cx->runtime->jsNaN;
-            else if ((JSDOUBLE_HI32(d) ^ JSDOUBLE_HI32(d2)) >> 31)
+            else if (JSDOUBLE_IS_NEG(d) != JSDOUBLE_IS_NEG(d2))
                 d = *cx->runtime->jsNegativeInfinity;
             else
                 d = *cx->runtime->jsPositiveInfinity;
@@ -8475,11 +8427,7 @@ FoldBinaryNumeric(JSContext *cx, JSOp op, JSParseNode *pn1, JSParseNode *pn2,
         if (d2 == 0) {
             d = *cx->runtime->jsNaN;
         } else {
-#if defined(XP_WIN)
-          /* Workaround MS fmod bug where 42 % (1/0) => NaN, not 42. */
-          if (!(JSDOUBLE_IS_FINITE(d) && JSDOUBLE_IS_INFINITE(d2)))
-#endif
-            d = fmod(d, d2);
+            d = js_fmod(d, d2);
         }
         break;
 
@@ -8608,7 +8556,7 @@ FoldXMLConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc)
 #ifdef DEBUG_brendanXXX
             printf("2: %d, %d => ", i, j);
             js_FileEscapedString(stdout, str, 0);
-            printf(" (%u)\n", JSSTRING_LENGTH(str));
+            printf(" (%u)\n", str->length());
 #endif
             ++j;
         }
@@ -8664,48 +8612,6 @@ FoldXMLConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc)
 
 #endif /* JS_HAS_XML_SUPPORT */
 
-static JSBool
-StartsWith(JSParseNode *pn, JSTokenType tt)
-{
-#define TAIL_RECURSE(pn2) JS_BEGIN_MACRO pn = (pn2); goto recur; JS_END_MACRO
-
-recur:
-    if (PN_TYPE(pn) == tt)
-        return JS_TRUE;
-    switch (pn->pn_arity) {
-      case PN_FUNC:
-        return  tt == TOK_FUNCTION;
-      case PN_LIST:
-        if (pn->pn_head)
-            TAIL_RECURSE(pn->pn_head);
-        break;
-      case PN_TERNARY:
-        if (pn->pn_kid1)
-            TAIL_RECURSE(pn->pn_kid1);
-        break;
-      case PN_BINARY:
-        if (pn->pn_left)
-            TAIL_RECURSE(pn->pn_left);
-        break;
-      case PN_UNARY:
-        /* A parenthesized expression starts with a left parenthesis. */
-        if (pn->pn_type == TOK_RP)
-            return tt == TOK_LP;
-        if (pn->pn_kid)
-            TAIL_RECURSE(pn->pn_kid);
-        break;
-      case PN_NAME:
-        if (pn->pn_type == TOK_DOT || pn->pn_type == TOK_DBLDOT)
-            TAIL_RECURSE(pn->expr());
-        break;
-      case PN_NAMESET:
-        TAIL_RECURSE(pn->pn_tree);
-    }
-    return JS_FALSE;
-
-#undef TAIL_RECURSE
-}
-
 static int
 Boolish(JSParseNode *pn)
 {
@@ -8714,7 +8620,7 @@ Boolish(JSParseNode *pn)
         return pn->pn_dval != 0 && !JSDOUBLE_IS_NaN(pn->pn_dval);
 
       case JSOP_STRING:
-        return JSSTRING_LENGTH(ATOM_TO_STRING(pn->pn_atom)) != 0;
+        return ATOM_TO_STRING(pn->pn_atom)->length() != 0;
 
 #if JS_HAS_GENERATOR_EXPRS
       case JSOP_CALL:
@@ -8826,14 +8732,22 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
         break;
 
       case PN_UNARY:
-        /* Our kid may be null (e.g. return; vs. return e;). */
         pn1 = pn->pn_kid;
-        if (pn1 &&
-            !js_FoldConstants(cx, pn1, tc,
-                              (inCond && pn->pn_type == TOK_RP) ||
-                              pn->pn_op == JSOP_NOT)) {
+
+        /*
+         * Kludge to deal with typeof expressions: because constant folding
+         * can turn an expression into a name node, we have to check here,
+         * before folding, to see if we should throw undefined name errors.
+         *
+         * NB: We know that if pn->pn_op is JSOP_TYPEOF, pn1 will not be
+         * null. This assumption does not hold true for other unary
+         * expressions.
+         */
+        if (pn->pn_op == JSOP_TYPEOF && pn1->pn_type != TOK_NAME)
+            pn->pn_op = JSOP_TYPEOFEXPR;
+
+        if (pn1 && !js_FoldConstants(cx, pn1, tc, pn->pn_op == JSOP_NOT))
             return JS_FALSE;
-        }
         break;
 
       case PN_NAME:
@@ -8870,15 +8784,13 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
 
       case TOK_HOOK:
         /* Reduce 'if (C) T; else E' into T for true C, E for false. */
-        while (pn1->pn_type == TOK_RP)
-            pn1 = pn1->pn_kid;
         switch (pn1->pn_type) {
           case TOK_NUMBER:
             if (pn1->pn_dval == 0 || JSDOUBLE_IS_NaN(pn1->pn_dval))
                 pn2 = pn3;
             break;
           case TOK_STRING:
-            if (JSSTRING_LENGTH(ATOM_TO_STRING(pn1->pn_atom)) == 0)
+            if (ATOM_TO_STRING(pn1->pn_atom)->length() == 0)
                 pn2 = pn3;
             break;
           case TOK_PRIMARY:
@@ -8900,24 +8812,8 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
             break;
 #endif
 
-        if (pn2) {
-            /*
-             * pn2 is the then- or else-statement subtree to compile.  Take
-             * care not to expose an object initialiser, which would be parsed
-             * as a block, to the Statement parser via eval(uneval(e)) where e
-             * is '1 ? {p:2, q:3}[i] : r;' or the like.
-             */
-            if (pn->pn_type == TOK_HOOK && StartsWith(pn2, TOK_RC)) {
-                pn->pn_type = TOK_RP;
-                pn->pn_arity = PN_UNARY;
-                pn->pn_kid = pn2;
-                if (pn3 && pn3 != pn2)
-                    RecycleTree(pn3, tc);
-                break;
-            }
-            if (!pn2->pn_defn)
-                pn->become(pn2);
-        }
+        if (pn2 && !pn2->pn_defn)
+            pn->become(pn2);
         if (!pn2 || (pn->pn_type == TOK_SEMI && !pn->pn_kid)) {
             /*
              * False condition and no else, or an empty then-statement was
@@ -9029,24 +8925,24 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
                 /* XXX fold only if all operands convert to string */
                 if (pn2->pn_type != TOK_STRING)
                     return JS_TRUE;
-                length += JSFLATSTR_LENGTH(ATOM_TO_STRING(pn2->pn_atom));
+                length += ATOM_TO_STRING(pn2->pn_atom)->flatLength();
             }
 
             /* Allocate a new buffer and string descriptor for the result. */
-            chars = (jschar *) JS_malloc(cx, (length + 1) * sizeof(jschar));
+            chars = (jschar *) cx->malloc((length + 1) * sizeof(jschar));
             if (!chars)
                 return JS_FALSE;
             str = js_NewString(cx, chars, length);
             if (!str) {
-                JS_free(cx, chars);
+                cx->free(chars);
                 return JS_FALSE;
             }
 
             /* Fill the buffer, advancing chars and recycling kids as we go. */
             for (pn2 = pn1; pn2; pn2 = RecycleTree(pn2, tc)) {
                 str2 = ATOM_TO_STRING(pn2->pn_atom);
-                length2 = JSFLATSTR_LENGTH(str2);
-                js_strncpy(chars, JSFLATSTR_CHARS(str2), length2);
+                length2 = str2->flatLength();
+                js_strncpy(chars, str2->flatChars(), length2);
                 chars += length2;
             }
             *chars = 0;
@@ -9134,8 +9030,6 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
         break;
 
       case TOK_UNARYOP:
-        while (pn1->pn_type == TOK_RP)
-            pn1 = pn1->pn_kid;
         if (pn1->pn_type == TOK_NUMBER) {
             jsdouble d;
 
@@ -9147,16 +9041,7 @@ js_FoldConstants(JSContext *cx, JSParseNode *pn, JSTreeContext *tc, bool inCond)
                 break;
 
               case JSOP_NEG:
-#ifdef HPUX
-                /*
-                 * Negation of a zero doesn't produce a negative
-                 * zero on HPUX. Perform the operation by bit
-                 * twiddling.
-                 */
-                JSDOUBLE_HI32(d) ^= JSDOUBLE_HI32_SIGNBIT;
-#else
                 d = -d;
-#endif
                 break;
 
               case JSOP_POS:

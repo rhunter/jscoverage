@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  *
  * ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -41,10 +41,10 @@
 /*
  * PR assertion checker.
  */
-#include "jsstddef.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "jstypes.h"
+#include "jsstdint.h"
 #include "jsutil.h"
 
 #ifdef WIN32
@@ -297,7 +297,7 @@ CallTree(void **bp)
             return NULL;
 
         /* Create a new callsite record. */
-        site = (JSCallsite *) malloc(sizeof(JSCallsite));
+        site = (JSCallsite *) js_malloc(sizeof(JSCallsite));
         if (!site)
             return NULL;
 

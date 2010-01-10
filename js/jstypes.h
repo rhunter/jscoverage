@@ -55,7 +55,7 @@
 #define jstypes_h___
 
 #include <stddef.h>
-#include "jsstdint.h"
+#include "js-config.h"
 
 /***********************************************************************
 ** MACROS:      JS_EXTERN_API
@@ -92,6 +92,13 @@
 # define JS_EXTERN_DATA(__type) extern __declspec(dllexport) __type
 # define JS_EXPORT_DATA(__type) __declspec(dllexport) __type
 
+#elif defined(__SYMBIAN32__)
+
+# define JS_EXTERN_API(__type) extern EXPORT_C __type
+# define JS_EXPORT_API(__type) EXPORT_C __type
+# define JS_EXTERN_DATA(__type) extern EXPORT_C __type
+# define JS_EXPORT_DATA(__type) EXPORT_C __type
+
 #else /* Unix */
 
 # ifdef HAVE_VISIBILITY_ATTRIBUTE
@@ -117,6 +124,8 @@
 # endif
 #elif defined(XP_OS2) && defined(__declspec)
 # define JS_IMPORT_API(__x)     __declspec(dllimport) __x
+#elif defined(__SYMBIAN32__)
+# define JS_IMPORT_API(__x)     IMPORT_C __x
 #else
 # define JS_IMPORT_API(__x)     JS_EXPORT_API (__x)
 #endif
@@ -125,6 +134,12 @@
 # define JS_IMPORT_DATA(__x)      __declspec(dllimport) __x
 #elif defined(XP_OS2) && defined(__declspec)
 # define JS_IMPORT_DATA(__x)      __declspec(dllimport) __x
+#elif defined(__SYMBIAN32__)
+# if defined(__CW32__)
+#   define JS_IMPORT_DATA(__x)    __declspec(dllimport) __x
+# else
+#   define JS_IMPORT_DATA(__x)    IMPORT_C __x
+# endif
 #else
 # define JS_IMPORT_DATA(__x)     JS_EXPORT_DATA (__x)
 #endif
@@ -198,9 +213,14 @@
  */
 # define JS_REQUIRES_STACK   __attribute__((user("JS_REQUIRES_STACK")))
 # define JS_FORCES_STACK     __attribute__((user("JS_FORCES_STACK")))
+/*
+ * Skip the JS_REQUIRES_STACK analysis within functions with this annotation.
+ */
+# define JS_IGNORE_STACK     __attribute__((user("JS_IGNORE_STACK")))
 #else
 # define JS_REQUIRES_STACK
 # define JS_FORCES_STACK
+# define JS_IGNORE_STACK
 #endif
 
 /***********************************************************************
@@ -273,58 +293,18 @@
 #define JS_MIN(x,y)     ((x)<(y)?(x):(y))
 #define JS_MAX(x,y)     ((x)>(y)?(x):(y))
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
+#ifdef _MSC_VER
 # include "jscpucfg.h"  /* We can't auto-detect MSVC configuration */
+# if _MSC_VER < 1400
+#  define MOZ_NO_VARADIC_MACROS
+# endif
 #else
 # include "jsautocfg.h" /* Use auto-detected configuration */
 #endif
 
+#include "jsinttypes.h"
+
 JS_BEGIN_EXTERN_C
-
-/************************************************************************
-** TYPES:       JSUint8
-**              JSInt8
-** DESCRIPTION:
-**  The int8 types are known to be 8 bits each. There is no type that
-**      is equivalent to a plain "char".
-************************************************************************/
-
-typedef uint8_t JSUint8;
-typedef int8_t JSInt8;
-
-/************************************************************************
-** TYPES:       JSUint16
-**              JSInt16
-** DESCRIPTION:
-**  The int16 types are known to be 16 bits each.
-************************************************************************/
-
-typedef uint16_t JSUint16;
-typedef int16_t JSInt16;
-
-/************************************************************************
-** TYPES:       JSUint32
-**              JSInt32
-** DESCRIPTION:
-**  The int32 types are known to be 32 bits each.
-************************************************************************/
-
-typedef uint32_t JSUint32;
-typedef int32_t JSInt32;
-
-/************************************************************************
-** TYPES:       JSUint64
-**              JSInt64
-** DESCRIPTION:
-**  The int64 types are known to be 64 bits each. Care must be used when
-**      declaring variables of type JSUint64 or JSInt64. Different hardware
-**      architectures and even different compilers have varying support for
-**      64 bit values. The only guaranteed portability requires the use of
-**      the JSLL_ macros (see jslong.h).
-************************************************************************/
-
-typedef uint64_t JSUint64;
-typedef int64_t JSInt64;
 
 /************************************************************************
 ** TYPES:       JSUintn
@@ -367,7 +347,7 @@ typedef ptrdiff_t JSPtrdiff;
 **  A type for pointer difference. Variables of this type are suitable
 **      for storing a pointer or pointer sutraction.
 ************************************************************************/
-typedef uintptr_t JSUptrdiff;
+typedef JSUintPtr JSUptrdiff;
 
 /************************************************************************
 ** TYPES:       JSBool
@@ -392,8 +372,8 @@ typedef JSUint8 JSPackedBool;
 /*
 ** A JSWord is an integer that is the same size as a void*
 */
-typedef intptr_t JSWord;
-typedef uintptr_t JSUword;
+typedef JSIntPtr JSWord;
+typedef JSUintPtr JSUword;
 
 #include "jsotypes.h"
 

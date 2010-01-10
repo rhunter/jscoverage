@@ -89,7 +89,7 @@ case "$host_os" in
     SPIDERMONKEY_LIBS='js/libjs3250.a'
     ;;
   *)
-    SPIDERMONKEY_LIBS='js/libmozjs.a'
+    SPIDERMONKEY_LIBS='js/libjs_static.a'
     ;;
 esac
 

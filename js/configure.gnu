@@ -10,4 +10,4 @@ export AS=as
 export MOZ_TOOLS=`pwd`/moztools
 export PATH=$MOZ_TOOLS/bin:$PATH
 
-./configure --disable-jit --enable-static --enable-js-static-build
+./configure --disable-jit --disable-tests --enable-static --enable-js-static-build

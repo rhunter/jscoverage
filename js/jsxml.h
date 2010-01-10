@@ -39,7 +39,6 @@
 #ifndef jsxml_h___
 #define jsxml_h___
 
-#include "jsstddef.h"
 #include "jspubtd.h"
 
 JS_BEGIN_EXTERN_C
@@ -67,14 +66,6 @@ struct JSXMLArray {
 #define JSXML_PRESET_CAPACITY   JS_BIT(31)
 #define JSXML_CAPACITY_MASK     JS_BITMASK(31)
 #define JSXML_CAPACITY(array)   ((array)->capacity & JSXML_CAPACITY_MASK)
-
-struct JSXMLArrayCursor {
-    JSXMLArray          *array;
-    uint32              index;
-    JSXMLArrayCursor    *next;
-    JSXMLArrayCursor    **prevp;
-    void                *root;
-};
 
 /*
  * NB: don't reorder this enum without changing all array initializers that
@@ -123,14 +114,15 @@ struct JSXML {
     JSObject            *name;
     uint16              xml_class;      /* discriminates u, below */
     uint16              xml_flags;      /* flags, see below */
+    uint32              align;
     union {
         JSXMLListVar    list;
         JSXMLElemVar    elem;
         JSString        *value;
     } u;
-
-    /* Don't add anything after u -- see js_NewXML for why. */
 };
+
+JS_STATIC_ASSERT(JS_ROUNDUP(sizeof(JSXML), sizeof(JSGCThing)) == sizeof(JSXML));
 
 /* union member shorthands */
 #define xml_kids        u.list.kids

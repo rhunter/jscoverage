@@ -1,4 +1,4 @@
-#! perl
+# -*- Mode: makefile -*-
 #
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -13,7 +13,8 @@
 # for the specific language governing rights and limitations under the
 # License.
 #
-# The Original Code is mozilla.org code.
+# The Original Code is Mozilla Communicator client code, released
+# March 31, 1998.
 #
 # The Initial Developer of the Original Code is
 # Netscape Communications Corporation.
@@ -23,8 +24,8 @@
 # Contributor(s):
 #
 # Alternatively, the contents of this file may be used under the terms of
-# either of the GNU General Public License Version 2 or later (the "GPL"),
-# or the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+# either the GNU General Public License Version 2 or later (the "GPL"), or
+# the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
 # in which case the provisions of the GPL or the LGPL are applicable instead
 # of those above. If you wish to allow use of your version of this file only
 # under the terms of either the GPL or the LGPL, and not to allow others to
@@ -36,16 +37,29 @@
 #
 # ***** END LICENSE BLOCK *****
 
-unshift(@INC, '/usr/lib/perl');
-unshift(@INC, '/usr/local/lib/perl');
+#
+# Config stuff for HPUX
+#
+ifdef NS_USE_NATIVE
+  CC = cc +Z +u4
+else
+  CC = gcc -Wall -Wno-format -fPIC
+  CCC = g++ -Wall -Wno-format -fPIC
+endif
 
-require "fastcwd.pl";
+RANLIB = echo
+MKSHLIB = $(LD) -b
 
-$cur = &fastcwd;
-chdir($ARGV[0]);
-$newcur = &fastcwd;
-$newcurlen = length($newcur);
+SO_SUFFIX = sl
 
-# Skip common separating / unless $newcur is "/"
-$cur = substr($cur, $newcurlen + ($newcurlen > 1));
-print $cur;
+#.c.o:
+#	$(CC) -c -MD $*.d $(CFLAGS) $<
+
+CPU_ARCH = ia64
+GFX_ARCH = x
+
+OS_CFLAGS = -DXP_UNIX -DHPUX -DSYSV -D_HPUX \
+	    -DNATIVE -D_POSIX_C_SOURCE=199506L -DHAVE_LOCALTIME_R
+OS_LIBS = -ldld
+
+XLDFLAGS = -lpthread

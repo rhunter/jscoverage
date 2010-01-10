@@ -130,6 +130,48 @@ struct JSScript {
 #ifdef CHECK_SCRIPT_OWNER
     JSThread        *owner;     /* for thread-safe life-cycle assertions */
 #endif
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+
+    /* Script notes are allocated right after the code. */
+    jssrcnote *notes() { return (jssrcnote *)(code + length); }
+
+    JSObjectArray *objects() {
+        JS_ASSERT(objectsOffset != 0);
+        return (JSObjectArray *)((uint8 *) this + objectsOffset);
+    }
+
+    JSUpvarArray *upvars() {
+        JS_ASSERT(upvarsOffset != 0);
+        return (JSUpvarArray *) ((uint8 *) this + upvarsOffset);
+    }
+
+    JSObjectArray *regexps() {
+        JS_ASSERT(regexpsOffset != 0);
+        return (JSObjectArray *) ((uint8 *) this + regexpsOffset);
+    }
+
+    JSTryNoteArray *trynotes() {
+        JS_ASSERT(trynotesOffset != 0);
+        return (JSTryNoteArray *) ((uint8 *) this + trynotesOffset);
+    }
+
+    JSAtom *getAtom(size_t index) {
+        JS_ASSERT(index < atomMap.length);
+        return atomMap.vector[index];
+    }
+
+    JSObject *getObject(size_t index) {
+        JSObjectArray *arr = objects();
+        JS_ASSERT(index < arr->length);
+        return arr->vector[index];
+    }
+
+    inline JSFunction *getFunction(size_t index);
+
+    inline JSObject *getRegExp(size_t index);
+
+#endif /* __cplusplus */
 };
 
 #define JSSF_NO_SCRIPT_RVAL     0x01    /* no need for result value of last
@@ -142,71 +184,21 @@ StackDepth(JSScript *script)
     return script->nslots - script->nfixed;
 }
 
-/* No need to store script->notes now that it is allocated right after code. */
-#define SCRIPT_NOTES(script)    ((jssrcnote*)((script)->code+(script)->length))
-
-#define JS_SCRIPT_OBJECTS(script)                                             \
-    (JS_ASSERT((script)->objectsOffset != 0),                                 \
-     (JSObjectArray *)((uint8 *)(script) + (script)->objectsOffset))
-
-#define JS_SCRIPT_UPVARS(script)                                              \
-    (JS_ASSERT((script)->upvarsOffset != 0),                                  \
-     (JSUpvarArray *)((uint8 *)(script) + (script)->upvarsOffset))
-
-#define JS_SCRIPT_REGEXPS(script)                                             \
-    (JS_ASSERT((script)->regexpsOffset != 0),                                 \
-     (JSObjectArray *)((uint8 *)(script) + (script)->regexpsOffset))
-
-#define JS_SCRIPT_TRYNOTES(script)                                            \
-    (JS_ASSERT((script)->trynotesOffset != 0),                                \
-     (JSTryNoteArray *)((uint8 *)(script) + (script)->trynotesOffset))
-
-#define JS_GET_SCRIPT_ATOM(script_, index, atom)                              \
+/*
+ * If pc_ does not point within script_'s bytecode, then it must point into an
+ * imacro body, so we use cx->runtime common atoms instead of script_'s atoms.
+ * This macro uses cx from its callers' environments in the pc-in-imacro case.
+ */
+#define JS_GET_SCRIPT_ATOM(script_, pc_, index, atom)                         \
     JS_BEGIN_MACRO                                                            \
-        JSStackFrame *fp_ = js_GetTopStackFrame(cx);                          \
-        if (fp_ && fp_->imacpc && fp_->script == script_) {                   \
+        if ((pc_) < (script_)->code ||                                        \
+            (script_)->code + (script_)->length <= (pc_)) {                   \
             JS_ASSERT((size_t)(index) < js_common_atom_count);                \
             (atom) = COMMON_ATOMS_START(&cx->runtime->atomState)[index];      \
         } else {                                                              \
-            JSAtomMap *atoms_ = &(script_)->atomMap;                          \
-            JS_ASSERT((uint32)(index) < atoms_->length);                      \
-            (atom) = atoms_->vector[index];                                   \
+            (atom) = script_->getAtom(index);                                 \
         }                                                                     \
     JS_END_MACRO
-
-#define JS_GET_SCRIPT_OBJECT(script, index, obj)                              \
-    JS_BEGIN_MACRO                                                            \
-        JSObjectArray *objects_ = JS_SCRIPT_OBJECTS(script);                  \
-        JS_ASSERT((uint32)(index) < objects_->length);                        \
-        (obj) = objects_->vector[index];                                      \
-    JS_END_MACRO
-
-#define JS_GET_SCRIPT_FUNCTION(script, index, fun)                            \
-    JS_BEGIN_MACRO                                                            \
-        JSObject *funobj_;                                                    \
-                                                                              \
-        JS_GET_SCRIPT_OBJECT(script, index, funobj_);                         \
-        JS_ASSERT(HAS_FUNCTION_CLASS(funobj_));                               \
-        JS_ASSERT(funobj_ == (JSObject *) STOBJ_GET_PRIVATE(funobj_));        \
-        (fun) = (JSFunction *) funobj_;                                       \
-        JS_ASSERT(FUN_INTERPRETED(fun));                                      \
-    JS_END_MACRO
-
-#define JS_GET_SCRIPT_REGEXP(script, index, obj)                              \
-    JS_BEGIN_MACRO                                                            \
-        JSObjectArray *regexps_ = JS_SCRIPT_REGEXPS(script);                  \
-        JS_ASSERT((uint32)(index) < regexps_->length);                        \
-        (obj) = regexps_->vector[index];                                      \
-        JS_ASSERT(STOBJ_GET_CLASS(obj) == &js_RegExpClass);                   \
-    JS_END_MACRO
-
-/*
- * Check if pc is inside a try block that has finally code. GC calls this to
- * check if it is necessary to schedule generator.close() invocation for an
- * unreachable generator.
- */
-JSBool
-js_IsInsideTryWithFinally(JSScript *script, jsbytecode *pc);
 
 extern JS_FRIEND_DATA(JSClass) js_ScriptClass;
 
@@ -221,16 +213,8 @@ extern JSBool
 js_InitRuntimeScriptState(JSRuntime *rt);
 
 /*
- * On last context destroy for rt, if script filenames are all GC'd, free the
- * script filename table and its lock.
- */
-extern void
-js_FinishRuntimeScriptState(JSRuntime *rt);
-
-/*
  * On JS_DestroyRuntime(rt), forcibly free script filename prefixes and any
- * script filename table entries that have not been GC'd, the latter using
- * js_FinishRuntimeScriptState.
+ * script filename table entries that have not been GC'd.
  *
  * This allows script filename prefixes to outlive any context in rt.
  */

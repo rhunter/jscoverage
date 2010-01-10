@@ -83,75 +83,63 @@ struct JSObjectOps {
     JSHasInstanceOp     hasInstance;
     JSTraceOp           trace;
     JSFinalizeOp        clear;
-    JSGetRequiredSlotOp getRequiredSlot;
-    JSSetRequiredSlotOp setRequiredSlot;
 };
 
 struct JSObjectMap {
-    JSObjectOps *ops;           /* high level object operation vtable */
+    const JSObjectOps * const   ops;    /* high level object operation vtable */
+    uint32                      shape;  /* shape identifier */
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+
+    explicit JSObjectMap(const JSObjectOps *ops, uint32 shape) : ops(ops), shape(shape) {}
+    enum { SHAPELESS = 0xffffffff };
+
+#endif
+
 };
 
-/* Shorthand macros for frequently-made calls. */
+#ifndef __cplusplus /* Allow inclusion from LiveConnect C files. */
+
 #define OBJ_LOOKUP_PROPERTY(cx,obj,id,objp,propp)                             \
     (obj)->map->ops->lookupProperty(cx,obj,id,objp,propp)
-#define OBJ_DEFINE_PROPERTY(cx,obj,id,value,getter,setter,attrs,propp)        \
-    (obj)->map->ops->defineProperty(cx,obj,id,value,getter,setter,attrs,propp)
-#define OBJ_GET_PROPERTY(cx,obj,id,vp)                                        \
-    (obj)->map->ops->getProperty(cx,obj,id,vp)
-#define OBJ_SET_PROPERTY(cx,obj,id,vp)                                        \
-    (obj)->map->ops->setProperty(cx,obj,id,vp)
-#define OBJ_GET_ATTRIBUTES(cx,obj,id,prop,attrsp)                             \
-    (obj)->map->ops->getAttributes(cx,obj,id,prop,attrsp)
-#define OBJ_SET_ATTRIBUTES(cx,obj,id,prop,attrsp)                             \
-    (obj)->map->ops->setAttributes(cx,obj,id,prop,attrsp)
-#define OBJ_DELETE_PROPERTY(cx,obj,id,rval)                                   \
-    (obj)->map->ops->deleteProperty(cx,obj,id,rval)
-#define OBJ_DEFAULT_VALUE(cx,obj,hint,vp)                                     \
-    (obj)->map->ops->defaultValue(cx,obj,hint,vp)
-#define OBJ_ENUMERATE(cx,obj,enum_op,statep,idp)                              \
-    (obj)->map->ops->enumerate(cx,obj,enum_op,statep,idp)
-#define OBJ_CHECK_ACCESS(cx,obj,id,mode,vp,attrsp)                            \
-    (obj)->map->ops->checkAccess(cx,obj,id,mode,vp,attrsp)
 
-/* These four are time-optimized to avoid stub calls. */
-#define OBJ_THIS_OBJECT(cx,obj)                                               \
-    ((obj)->map->ops->thisObject                                              \
-     ? (obj)->map->ops->thisObject(cx,obj)                                    \
-     : (obj))
 #define OBJ_DROP_PROPERTY(cx,obj,prop)                                        \
     ((obj)->map->ops->dropProperty                                            \
      ? (obj)->map->ops->dropProperty(cx,obj,prop)                             \
      : (void)0)
-#define OBJ_GET_REQUIRED_SLOT(cx,obj,slot)                                    \
-    ((obj)->map->ops->getRequiredSlot                                         \
-     ? (obj)->map->ops->getRequiredSlot(cx, obj, slot)                        \
-     : JSVAL_VOID)
-#define OBJ_SET_REQUIRED_SLOT(cx,obj,slot,v)                                  \
-    ((obj)->map->ops->setRequiredSlot                                         \
-     ? (obj)->map->ops->setRequiredSlot(cx, obj, slot, v)                     \
-     : JS_TRUE)
 
-#define OBJ_TO_INNER_OBJECT(cx,obj)                                           \
-    JS_BEGIN_MACRO                                                            \
-        JSClass *clasp_ = OBJ_GET_CLASS(cx, obj);                             \
-        if (clasp_->flags & JSCLASS_IS_EXTENDED) {                            \
-            JSExtendedClass *xclasp_ = (JSExtendedClass*)clasp_;              \
-            if (xclasp_->innerObject)                                         \
-                obj = xclasp_->innerObject(cx, obj);                          \
-        }                                                                     \
-    JS_END_MACRO
+#define OBJ_GET_ATTRIBUTES(cx,obj,id,prop,attrsp)                             \
+    (obj)->map->ops->getAttributes(cx,obj,id,prop,attrsp)
 
-#define OBJ_TO_OUTER_OBJECT(cx,obj)                                           \
-    JS_BEGIN_MACRO                                                            \
-        JSClass *clasp_ = OBJ_GET_CLASS(cx, obj);                             \
-        if (clasp_->flags & JSCLASS_IS_EXTENDED) {                            \
-            JSExtendedClass *xclasp_ = (JSExtendedClass*)clasp_;              \
-            if (xclasp_->outerObject)                                         \
-                obj = xclasp_->outerObject(cx, obj);                          \
-        }                                                                     \
-    JS_END_MACRO
+#endif /* __cplusplus */
 
-#define JS_INITIAL_NSLOTS   5
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+const uint32 JS_INITIAL_NSLOTS = 5;
+
+const uint32 JSSLOT_PROTO   = 0;
+const uint32 JSSLOT_PARENT  = 1;
+
+/*
+ * The first available slot to store generic value. For JSCLASS_HAS_PRIVATE
+ * classes the slot stores a pointer to private data reinterpreted as jsval.
+ * Such pointer is stored as is without an overhead of PRIVATE_TO_JSVAL
+ * tagging and should be accessed using the (get|set)Private methods of
+ * JSObject.
+ */
+const uint32 JSSLOT_PRIVATE = 2;
+
+const uint32 JSSLOT_PRIMITIVE_THIS = JSSLOT_PRIVATE;
+
+const uintptr_t JSSLOT_CLASS_MASK_BITS = 3;
+#else /* __cplusplus */
+#define JS_INITIAL_NSLOTS 5
+
+#define JSSLOT_PROTO   0
+#define JSSLOT_PARENT  1
+#define JSSLOT_PRIVATE 2
+
+#define JSSLOT_CLASS_MASK_BITS 3
+#endif /* __cplusplus */
 
 /*
  * JSObject struct, with members sized to fit in 32 bytes on 32-bit targets,
@@ -160,7 +148,8 @@ struct JSObjectMap {
  *
  * The classword member stores the JSClass pointer for this object, with the
  * least two bits encoding whether this object is a "delegate" or a "system"
- * object.
+ * object. We do *not* synchronize updates of classword -- API clients must
+ * take care.
  *
  * An object is a delegate if it is on another object's prototype (linked by
  * JSSLOT_PROTO) or scope (JSSLOT_PARENT) chain, and therefore the delegate
@@ -178,34 +167,220 @@ struct JSObjectMap {
  * any such association.
  *
  * Both these classword tag bits are initially zero; they may be set or queried
- * using the STOBJ_(IS|SET)_(DELEGATE|SYSTEM) macros.
+ * using the (is|set)(Delegate|System) inline methods.
  *
  * The dslots member is null or a pointer into a dynamically allocated vector
  * of jsvals for reserved and dynamic slots. If dslots is not null, dslots[-1]
  * records the number of available slots.
  */
 struct JSObject {
-    JSObjectMap *map;                       /* propery map, see jsscope.h */
-    jsuword     classword;                  /* classword, see above */
+    JSObjectMap *map;                       /* property map, see jsscope.h */
+    jsuword     classword;                  /* JSClass ptr | bits, see above */
     jsval       fslots[JS_INITIAL_NSLOTS];  /* small number of fixed slots */
     jsval       *dslots;                    /* dynamically allocated slots */
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+
+    JSClass *getClass() const {
+        return (JSClass *) (classword & ~JSSLOT_CLASS_MASK_BITS);
+    }
+
+    bool isDelegate() const {
+        return (classword & jsuword(1)) != jsuword(0);
+    }
+
+    void setDelegate() {
+        classword |= jsuword(1);
+    }
+
+    static void setDelegateNullSafe(JSObject *obj) {
+        if (obj)
+            obj->setDelegate();
+    }
+
+    bool isSystem() const {
+        return (classword & jsuword(2)) != jsuword(0);
+    }
+
+    void setSystem() {
+        classword |= jsuword(2);
+    }
+
+    JSObject *getProto() const {
+        return JSVAL_TO_OBJECT(fslots[JSSLOT_PROTO]);
+    }
+
+    void clearProto() {
+        fslots[JSSLOT_PROTO] = JSVAL_NULL;
+    }
+
+    void setProto(JSObject *newProto) {
+        setDelegateNullSafe(newProto);
+        fslots[JSSLOT_PROTO] = OBJECT_TO_JSVAL(newProto);
+    }
+
+    JSObject *getParent() const {
+        return JSVAL_TO_OBJECT(fslots[JSSLOT_PARENT]);
+    }
+
+    void clearParent() {
+        fslots[JSSLOT_PARENT] = JSVAL_NULL;
+    }
+
+    void setParent(JSObject *newParent) {
+        setDelegateNullSafe(newParent);
+        fslots[JSSLOT_PARENT] = OBJECT_TO_JSVAL(newParent);
+    }
+
+    void traceProtoAndParent(JSTracer *trc) const {
+        JSObject *proto = getProto();
+        if (proto)
+            JS_CALL_OBJECT_TRACER(trc, proto, "__proto__");
+
+        JSObject *parent = getParent();
+        if (parent)
+            JS_CALL_OBJECT_TRACER(trc, parent, "__parent__");
+    }
+
+    void *getPrivate() const {
+        JS_ASSERT(getClass()->flags & JSCLASS_HAS_PRIVATE);
+        jsval v = fslots[JSSLOT_PRIVATE];
+        JS_ASSERT((v & jsval(1)) == jsval(0));
+        return reinterpret_cast<void *>(v);
+    }
+
+    void setPrivate(void *data) {
+        JS_ASSERT(getClass()->flags & JSCLASS_HAS_PRIVATE);
+        jsval v = reinterpret_cast<jsval>(data);
+        JS_ASSERT((v & jsval(1)) == jsval(0));
+        fslots[JSSLOT_PRIVATE] = v;
+    }
+
+    static jsval defaultPrivate(JSClass *clasp) {
+        return (clasp->flags & JSCLASS_HAS_PRIVATE)
+               ? JSVAL_NULL
+               : JSVAL_VOID;
+    }
+
+    /* The map field is not initialized here and should be set separately. */
+    void init(JSClass *clasp, JSObject *proto, JSObject *parent,
+              jsval privateSlotValue) {
+        JS_ASSERT(((jsuword) clasp & 3) == 0);
+        JS_STATIC_ASSERT(JSSLOT_PRIVATE + 3 == JS_INITIAL_NSLOTS);
+        JS_ASSERT_IF(clasp->flags & JSCLASS_HAS_PRIVATE,
+                     (privateSlotValue & jsval(1)) == jsval(0));
+
+        classword = jsuword(clasp);
+        JS_ASSERT(!isDelegate());
+        JS_ASSERT(!isSystem());
+
+        setProto(proto);
+        setParent(parent);
+        fslots[JSSLOT_PRIVATE] = privateSlotValue;
+        fslots[JSSLOT_PRIVATE + 1] = JSVAL_VOID;
+        fslots[JSSLOT_PRIVATE + 2] = JSVAL_VOID;
+        dslots = NULL;
+    }
+
+    /*
+     * Like init, but also initializes map. The catch: proto must be the result
+     * of a call to js_InitClass(...clasp, ...).
+     */
+    inline void initSharingEmptyScope(JSClass *clasp, JSObject *proto, JSObject *parent,
+                                      jsval privateSlotValue);
+
+    JSBool lookupProperty(JSContext *cx, jsid id,
+                          JSObject **objp, JSProperty **propp) {
+        return map->ops->lookupProperty(cx, this, id, objp, propp);
+    }
+
+    JSBool defineProperty(JSContext *cx, jsid id, jsval value,
+                          JSPropertyOp getter = JS_PropertyStub,
+                          JSPropertyOp setter = JS_PropertyStub,
+                          uintN attrs = JSPROP_ENUMERATE) {
+        return map->ops->defineProperty(cx, this, id, value, getter, setter, attrs);
+    }
+
+    JSBool getProperty(JSContext *cx, jsid id, jsval *vp) {
+        return map->ops->getProperty(cx, this, id, vp);
+    }
+
+    JSBool setProperty(JSContext *cx, jsid id, jsval *vp) {
+        return map->ops->setProperty(cx, this, id, vp);
+    }
+
+    JSBool getAttributes(JSContext *cx, jsid id, JSProperty *prop,
+                         uintN *attrsp) {
+        return map->ops->getAttributes(cx, this, id, prop, attrsp);
+    }
+
+    JSBool setAttributes(JSContext *cx, jsid id, JSProperty *prop,
+                         uintN *attrsp) {
+        return map->ops->setAttributes(cx, this, id, prop, attrsp);
+    }
+
+    JSBool deleteProperty(JSContext *cx, jsid id, jsval *rval) {
+        return map->ops->deleteProperty(cx, this, id, rval);
+    }
+
+    JSBool defaultValue(JSContext *cx, JSType hint, jsval *vp) {
+        return map->ops->defaultValue(cx, this, hint, vp);
+    }
+
+    JSBool enumerate(JSContext *cx, JSIterateOp op, jsval *statep,
+                     jsid *idp) {
+        return map->ops->enumerate(cx, this, op, statep, idp);
+    }
+
+    JSBool checkAccess(JSContext *cx, jsid id, JSAccessMode mode, jsval *vp,
+                       uintN *attrsp) {
+        return map->ops->checkAccess(cx, this, id, mode, vp, attrsp);
+    }
+
+    /* These four are time-optimized to avoid stub calls. */
+    JSObject *thisObject(JSContext *cx) {
+        return map->ops->thisObject ? map->ops->thisObject(cx, this) : this;
+    }
+
+    void dropProperty(JSContext *cx, JSProperty *prop) {
+        if (map->ops->dropProperty)
+            map->ops->dropProperty(cx, this, prop);
+    }
+
+#endif /* __cplusplus */
 };
 
-#define JSSLOT_PROTO        0
-#define JSSLOT_PARENT       1
-#define JSSLOT_PRIVATE      2
+/* Compatibility macros. */
+#define STOBJ_GET_PROTO(obj)            ((obj)->getProto())
+#define STOBJ_SET_PROTO(obj,proto)      ((obj)->setProto(proto))
+#define STOBJ_CLEAR_PROTO(obj)          ((obj)->clearProto())
+
+#define STOBJ_GET_PARENT(obj)           ((obj)->getParent())
+#define STOBJ_SET_PARENT(obj,parent)    ((obj)->setParent(parent))
+#define STOBJ_CLEAR_PARENT(obj)         ((obj)->clearParent())
+
+#define OBJ_GET_PROTO(cx,obj)           STOBJ_GET_PROTO(obj)
+#define OBJ_SET_PROTO(cx,obj,proto)     STOBJ_SET_PROTO(obj, proto)
+#define OBJ_CLEAR_PROTO(cx,obj)         STOBJ_CLEAR_PROTO(obj)
+
+#define OBJ_GET_PARENT(cx,obj)          STOBJ_GET_PARENT(obj)
+#define OBJ_SET_PARENT(cx,obj,parent)   STOBJ_SET_PARENT(obj, parent)
+#define OBJ_CLEAR_PARENT(cx,obj)        STOBJ_CLEAR_PARENT(obj)
+
 #define JSSLOT_START(clasp) (((clasp)->flags & JSCLASS_HAS_PRIVATE)           \
                              ? JSSLOT_PRIVATE + 1                             \
-                             : JSSLOT_PARENT + 1)
+                             : JSSLOT_PRIVATE)
 
 #define JSSLOT_FREE(clasp)  (JSSLOT_START(clasp)                              \
                              + JSCLASS_RESERVED_SLOTS(clasp))
 
 /*
- * Maximum net gross capacity of the obj->dslots vector, excluding the additional
- * hidden slot used to store the length of the vector.
+ * Maximum capacity of the obj->dslots vector, net of the hidden slot at
+ * obj->dslots[-1] that is used to store the length of the vector biased by
+ * JS_INITIAL_NSLOTS (and again net of the slot at index -1).
  */
-#define MAX_DSLOTS_LENGTH   (JS_MAX(~(uint32)0, ~(size_t)0) / sizeof(jsval))
+#define MAX_DSLOTS_LENGTH   (JS_MAX(~uint32(0), ~size_t(0)) / sizeof(jsval) - 1)
+#define MAX_DSLOTS_LENGTH32 (~uint32(0) / sizeof(jsval) - 1)
 
 /*
  * STOBJ prefix means Single Threaded Object. Use the following fast macros to
@@ -228,48 +403,22 @@ struct JSObject {
      : (JS_ASSERT((slot) < (uint32)(obj)->dslots[-1]),                        \
         (obj)->dslots[(slot) - JS_INITIAL_NSLOTS] = (value)))
 
-#define STOBJ_GET_PROTO(obj)                                                  \
-    JSVAL_TO_OBJECT((obj)->fslots[JSSLOT_PROTO])
-#define STOBJ_SET_PROTO(obj,proto)                                            \
-    (void)(STOBJ_NULLSAFE_SET_DELEGATE(proto),                                \
-           (obj)->fslots[JSSLOT_PROTO] = OBJECT_TO_JSVAL(proto))
-#define STOBJ_CLEAR_PROTO(obj)                                                \
-    ((obj)->fslots[JSSLOT_PROTO] = JSVAL_NULL)
-
-#define STOBJ_GET_PARENT(obj)                                                 \
-    JSVAL_TO_OBJECT((obj)->fslots[JSSLOT_PARENT])
-#define STOBJ_SET_PARENT(obj,parent)                                          \
-    (void)(STOBJ_NULLSAFE_SET_DELEGATE(parent),                               \
-           (obj)->fslots[JSSLOT_PARENT] = OBJECT_TO_JSVAL(parent))
-#define STOBJ_CLEAR_PARENT(obj)                                               \
-    ((obj)->fslots[JSSLOT_PARENT] = JSVAL_NULL)
-
-/*
- * We use JSObject.classword to store both JSClass* and the delegate and system
- * flags in the two least significant bits. We do *not* synchronize updates of
- * obj->classword -- API clients must take care.
- */
-#define JSSLOT_CLASS_MASK_BITS 3
-
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+inline JSClass*
+STOBJ_GET_CLASS(const JSObject* obj)
+{
+    return obj->getClass();
+}
+#else
 static JS_ALWAYS_INLINE JSClass*
 STOBJ_GET_CLASS(const JSObject* obj)
 {
     return (JSClass *) (obj->classword & ~JSSLOT_CLASS_MASK_BITS);
 }
-
-#define STOBJ_IS_DELEGATE(obj)  (((obj)->classword & 1) != 0)
-#define STOBJ_SET_DELEGATE(obj) ((obj)->classword |= 1)
-#define STOBJ_NULLSAFE_SET_DELEGATE(obj)                                      \
-    (!(obj) || STOBJ_SET_DELEGATE((JSObject*)obj))
-#define STOBJ_IS_SYSTEM(obj)    (((obj)->classword & 2) != 0)
-#define STOBJ_SET_SYSTEM(obj)   ((obj)->classword |= 2)
-
-#define STOBJ_GET_PRIVATE(obj)                                                \
-    (JS_ASSERT(JSVAL_IS_INT(STOBJ_GET_SLOT(obj, JSSLOT_PRIVATE))),            \
-     JSVAL_TO_PRIVATE(STOBJ_GET_SLOT(obj, JSSLOT_PRIVATE)))
+#endif
 
 #define OBJ_CHECK_SLOT(obj,slot)                                              \
-    JS_ASSERT_IF(OBJ_IS_NATIVE(obj), slot < OBJ_SCOPE(obj)->freeslot)
+    (JS_ASSERT(OBJ_IS_NATIVE(obj)), JS_ASSERT(slot < OBJ_SCOPE(obj)->freeslot))
 
 #define LOCKED_OBJ_GET_SLOT(obj,slot)                                         \
     (OBJ_CHECK_SLOT(obj, slot), STOBJ_GET_SLOT(obj, slot))
@@ -281,47 +430,50 @@ STOBJ_GET_CLASS(const JSObject* obj)
  * that may contain a function reference already, or where the new value is a
  * function ref, and the object's scope may be branded with a property cache
  * structural type capability that distinguishes versions of the object with
- * and without the function property. Instead use LOCKED_OBJ_WRITE_BARRIER or
- * a fast inline equivalent (JSOP_SETNAME/JSOP_SETPROP cases in jsinterp.c).
+ * and without the function property. Instead use LOCKED_OBJ_WRITE_SLOT or a
+ * fast inline equivalent (JSOP_SETNAME/JSOP_SETPROP cases in jsinterp.cpp).
+ */
+#define LOCKED_OBJ_WRITE_SLOT(cx,obj,slot,newval)                             \
+    JS_BEGIN_MACRO                                                            \
+        LOCKED_OBJ_WRITE_BARRIER(cx, obj, slot, newval);                      \
+        LOCKED_OBJ_SET_SLOT(obj, slot, newval);                               \
+    JS_END_MACRO
+
+/*
+ * Write barrier macro monitoring property update for slot in obj from its old
+ * value to newval.
+ *
+ * NB: obj must be locked, and remains locked after the calls to this macro.
  */
 #define LOCKED_OBJ_WRITE_BARRIER(cx,obj,slot,newval)                          \
     JS_BEGIN_MACRO                                                            \
         JSScope *scope_ = OBJ_SCOPE(obj);                                     \
-        JS_ASSERT(scope_->object == (obj));                                   \
-        GC_WRITE_BARRIER(cx, scope_, LOCKED_OBJ_GET_SLOT(obj, slot), newval); \
-        LOCKED_OBJ_SET_SLOT(obj, slot, newval);                               \
+        JS_ASSERT(scope_->object == obj);                                     \
+        if (scope_->branded()) {                                              \
+            jsval oldval_ = LOCKED_OBJ_GET_SLOT(obj, slot);                   \
+            if (oldval_ != (newval) &&                                        \
+                (VALUE_IS_FUNCTION(cx, oldval_) ||                            \
+                 VALUE_IS_FUNCTION(cx, newval))) {                            \
+                scope_->methodShapeChange(cx, slot, newval);                  \
+            }                                                                 \
+        }                                                                     \
+        GC_POKE(cx, oldval);                                                  \
     JS_END_MACRO
-
-#define LOCKED_OBJ_GET_PROTO(obj) \
-    (OBJ_CHECK_SLOT(obj, JSSLOT_PROTO), STOBJ_GET_PROTO(obj))
-#define LOCKED_OBJ_SET_PROTO(obj,proto) \
-    (OBJ_CHECK_SLOT(obj, JSSLOT_PROTO), STOBJ_SET_PROTO(obj, proto))
-
-#define LOCKED_OBJ_GET_PARENT(obj) \
-    (OBJ_CHECK_SLOT(obj, JSSLOT_PARENT), STOBJ_GET_PARENT(obj))
-#define LOCKED_OBJ_SET_PARENT(obj,parent) \
-    (OBJ_CHECK_SLOT(obj, JSSLOT_PARENT), STOBJ_SET_PARENT(obj, parent))
-
-#define LOCKED_OBJ_GET_CLASS(obj) \
-    STOBJ_GET_CLASS(obj)
-
-#define LOCKED_OBJ_GET_PRIVATE(obj) \
-    (OBJ_CHECK_SLOT(obj, JSSLOT_PRIVATE), STOBJ_GET_PRIVATE(obj))
 
 #ifdef JS_THREADSAFE
 
 /* Thread-safe functions and wrapper macros for accessing slots in obj. */
 #define OBJ_GET_SLOT(cx,obj,slot)                                             \
     (OBJ_CHECK_SLOT(obj, slot),                                               \
-     (OBJ_IS_NATIVE(obj) && OBJ_SCOPE(obj)->title.ownercx == cx)              \
+     (OBJ_SCOPE(obj)->title.ownercx == cx)                                    \
      ? LOCKED_OBJ_GET_SLOT(obj, slot)                                         \
      : js_GetSlotThreadSafe(cx, obj, slot))
 
 #define OBJ_SET_SLOT(cx,obj,slot,value)                                       \
     JS_BEGIN_MACRO                                                            \
         OBJ_CHECK_SLOT(obj, slot);                                            \
-        if (OBJ_IS_NATIVE(obj) && OBJ_SCOPE(obj)->title.ownercx == cx)        \
-            LOCKED_OBJ_WRITE_BARRIER(cx, obj, slot, value);                   \
+        if (OBJ_SCOPE(obj)->title.ownercx == cx)                              \
+            LOCKED_OBJ_WRITE_SLOT(cx, obj, slot, value);                      \
         else                                                                  \
             js_SetSlotThreadSafe(cx, obj, slot, value);                       \
     JS_END_MACRO
@@ -347,29 +499,15 @@ STOBJ_GET_CLASS(const JSObject* obj)
 #else   /* !JS_THREADSAFE */
 
 #define OBJ_GET_SLOT(cx,obj,slot)       LOCKED_OBJ_GET_SLOT(obj,slot)
-#define OBJ_SET_SLOT(cx,obj,slot,value) LOCKED_OBJ_WRITE_BARRIER(cx,obj,slot, \
-                                                                 value)
+#define OBJ_SET_SLOT(cx,obj,slot,value) LOCKED_OBJ_WRITE_SLOT(cx,obj,slot,value)
 
 #endif /* !JS_THREADSAFE */
-
-/* Thread-safe delegate, proto, parent, and class access macros. */
-#define OBJ_IS_DELEGATE(cx,obj)         STOBJ_IS_DELEGATE(obj)
-#define OBJ_SET_DELEGATE(cx,obj)        STOBJ_SET_DELEGATE(obj)
-
-#define OBJ_GET_PROTO(cx,obj)           STOBJ_GET_PROTO(obj)
-#define OBJ_SET_PROTO(cx,obj,proto)     STOBJ_SET_PROTO(obj, proto)
-#define OBJ_CLEAR_PROTO(cx,obj)         STOBJ_CLEAR_PROTO(obj)
-
-#define OBJ_GET_PARENT(cx,obj)          STOBJ_GET_PARENT(obj)
-#define OBJ_SET_PARENT(cx,obj,parent)   STOBJ_SET_PARENT(obj, parent)
-#define OBJ_CLEAR_PARENT(cx,obj)        STOBJ_CLEAR_PARENT(obj)
 
 /*
  * Class is invariant and comes from the fixed clasp member. Thus no locking
  * is necessary to read it. Same for the private slot.
  */
 #define OBJ_GET_CLASS(cx,obj)           STOBJ_GET_CLASS(obj)
-#define OBJ_GET_PRIVATE(cx,obj)         STOBJ_GET_PRIVATE(obj)
 
 /*
  * Test whether the object is native. FIXME bug 492938: consider how it would
@@ -379,6 +517,34 @@ STOBJ_GET_CLASS(const JSObject* obj)
     JS_LIKELY((ops) == &js_ObjectOps || !(ops)->objectMap)
 
 #define OBJ_IS_NATIVE(obj)  OPS_IS_NATIVE((obj)->map->ops)
+
+#ifdef __cplusplus
+inline void
+OBJ_TO_INNER_OBJECT(JSContext *cx, JSObject *&obj)
+{
+    JSClass *clasp = OBJ_GET_CLASS(cx, obj);
+    if (clasp->flags & JSCLASS_IS_EXTENDED) {
+        JSExtendedClass *xclasp = (JSExtendedClass *) clasp;
+        if (xclasp->innerObject)
+            obj = xclasp->innerObject(cx, obj);
+    }
+}
+
+/*
+ * The following function has been copied to jsd/jsd_val.c. If making changes to
+ * OBJ_TO_OUTER_OBJECT, please update jsd/jsd_val.c as well.
+ */
+inline void
+OBJ_TO_OUTER_OBJECT(JSContext *cx, JSObject *&obj)
+{
+    JSClass *clasp = OBJ_GET_CLASS(cx, obj);
+    if (clasp->flags & JSCLASS_IS_EXTENDED) {
+        JSExtendedClass *xclasp = (JSExtendedClass *) clasp;
+        if (xclasp->outerObject)
+            obj = xclasp->outerObject(cx, obj);
+    }
+}
+#endif
 
 extern JS_FRIEND_DATA(JSObjectOps) js_ObjectOps;
 extern JS_FRIEND_DATA(JSObjectOps) js_WithObjectOps;
@@ -403,8 +569,23 @@ extern JSClass  js_BlockClass;
  */
 #define JSSLOT_BLOCK_DEPTH      (JSSLOT_PRIVATE + 1)
 
-#define OBJ_IS_CLONED_BLOCK(obj)                                              \
-    (OBJ_SCOPE(obj)->object != (obj))
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+static inline bool
+OBJ_IS_CLONED_BLOCK(JSObject *obj)
+{
+    return obj->getProto() != NULL;
+}
+#else
+static JSBool
+OBJ_IS_CLONED_BLOCK(JSObject *obj)
+{
+    return JSVAL_TO_OBJECT(obj->fslots[JSSLOT_PROTO]) != NULL;
+}
+#endif
+
+extern JSBool
+js_DefineBlockVariable(JSContext *cx, JSObject *obj, jsid id, int16 index);
+
 #define OBJ_BLOCK_COUNT(cx,obj)                                               \
     (OBJ_SCOPE(obj)->entryCount)
 #define OBJ_BLOCK_DEPTH(cx,obj)                                               \
@@ -418,7 +599,7 @@ extern JSClass  js_BlockClass;
  * With object that does not correspond to a stack slot, pass -1 for depth.
  *
  * When popping the stack across this object's "with" statement, client code
- * must call JS_SetPrivate(cx, withobj, NULL).
+ * must call withobj->setPrivate(NULL).
  */
 extern JS_REQUIRES_STACK JSObject *
 js_NewWithObject(JSContext *cx, JSObject *proto, JSObject *parent, jsint depth);
@@ -433,8 +614,7 @@ extern JSObject *
 js_NewBlockObject(JSContext *cx);
 
 extern JSObject *
-js_CloneBlockObject(JSContext *cx, JSObject *proto, JSObject *parent,
-                    JSStackFrame *fp);
+js_CloneBlockObject(JSContext *cx, JSObject *proto, JSStackFrame *fp);
 
 extern JS_REQUIRES_STACK JSBool
 js_PutBlockObject(JSContext *cx, JSBool normalUnwind);
@@ -510,24 +690,35 @@ extern const char js_lookupSetter_str[];
 extern JSBool
 js_GetClassId(JSContext *cx, JSClass *clasp, jsid *idp);
 
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 extern JSObject *
-js_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto, JSObject *parent,
-             uintN objectSize);
+js_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto,
+             JSObject *parent, size_t objectSize = 0);
+#else
+extern JSObject *
+js_NewObject(JSContext *cx, JSClass *clasp, JSObject *proto,
+             JSObject *parent, size_t objectSize);
+#endif
 
 /*
  * See jsapi.h, JS_NewObjectWithGivenProto.
- *
- * objectSize is either the explicit size for the allocated object or 0
- * indicating to use the default size based on object's class.
  */
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 extern JSObject *
 js_NewObjectWithGivenProto(JSContext *cx, JSClass *clasp, JSObject *proto,
-                           JSObject *parent, uintN objectSize);
+                           JSObject *parent, size_t objectSize = 0);
+#else
+extern JSObject *
+js_NewObjectWithGivenProto(JSContext *cx, JSClass *clasp, JSObject *proto,
+                           JSObject *parent, size_t objectSize);
+#endif
 
 /*
- * Allocate a new native object and initialize all fslots with JSVAL_VOID
- * starting with the specified slot. The parent slot is set to the value of
- * proto's parent slot.
+ * Allocate a new native object with the given value of the proto and private
+ * slots. The parent slot is set to the value of proto's parent slot.
+ *
+ * clasp must be a native class. proto must be the result of a call to
+ * js_InitClass(...clasp, ...).
  *
  * Note that this is the correct global object for native class instances, but
  * not for user-defined functions called as constructors.  Functions used as
@@ -535,7 +726,8 @@ js_NewObjectWithGivenProto(JSContext *cx, JSClass *clasp, JSObject *proto,
  * object, not by the parent of its .prototype object value.
  */
 extern JSObject*
-js_NewNativeObject(JSContext *cx, JSClass *clasp, JSObject *proto, uint32 slot);
+js_NewObjectWithClassProto(JSContext *cx, JSClass *clasp, JSObject *proto,
+                           jsval privateSlotValue);
 
 /*
  * Fast access to immutable standard objects (constructors and prototypes).
@@ -554,43 +746,46 @@ extern JSObject *
 js_ConstructObject(JSContext *cx, JSClass *clasp, JSObject *proto,
                    JSObject *parent, uintN argc, jsval *argv);
 
-extern void
-js_FinalizeObject(JSContext *cx, JSObject *obj);
-
 extern JSBool
 js_AllocSlot(JSContext *cx, JSObject *obj, uint32 *slotp);
 
 extern void
 js_FreeSlot(JSContext *cx, JSObject *obj, uint32 slot);
 
-/* JSVAL_INT_MAX as a string */
-#define JSVAL_INT_MAX_STRING "1073741823"
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+extern bool
+#else
+extern JSBool
+#endif
+js_GrowSlots(JSContext *cx, JSObject *obj, size_t nslots);
+
+extern void
+js_ShrinkSlots(JSContext *cx, JSObject *obj, size_t nslots);
+
+static inline void
+js_FreeSlots(JSContext *cx, JSObject *obj)
+{
+    if (obj->dslots)
+        js_ShrinkSlots(cx, obj, 0);
+}
 
 /*
- * Convert string indexes that convert to int jsvals as ints to save memory.
- * Care must be taken to use this macro every time a property name is used, or
- * else double-sets, incorrect property cache misses, or other mistakes could
- * occur.
+ * Ensure that the object has at least JSCLASS_RESERVED_SLOTS(clasp)+nreserved
+ * slots. The function can be called only for native objects just created with
+ * js_NewObject or its forms. In particular, the object should not be shared
+ * between threads and its dslots array must be null. nreserved must match the
+ * value that JSClass.reserveSlots (if any) would return after the object is
+ * fully initialized.
  */
-#define CHECK_FOR_STRING_INDEX(id)                                            \
-    JS_BEGIN_MACRO                                                            \
-        if (JSID_IS_ATOM(id)) {                                               \
-            JSAtom *atom_ = JSID_TO_ATOM(id);                                 \
-            JSString *str_ = ATOM_TO_STRING(atom_);                           \
-            const jschar *s_ = JSFLATSTR_CHARS(str_);                         \
-            JSBool negative_ = (*s_ == '-');                                  \
-            if (negative_) s_++;                                              \
-            if (JS7_ISDEC(*s_)) {                                             \
-                size_t n_ = JSFLATSTR_LENGTH(str_) - negative_;               \
-                if (n_ <= sizeof(JSVAL_INT_MAX_STRING) - 1)                   \
-                    id = js_CheckForStringIndex(id, s_, s_ + n_, negative_);  \
-            }                                                                 \
-        }                                                                     \
-    JS_END_MACRO
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+bool
+#else
+JSBool
+#endif
+js_EnsureReservedSlots(JSContext *cx, JSObject *obj, size_t nreserved);
 
 extern jsid
-js_CheckForStringIndex(jsid id, const jschar *cp, const jschar *end,
-                       JSBool negative);
+js_CheckForStringIndex(jsid id);
 
 /*
  * js_PurgeScopeChain does nothing if obj is not itself a prototype or parent
@@ -605,7 +800,7 @@ js_PurgeScopeChainHelper(JSContext *cx, JSObject *obj, jsid id);
 static JS_INLINE void
 js_PurgeScopeChain(JSContext *cx, JSObject *obj, jsid id)
 {
-    if (OBJ_IS_DELEGATE(cx, obj))
+    if (obj->isDelegate())
         js_PurgeScopeChainHelper(cx, obj, id);
 }
 #endif
@@ -629,19 +824,11 @@ js_ChangeNativePropertyAttrs(JSContext *cx, JSObject *obj,
                              JSScopeProperty *sprop, uintN attrs, uintN mask,
                              JSPropertyOp getter, JSPropertyOp setter);
 
-/*
- * On error, return false.  On success, if propp is non-null, return true with
- * obj locked and with a held property in *propp; if propp is null, return true
- * but release obj's lock first.  Therefore all callers who pass non-null propp
- * result parameters must later call OBJ_DROP_PROPERTY(cx, obj, *propp) both to
- * drop the held property, and to release the lock on obj.
- */
 extern JSBool
 js_DefineProperty(JSContext *cx, JSObject *obj, jsid id, jsval value,
-                  JSPropertyOp getter, JSPropertyOp setter, uintN attrs,
-                  JSProperty **propp);
+                  JSPropertyOp getter, JSPropertyOp setter, uintN attrs);
 
-#ifdef __cplusplus /* FIXME: bug 442399 removes this LiveConnect requirement. */
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
 
 /*
  * Flags for the defineHow parameter of js_DefineNativeProperty.
@@ -649,19 +836,26 @@ js_DefineProperty(JSContext *cx, JSObject *obj, jsid id, jsval value,
 const uintN JSDNP_CACHE_RESULT = 1; /* an interpreter call from JSOP_INITPROP */
 const uintN JSDNP_DONT_PURGE   = 2; /* suppress js_PurgeScopeChain */
 
+/*
+ * On error, return false.  On success, if propp is non-null, return true with
+ * obj locked and with a held property in *propp; if propp is null, return true
+ * but release obj's lock first.  Therefore all callers who pass non-null propp
+ * result parameters must later call obj->dropProperty(cx, *propp) both to drop
+ * the held property, and to release the lock on obj.
+ */
 extern JSBool
 js_DefineNativeProperty(JSContext *cx, JSObject *obj, jsid id, jsval value,
                         JSPropertyOp getter, JSPropertyOp setter, uintN attrs,
                         uintN flags, intN shortid, JSProperty **propp,
                         uintN defineHow = 0);
-#endif
+#endif /* __cplusplus */
 
 /*
- * Unlike js_DefineProperty, propp must be non-null. On success, and if id was
- * found, return true with *objp non-null and locked, and with a held property
- * stored in *propp. If successful but id was not found, return true with both
- * *objp and *propp null. Therefore all callers who receive a non-null *propp
- * must later call OBJ_DROP_PROPERTY(cx, *objp, *propp).
+ * Unlike js_DefineNativeProperty, propp must be non-null. On success, and if
+ * id was found, return true with *objp non-null and locked, and with a held
+ * property stored in *propp. If successful but id was not found, return true
+ * with both *objp and *propp null. Therefore all callers who receive a
+ * non-null *propp must later call (*objp)->dropProperty(cx, *propp).
  */
 extern JS_FRIEND_API(JSBool)
 js_LookupProperty(JSContext *cx, JSObject *obj, jsid id, JSObject **objp,
@@ -675,6 +869,30 @@ js_LookupProperty(JSContext *cx, JSObject *obj, jsid id, JSObject **objp,
 extern int
 js_LookupPropertyWithFlags(JSContext *cx, JSObject *obj, jsid id, uintN flags,
                            JSObject **objp, JSProperty **propp);
+
+
+/*
+ * We cache name lookup results only for the global object or for native
+ * non-global objects without prototype or with prototype that never mutates,
+ * see bug 462734 and bug 487039.
+ */
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+static inline bool
+js_IsCacheableNonGlobalScope(JSObject *obj)
+{
+    extern JS_FRIEND_DATA(JSClass) js_CallClass;
+    extern JS_FRIEND_DATA(JSClass) js_DeclEnvClass;
+    JS_ASSERT(STOBJ_GET_PARENT(obj));
+
+    JSClass *clasp = STOBJ_GET_CLASS(obj);
+    bool cacheable = (clasp == &js_CallClass ||
+                      clasp == &js_BlockClass ||
+                      clasp == &js_DeclEnvClass);
+
+    JS_ASSERT_IF(cacheable, obj->map->ops->lookupProperty == js_LookupProperty);
+    return cacheable;
+}
+#endif
 
 /*
  * If cacheResult is false, return JS_NO_PROP_CACHE_FILL on success.
@@ -754,7 +972,10 @@ js_Enumerate(JSContext *cx, JSObject *obj, JSIterateOp enum_op,
              jsval *statep, jsid *idp);
 
 extern void
-js_TraceNativeEnumerators(JSTracer *trc);
+js_MarkEnumeratorState(JSTracer *trc, JSObject *obj, jsval state);
+
+extern void
+js_PurgeCachedNativeEnumerators(JSContext *cx, JSThreadData *data);
 
 extern JSBool
 js_CheckAccess(JSContext *cx, JSObject *obj, jsid id, JSAccessMode mode,
@@ -817,11 +1038,19 @@ js_PrintObjectSlotName(JSTracer *trc, char *buf, size_t bufsize);
 extern void
 js_Clear(JSContext *cx, JSObject *obj);
 
-extern jsval
-js_GetRequiredSlot(JSContext *cx, JSObject *obj, uint32 slot);
-
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+extern bool
+#else
 extern JSBool
-js_SetRequiredSlot(JSContext *cx, JSObject *obj, uint32 slot, jsval v);
+#endif
+js_GetReservedSlot(JSContext *cx, JSObject *obj, uint32 index, jsval *vp);
+
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+bool
+#else
+JSBool
+#endif
+js_SetReservedSlot(JSContext *cx, JSObject *obj, uint32 index, jsval v);
 
 /*
  * Precondition: obj must be locked.
@@ -863,7 +1092,15 @@ JS_FRIEND_API(void) js_DumpAtom(JSAtom *atom);
 JS_FRIEND_API(void) js_DumpValue(jsval val);
 JS_FRIEND_API(void) js_DumpId(jsid id);
 JS_FRIEND_API(void) js_DumpObject(JSObject *obj);
+JS_FRIEND_API(void) js_DumpStackFrame(JSStackFrame *fp);
 #endif
+
+extern uintN
+js_InferFlags(JSContext *cx, uintN defaultFlags);
+
+/* Object constructor native. Exposed only so the JIT can know its address. */
+JSBool
+js_Object(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
 
 JS_END_EXTERN_C
 

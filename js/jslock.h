@@ -55,9 +55,10 @@ JS_BEGIN_EXTERN_C
 #ifdef JS_THREADSAFE
 
 #if (defined(_WIN32) && defined(_M_IX86)) ||                                  \
-    (defined(__GNUC__) && defined(__i386__)) ||                               \
-    (defined(__GNUC__) && defined(__x86_64__)) ||                             \
-    (defined(SOLARIS) && defined(sparc) && defined(ULTRA_SPARC)) ||           \
+    (defined(_WIN64) && (defined(_M_AMD64) || defined(_M_X64))) ||            \
+    (defined(__i386) && (defined(__GNUC__) || defined(__SUNPRO_CC))) ||       \
+    (defined(__x86_64) && (defined(__GNUC__) || defined(__SUNPRO_CC))) ||     \
+    (defined(__sparc) && (defined(__GNUC__) || defined(__SUNPRO_CC))) ||      \
     defined(AIX) ||                                                           \
     defined(USE_ARM_KUSER)
 # define JS_HAS_NATIVE_COMPARE_AND_SWAP 1
@@ -160,6 +161,16 @@ struct JSTitle {
 #define JS_UNLOCK_OBJ(cx,obj)     ((OBJ_SCOPE(obj)->title.ownercx == (cx))    \
                                    ? (void)0 : js_UnlockObj(cx, obj))
 
+/*
+ * Lock object only if its scope has the given shape.
+ */
+#define JS_LOCK_OBJ_IF_SHAPE(cx,obj,shape)                                    \
+    (OBJ_SHAPE(obj) == (shape)                                                \
+     ? (OBJ_SCOPE(obj)->title.ownercx == (cx)                                 \
+        ? true                                                                \
+        : js_LockObjIfShape(cx, obj, shape))                                  \
+     : false)
+
 #define JS_LOCK_TITLE(cx,title)                                               \
     ((title)->ownercx == (cx) ? (void)0                                       \
      : (js_LockTitle(cx, (title)),                                            \
@@ -181,6 +192,11 @@ extern void js_LockRuntime(JSRuntime *rt);
 extern void js_UnlockRuntime(JSRuntime *rt);
 extern void js_LockObj(JSContext *cx, JSObject *obj);
 extern void js_UnlockObj(JSContext *cx, JSObject *obj);
+#ifdef __cplusplus /* Allow inclusion from LiveConnect C files. */
+extern bool js_LockObjIfShape(JSContext *cx, JSObject *obj, uint32 shape);
+#else
+extern JSBool js_LockObjIfShape(JSContext *cx, JSObject *obj, uint32 shape);
+#endif
 extern void js_InitTitle(JSContext *cx, JSTitle *title);
 extern void js_FinishTitle(JSContext *cx, JSTitle *title);
 extern void js_LockTitle(JSContext *cx, JSTitle *title);
@@ -224,19 +240,6 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
 
 #endif /* DEBUG */
 
-#define JS_LOCK_OBJ_VOID(cx, obj, e)                                          \
-    JS_BEGIN_MACRO                                                            \
-        JS_LOCK_OBJ(cx, obj);                                                 \
-        e;                                                                    \
-        JS_UNLOCK_OBJ(cx, obj);                                               \
-    JS_END_MACRO
-
-#define JS_LOCK_VOID(cx, e)                                                   \
-    JS_BEGIN_MACRO                                                            \
-        JSRuntime *_rt = (cx)->runtime;                                       \
-        JS_LOCK_RUNTIME_VOID(_rt, e);                                         \
-    JS_END_MACRO
-
 #else  /* !JS_THREADSAFE */
 
 #define JS_ATOMIC_INCREMENT(p)      (++*(p))
@@ -262,6 +265,8 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
 #define JS_UNLOCK_RUNTIME(rt)       ((void)0)
 #define JS_LOCK_OBJ(cx,obj)         ((void)0)
 #define JS_UNLOCK_OBJ(cx,obj)       ((void)0)
+#define JS_LOCK_OBJ_IF_SHAPE(cx,obj,shape) (OBJ_SHAPE(obj) == (shape))
+
 #define JS_LOCK_OBJ_VOID(cx,obj,e)  (e)
 #define JS_LOCK_SCOPE(cx,scope)     ((void)0)
 #define JS_UNLOCK_SCOPE(cx,scope)   ((void)0)
@@ -270,7 +275,6 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
 #define JS_IS_RUNTIME_LOCKED(rt)        1
 #define JS_IS_OBJ_LOCKED(cx,obj)        1
 #define JS_IS_TITLE_LOCKED(cx,title)    1
-#define JS_LOCK_VOID(cx, e)             JS_LOCK_RUNTIME_VOID((cx)->runtime, e)
 
 #endif /* !JS_THREADSAFE */
 
@@ -283,7 +287,6 @@ extern void js_SetScopeInfo(JSScope *scope, const char *file, int line);
 
 #define JS_LOCK_GC(rt)              JS_ACQUIRE_LOCK((rt)->gcLock)
 #define JS_UNLOCK_GC(rt)            JS_RELEASE_LOCK((rt)->gcLock)
-#define JS_LOCK_GC_VOID(rt,e)       (JS_LOCK_GC(rt), (e), JS_UNLOCK_GC(rt))
 #define JS_AWAIT_GC_DONE(rt)        JS_WAIT_CONDVAR((rt)->gcDone, JS_NO_TIMEOUT)
 #define JS_NOTIFY_GC_DONE(rt)       JS_NOTIFY_ALL_CONDVAR((rt)->gcDone)
 #define JS_AWAIT_REQUEST_DONE(rt)   JS_WAIT_CONDVAR((rt)->requestDone,        \

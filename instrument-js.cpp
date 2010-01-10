@@ -141,8 +141,9 @@ static void print_javascript(const jschar * characters, size_t num_characters, S
 }
 
 static void print_string(JSString * s, Stream * f) {
-  size_t length = JSSTRING_LENGTH(s);
-  jschar * characters = JSSTRING_CHARS(s);
+  size_t length;
+  const jschar * characters;
+  s->getCharsAndLength(characters, length);
   for (size_t i = 0; i < length; i++) {
     jschar c = characters[i];
     if (32 <= c && c <= 126) {
@@ -203,8 +204,9 @@ static void print_string_atom(JSAtom * atom, Stream * f) {
 static void print_regex(jsval value, Stream * f) {
   assert(JSVAL_IS_STRING(value));
   JSString * s = JSVAL_TO_STRING(value);
-  size_t length = JSSTRING_LENGTH(s);
-  jschar * characters = JSSTRING_CHARS(s);
+  size_t length;
+  const jschar * characters;
+  s->getCharsAndLength(characters, length);
   for (size_t i = 0; i < length; i++) {
     jschar c = characters[i];
     if (32 <= c && c <= 126) {
@@ -416,7 +418,7 @@ static void instrument_function(JSParseNode * node, Stream * f, int indent, enum
       for (JSParseNode * p = comma->pn_head; p != NULL; p = p->pn_next) {
         assert(p->pn_type == TOK_ASSIGN);
         JSParseNode * rhs = p->pn_right;
-        assert(JSSTRING_LENGTH(ATOM_TO_STRING(rhs->pn_atom)) == 0);
+        assert(ATOM_TO_STRING(rhs->pn_atom)->length() == 0);
         if (UPVAR_FRAME_SLOT(rhs->pn_cookie) == i) {
           expression = p->pn_left;
           break;
@@ -755,10 +757,15 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     {
       JSString * s = ATOM_TO_STRING(node->pn_atom);
       bool must_quote;
-      if (JSSTRING_LENGTH(s) == 0) {
+
+      size_t length;
+      const jschar * characters;
+      s->getCharsAndLength(characters, length);
+
+      if (length == 0) {
         must_quote = true;
       }
-      else if (js_CheckKeyword(JSSTRING_CHARS(s), JSSTRING_LENGTH(s)) != TOK_EOF) {
+      else if (js_CheckKeyword(characters, length) != TOK_EOF) {
         must_quote = true;
       }
       else if (! js_IsIdentifier(s)) {

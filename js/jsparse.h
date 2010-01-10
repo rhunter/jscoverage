@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  * vim: set ts=8 sw=4 et tw=78:
  *
  * ***** BEGIN LICENSE BLOCK *****
@@ -194,7 +194,6 @@ JS_BEGIN_EXTERN_C
  *                          pn_kid: primary function, paren, name, object or
  *                                  array literal expressions
  * TOK_USESHARP nullary     pn_num: jsint value of n in #n#
- * TOK_RP       unary       pn_kid: parenthesized expression
  * TOK_NAME,    name        pn_atom: name, string, or object atom
  * TOK_STRING,              pn_op: JSOP_NAME, JSOP_STRING, or JSOP_OBJECT, or
  *                                 JSOP_REGEXP
@@ -291,7 +290,8 @@ struct JSDefinition;
 struct JSParseNode {
     uint32              pn_type:16,     /* TOK_* type, see jsscan.h */
                         pn_op:8,        /* see JSOp enum and jsopcode.tbl */
-                        pn_arity:6,     /* see JSParseNodeArity enum */
+                        pn_arity:5,     /* see JSParseNodeArity enum */
+                        pn_parens:1,    /* this expr was enclosed in parens */
                         pn_used:1,      /* name node is on a use-chain */
                         pn_defn:1;      /* this node is a JSDefinition */
 
@@ -417,6 +417,9 @@ struct JSParseNode {
 #define PND_PLACEHOLDER 0x80            /* placeholder definition for lexdep */
 #define PND_FUNARG     0x100            /* downward or upward funarg usage */
 #define PND_BOUND      0x200            /* bound to a stack or global slot */
+
+/* Flags to propagate from uses to definition. */
+#define PND_USE2DEF_FLAGS (PND_ASSIGNED | PND_FUNARG)
 
 /* PN_LIST pn_xflags bits. */
 #define PNX_STRCAT      0x01            /* TOK_PLUS list has string term */
@@ -548,12 +551,11 @@ struct JSParseNode {
  *               pn = allocate a PN_NAME JSParseNode;
  *           } else {                                       // defining
  *               dn = lookup x in tc->lexdeps;
- *               if (dn) {                                  // use before def
+ *               if (dn)                                    // use before def
  *                   remove x from tc->lexdeps;
- *               } else {                                   // def before use
+ *               else                                       // def before use
  *                   dn = allocate a PN_NAME JSDefinition;
- *                   map x to dn via tc->decls;
- *               }
+ *               map x to dn via tc->decls;
  *               pn = dn;
  *           }
  *           insert pn into its parent TOK_VAR list;
@@ -819,8 +821,8 @@ struct JSCompiler {
     JSTempValueRooter   tempRoot;       /* root to trace traceListHead */
 
     JSCompiler(JSContext *cx, JSPrincipals *prin = NULL, JSStackFrame *cfp = NULL)
-      : context(cx), aleFreeList(NULL), principals(NULL), callerFrame(cfp),
-        nodeList(NULL), functionCount(0), traceListHead(NULL)
+      : context(cx), aleFreeList(NULL), tokenStream(cx), principals(NULL),
+        callerFrame(cfp), nodeList(NULL), functionCount(0), traceListHead(NULL)
     {
         memset(tempFreeList, 0, sizeof tempFreeList);
         setPrincipals(prin);
@@ -830,7 +832,7 @@ struct JSCompiler {
     ~JSCompiler();
 
     /*
-     * Initialize a compiler. Parameters are passed on to js_InitTokenStream.
+     * Initialize a compiler. Parameters are passed on to init tokenStream.
      * The compiler owns the arena pool "tops-of-stack" space above the current
      * JSContext.tempPool mark. This means you cannot allocate from tempPool
      * and save the pointer beyond the next JSCompiler destructor invocation.

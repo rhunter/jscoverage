@@ -120,10 +120,10 @@ extern JSPropertyOp
 js_GetWatchedSetter(JSRuntime *rt, JSScope *scope,
                     const JSScopeProperty *sprop);
 
-extern JS_REQUIRES_STACK JSBool
+extern JSBool
 js_watch_set(JSContext *cx, JSObject *obj, jsval id, jsval *vp);
 
-extern JS_REQUIRES_STACK JSBool
+extern JSBool
 js_watch_set_wrapper(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                      jsval *rval);
 
@@ -421,11 +421,11 @@ JS_NewSystemObject(JSContext *cx, JSClass *clasp, JSObject *proto,
 
 /************************************************************************/
 
-extern JS_PUBLIC_API(JSDebugHooks *)
+extern JS_PUBLIC_API(const JSDebugHooks *)
 JS_GetGlobalDebugHooks(JSRuntime *rt);
 
 extern JS_PUBLIC_API(JSDebugHooks *)
-JS_SetContextDebugHooks(JSContext *cx, JSDebugHooks *hooks);
+JS_SetContextDebugHooks(JSContext *cx, const JSDebugHooks *hooks);
 
 #ifdef MOZ_SHARK
 
@@ -494,6 +494,15 @@ js_ResumeVtune(JSContext *cx, JSObject *obj, uintN argc, jsval *argv,
                jsval *rval);
 
 #endif /* MOZ_VTUNE */
+
+#ifdef MOZ_TRACEVIS
+extern JS_FRIEND_API(JSBool)
+js_InitEthogram(JSContext *cx, JSObject *obj,
+                uintN argc, jsval *argv, jsval *rval);
+extern JS_FRIEND_API(JSBool)
+js_ShutdownEthogram(JSContext *cx, JSObject *obj,
+                    uintN argc, jsval *argv, jsval *rval);
+#endif /* MOZ_TRACEVIS */
 
 JS_END_EXTERN_C
 

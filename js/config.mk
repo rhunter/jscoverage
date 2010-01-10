@@ -151,18 +151,16 @@ SO_SUFFIX = so
 
 NS_USE_NATIVE = 1
 
+ifdef MOZ_OJI
 # Java stuff
 CLASSDIR     = $(DEPTH)/liveconnect/classes
 JAVA_CLASSES = $(patsubst %.java,%.class,$(JAVA_SRCS))
 TARGETS     += $(addprefix $(CLASSDIR)/$(OBJDIR)/$(JARPATH)/, $(JAVA_CLASSES))
 JAVAC        = $(JDK)/bin/javac
 JAVAC_FLAGS  = -classpath "$(CLASSPATH)" -d $(CLASSDIR)/$(OBJDIR)
-ifeq ($(OS_ARCH), WINNT)
-  SEP        = ;
-else
-  SEP        = :
-endif
+SEP        = :
 CLASSPATH    = $(JDK)/lib/classes.zip$(SEP)$(CLASSDIR)/$(OBJDIR)
+endif
 
 include $(DEPTH)/ref-config/$(OS_CONFIG).mk
 

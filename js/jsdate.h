@@ -121,8 +121,12 @@ js_DateGetMsecSinceEpoch(JSContext *cx, JSObject *obj);
 
 typedef uint32 JSIntervalTime;
 
-JSIntervalTime
+extern JS_FRIEND_API(JSIntervalTime)
 js_IntervalNow();
+
+/* Date constructor native. Exposed only so the JIT can know its address. */
+JSBool
+js_Date(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval);
 
 JS_END_EXTERN_C
 
