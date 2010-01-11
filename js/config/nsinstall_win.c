@@ -54,6 +54,44 @@ void changeForwardSlashesToBackSlashes ( wchar_t *arg )
     }
 }
 
+#ifdef __MINGW32__
+/*
+http://article.gmane.org/gmane.comp.gnu.mingw.user/22962
+http://msdn.microsoft.com/en-us/library/bb776391%28VS.85%29.aspx
+*/
+int main(int argc, char ** argv)
+{
+    LPWSTR *szArglist;
+    int nArgs;
+    int i;
+    int result;
+
+    szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+    if (NULL == szArglist) {
+        wprintf(L"CommandLineToArgvW failed\n");
+        return 1;
+    }
+
+    /* terminate with NULL */
+    LPWSTR * wargv = malloc((nArgs + 1) * sizeof(LPWSTR));
+    if (wargv == NULL) {
+        printf("malloc failed\n");
+        return 1;
+    }
+    for (i = 0; i < nArgs; ++i) {
+        wargv[i] = szArglist[i];
+    }
+    wargv[nArgs] = NULL;
+    LocalFree(szArglist);
+
+    result = wmain(nArgs, wargv);
+
+    free(wargv);
+
+    return result;
+}
+#endif
+
 int wmain(int argc, wchar_t *argv[ ])
 {
     return shellNsinstall ( argv + 1 );

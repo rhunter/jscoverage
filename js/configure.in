@@ -828,7 +828,7 @@ fi # COMPILE_ENVIRONMENT
 
 case "$host_os" in
 cygwin*|mingw*|mks*|msvc*)
-    MOZ_PATH_PROGS(MAKE, $MAKE make gmake, :)
+    AC_PATH_PROGS(MAKE, $MAKE make gmake, :)
     ;;
 *)
     MOZ_PATH_PROGS(MAKE, $MAKE gmake make, :)

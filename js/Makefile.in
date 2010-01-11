@@ -171,7 +171,7 @@ endif
 INSTALLED_HEADERS = \
 		js-config.h \
 		jsautocfg.h \
-		$(CURDIR)/jsautokw.h \
+		jsautokw.h \
 		js.msg \
 		jsapi.h \
 		jsarray.h \
@@ -668,6 +668,7 @@ $(CURDIR)/javascript-trace.h: $(srcdir)/javascript-trace.d
 $(addsuffix .$(OBJ_SUFFIX),jsdtracef jsinterp jsobj): $(CURDIR)/javascript-trace.h
 endif
 
+ifdef ENABLE_JIT
 ifdef GNU_CC
 ifndef CROSS_COMPILE
 # If we don't have run-mozilla.sh *and* we're linking against NSPR, we don't
@@ -689,6 +690,7 @@ update-imacros: imacros.c.tmp
 	cp $< $(srcdir)/imacros.c.out
 
 .PHONY: update-imacros
+endif
 endif
 endif
 endif
