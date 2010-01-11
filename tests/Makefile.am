@@ -34,7 +34,7 @@ noinst_PROGRAMS = asprintf \
                   streams
 
 AM_CFLAGS = @XP_DEF@ -I../js -I../js/obj
-AM_CXXFLAGS = @XP_DEF@ -I../js -I../js/obj
+AM_CXXFLAGS = @XP_DEF@ -I../js -I../js/obj -funit-at-a-time
 
 asprintf_SOURCES = asprintf.c ../util.c
 
