@@ -86,7 +86,7 @@ esac
 AC_SUBST([SPIDERMONKEY_LIBS])
 case "$host_os" in
   mingw*|cygwin*)
-    SPIDERMONKEY_LIBS='js/libjs3250.a'
+    SPIDERMONKEY_LIBS='js/libjs_static.a'
     ;;
   *)
     SPIDERMONKEY_LIBS='js/libjs_static.a'
