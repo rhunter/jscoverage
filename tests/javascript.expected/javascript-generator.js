@@ -46,7 +46,7 @@ function fib() {
   _$jscoverage['javascript-generator.js'][5]++;
   while (true) {
     _$jscoverage['javascript-generator.js'][6]++;
-    yield i;
+    (yield i);
     _$jscoverage['javascript-generator.js'][7]++;
     var t = i;
     _$jscoverage['javascript-generator.js'][8]++;

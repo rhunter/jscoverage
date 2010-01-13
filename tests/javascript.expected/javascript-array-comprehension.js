@@ -44,7 +44,7 @@ function range(begin, end) {
   _$jscoverage['javascript-array-comprehension.js'][4]++;
   for (let i = begin; (i < end); (++i)) {
     _$jscoverage['javascript-array-comprehension.js'][5]++;
-    yield i;
+    (yield i);
 }
 }
 _$jscoverage['javascript-array-comprehension.js'][8]++;
