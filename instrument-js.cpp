@@ -817,8 +817,8 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
       }
-      /* TOK_COMMA is a special case: a hole in the array */
-      if (p->pn_type != TOK_COMMA) {
+      /* a TOK_COMMA which is not a PN_LIST is a special case: a hole in the array */
+      if (! (p->pn_type == TOK_COMMA && p->pn_arity != PN_LIST)) {
         output_expression(p, f, false);
       }
     }
