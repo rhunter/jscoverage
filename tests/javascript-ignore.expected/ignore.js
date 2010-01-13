@@ -100,7 +100,7 @@ function createRequest2() {
 _$jscoverage['ignore.js'][32]++;
 function log(s) {
   _$jscoverage['ignore.js'][34]++;
-  if (window.console && window.console.log) {
+  if ((window.console && window.console.log)) {
     _$jscoverage['ignore.js'].conditionals[37] = 39;
     _$jscoverage['ignore.js'][35]++;
     console.log(s);
@@ -108,7 +108,7 @@ function log(s) {
   else {
     _$jscoverage['ignore.js'].conditionals[35] = 36;
     _$jscoverage['ignore.js'][37]++;
-    if (window.opera && window.opera.postError) {
+    if ((window.opera && window.opera.postError)) {
       _$jscoverage['ignore.js'][38]++;
       opera.postError(s);
     }
