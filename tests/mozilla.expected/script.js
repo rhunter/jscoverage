@@ -17,7 +17,7 @@ _$jscoverage['script.js'].source = ["dump<span class=\"k\">(</span><span class=\
 _$jscoverage['script.js'][1]++;
 dump("hello");
 _$jscoverage['script.js'][4]++;
-if ("a" < "b" && "a" > "b") {
+if ((("a" < "b") && ("a" > "b"))) {
   _$jscoverage['script.js'][5]++;
   dump("?");
 }
