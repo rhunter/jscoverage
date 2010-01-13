@@ -139,4 +139,4 @@ _$jscoverage['javascript-function.js'][56]++;
   print("x");
 }).call(window);
 _$jscoverage['javascript-function.js'][61]++;
-(b - a)();
+((b - a))();

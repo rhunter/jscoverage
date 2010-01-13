@@ -55,12 +55,12 @@ for (var i in x) {
   x();
 }
 _$jscoverage['javascript-for.js'][9]++;
-for (i = 0; i < x; i++) {
+for (i = 0; (i < x); (i++)) {
   _$jscoverage['javascript-for.js'][10]++;
   x();
 }
 _$jscoverage['javascript-for.js'][13]++;
-for (var j = 0; j < x; j++) {
+for (var j = 0; (j < x); (j++)) {
   _$jscoverage['javascript-for.js'][14]++;
   x();
 }

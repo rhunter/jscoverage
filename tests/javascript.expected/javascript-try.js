@@ -63,7 +63,7 @@ try {
   _$jscoverage['javascript-try.js'][11]++;
   f();
 }
-catch (e if e instanceof E) {
+catch (e if (e instanceof E)) {
   _$jscoverage['javascript-try.js'][14]++;
   f();
 }

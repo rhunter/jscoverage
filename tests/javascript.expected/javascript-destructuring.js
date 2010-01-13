@@ -90,7 +90,7 @@ function g() {
   _$jscoverage['javascript-destructuring.js'][24]++;
   var parsedURL = /^(\w+)\:\/\/([^\/]+)\/(.*)$/.exec(url);
   _$jscoverage['javascript-destructuring.js'][25]++;
-  if (! parsedURL) {
+  if ((! parsedURL)) {
     _$jscoverage['javascript-destructuring.js'][26]++;
     return null;
   }
@@ -106,7 +106,7 @@ function h(a, [b, c], {foo: d, "bar": e}) {
 }
 _$jscoverage['javascript-destructuring.js'][35]++;
 x = (function ([a, b]) {
-  return a + b;
+  return (a + b);
 });
 _$jscoverage['javascript-destructuring.js'][37]++;
 ({x: x0, y: y0}) = point;

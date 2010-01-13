@@ -37,4 +37,4 @@ _$jscoverage['javascript-hook.js'].source = ["<span class=\"k\">var</span> x <sp
 _$jscoverage['javascript-hook.js'][1]++;
 var x = 1;
 _$jscoverage['javascript-hook.js'][2]++;
-var y = x === 1? "x": "y";
+var y = ((x === 1)? "x": "y");

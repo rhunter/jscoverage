@@ -38,7 +38,7 @@ _$jscoverage['javascript-in.js'].source = ["<span class=\"k\">var</span> x <span
 _$jscoverage['javascript-in.js'][1]++;
 var x = {};
 _$jscoverage['javascript-in.js'][2]++;
-if ("a" in x) {
+if (("a" in x)) {
   _$jscoverage['javascript-in.js'][3]++;
   x = null;
 }
