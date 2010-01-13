@@ -78,7 +78,7 @@ let (x = (x + 10), y = 12) {
   print((x + y + "\n"));
 }
 _$jscoverage['javascript-let.js'][11]++;
-print(let(x = (x + 10), y = 12) (x + y + "<br>\n"));
+print((let(x = (x + 10), y = 12) (x + y + "<br>\n")));
 _$jscoverage['javascript-let.js'][15]++;
 if ((x > y)) {
   {
@@ -145,7 +145,7 @@ function letTests() {
     alert(x);
   }
   _$jscoverage['javascript-let.js'][60]++;
-  alert(let(x = (x + 20)) x);
+  alert((let(x = (x + 20)) x));
   {
     _$jscoverage['javascript-let.js'][64]++;
     let x = (x + 20);
