@@ -955,20 +955,24 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     assert(node->pn_arity == PN_NAME);
     assert(node->pn_expr->pn_type == TOK_LET);
     assert(node->pn_expr->pn_arity == PN_BINARY);
+    Stream_write_char(f, '(');
     Stream_write_string(f, "let(");
     assert(node->pn_expr->pn_left->pn_type == TOK_LP);
     assert(node->pn_expr->pn_left->pn_arity == PN_LIST);
     instrument_declarations(node->pn_expr->pn_left, f);
     Stream_write_string(f, ") ");
     output_expression(node->pn_expr->pn_right, f, true);
+    Stream_write_char(f, ')');
     break;
   case TOK_YIELD:
     assert(node->pn_arity == PN_UNARY);
+    Stream_write_char(f, '(');
     Stream_write_string(f, "yield");
     if (node->pn_kid != NULL) {
       Stream_write_char(f, ' ');
       output_expression(node->pn_kid, f, true);
     }
+    Stream_write_char(f, ')');
     break;
   case TOK_ARRAYCOMP:
     assert(node->pn_arity == PN_LIST);
