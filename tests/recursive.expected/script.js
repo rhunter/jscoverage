@@ -38,7 +38,7 @@ _$jscoverage['@PREFIX@script.js'].source = ["alert(\"hello\");","","// test form
 _$jscoverage['@PREFIX@script.js'][1]++;
 alert("hello");
 _$jscoverage['@PREFIX@script.js'][4]++;
-if ("a" < "b" && "a" > "b") {
+if ((("a" < "b") && ("a" > "b"))) {
   _$jscoverage['@PREFIX@script.js'][5]++;
   alert("?");
 }
