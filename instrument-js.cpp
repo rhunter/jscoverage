@@ -664,6 +664,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       output_expression(node->pn_kid, f, false);
       break;
     case JSOP_TYPEOF:
+    case JSOP_TYPEOFEXPR:
       Stream_write_string(f, "typeof ");
       output_expression(node->pn_kid, f, false);
       break;
