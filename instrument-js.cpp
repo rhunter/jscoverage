@@ -275,7 +275,7 @@ static const char * get_op(uint8 op) {
   }
 }
 
-static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals);
+static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals, bool parenthesize_assignments = true);
 static void instrument_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 static void output_statement(JSParseNode * node, Stream * f, int indent, bool is_jscoverage_if);
 
@@ -291,9 +291,7 @@ static void output_for_in(JSParseNode * node, Stream * f) {
   if (node->pn_iflags & JSITER_FOREACH) {
     Stream_write_string(f, "each ");
   }
-  Stream_write_char(f, '(');
   output_expression(node->pn_left, f, false);
-  Stream_write_char(f, ')');
 }
 
 static void output_array_comprehension_or_generator_expression(JSParseNode * node, Stream * f) {
@@ -547,7 +545,7 @@ static void instrument_declarations(JSParseNode * list, Stream * f) {
       }
       break;
     default:
-      output_expression(p, f, false);
+      output_expression(p, f, false, false);
       break;
     }
   }
@@ -566,7 +564,7 @@ There seem to be some undocumented expressions:
 TOK_INSTANCEOF  binary
 TOK_IN          binary
 */
-static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals) {
+static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_object_literals, bool parenthesize_assignments) {
   switch (node->pn_type) {
   case TOK_FUNCTION:
     Stream_write_char(f, '(');
@@ -574,14 +572,19 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     Stream_write_char(f, ')');
     break;
   case TOK_COMMA:
+    Stream_write_char(f, '(');
     for (struct JSParseNode * p = node->pn_head; p != NULL; p = p->pn_next) {
       if (p != node->pn_head) {
         Stream_write_string(f, ", ");
       }
       output_expression(p, f, parenthesize_object_literals);
     }
+    Stream_write_char(f, ')');
     break;
   case TOK_ASSIGN:
+    if (parenthesize_assignments) {
+      Stream_write_char(f, '(');
+    }
     output_expression(node->pn_left, f, parenthesize_object_literals);
     Stream_write_char(f, ' ');
     switch (node->pn_op) {
@@ -604,13 +607,18 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     }
     Stream_write_string(f, "= ");
     output_expression(node->pn_right, f, false);
+    if (parenthesize_assignments) {
+      Stream_write_char(f, ')');
+    }
     break;
   case TOK_HOOK:
+    Stream_write_char(f, '(');
     output_expression(node->pn_kid1, f, parenthesize_object_literals);
     Stream_write_string(f, "? ");
     output_expression(node->pn_kid2, f, false);
     Stream_write_string(f, ": ");
     output_expression(node->pn_kid3, f, false);
+    Stream_write_char(f, ')');
     break;
   case TOK_OR:
   case TOK_AND:
@@ -624,6 +632,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
   case TOK_MINUS:
   case TOK_STAR:
   case TOK_DIVOP:
+    Stream_write_char(f, '(');
     switch (node->pn_arity) {
     case PN_BINARY:
       output_expression(node->pn_left, f, parenthesize_object_literals);
@@ -644,8 +653,10 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     default:
       abort();
     }
+    Stream_write_char(f, ')');
     break;
   case TOK_UNARYOP:
+    Stream_write_char(f, '(');
     switch (node->pn_op) {
     case JSOP_NEG:
       Stream_write_string(f, "- ");
@@ -676,12 +687,14 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       fatal_source(file_id, node->pn_pos.begin.lineno, "unknown operator (%u)", (unsigned int) node->pn_op);
       break;
     }
+    Stream_write_char(f, ')');
     break;
   case TOK_INC:
   case TOK_DEC:
     /*
     This is not documented, but node->pn_op tells whether it is pre- or post-increment.
     */
+    Stream_write_char(f, '(');
     switch (node->pn_op) {
     case JSOP_INCNAME:
     case JSOP_INCPROP:
@@ -711,6 +724,7 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
       abort();
       break;
     }
+    Stream_write_char(f, ')');
     break;
   case TOK_NEW:
     /*
@@ -734,8 +748,10 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     output_function_arguments(node, f);
     break;
   case TOK_DELETE:
+    Stream_write_char(f, '(');
     Stream_write_string(f, "delete ");
     output_expression(node->pn_kid, f, false);
+    Stream_write_char(f, ')');
     break;
   case TOK_DOT:
     /* numeric literals must be parenthesized */
@@ -922,14 +938,18 @@ static void output_expression(JSParseNode * node, Stream * f, bool parenthesize_
     }
     break;
   case TOK_INSTANCEOF:
+    Stream_write_char(f, '(');
     output_expression(node->pn_left, f, parenthesize_object_literals);
     Stream_write_string(f, " instanceof ");
     output_expression(node->pn_right, f, false);
+    Stream_write_char(f, ')');
     break;
   case TOK_IN:
+    Stream_write_char(f, '(');
     output_expression(node->pn_left, f, false);
     Stream_write_string(f, " in ");
     output_expression(node->pn_right, f, false);
+    Stream_write_char(f, ')');
     break;
   case TOK_LEXICALSCOPE:
     assert(node->pn_arity == PN_NAME);
@@ -1128,7 +1148,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
       assert(node->pn_left->pn_arity == PN_TERNARY);
       Stream_write_string(f, "for (");
       if (node->pn_left->pn_kid1) {
-        output_expression(node->pn_left->pn_kid1, f, false);
+        output_expression(node->pn_left->pn_kid1, f, false, false);
       }
       Stream_write_string(f, ";");
       if (node->pn_left->pn_kid2) {
@@ -1233,7 +1253,7 @@ static void output_statement(JSParseNode * node, Stream * f, int indent, bool is
     assert(node->pn_arity == PN_UNARY);
     Stream_printf(f, "%*s", indent, "");
     if (node->pn_kid != NULL) {
-      output_expression(node->pn_kid, f, true);
+      output_expression(node->pn_kid, f, true, false);
     }
     Stream_write_string(f, ";\n");
     break;
