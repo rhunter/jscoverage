@@ -34,6 +34,19 @@
         same <strong>directory</strong> as the <code>jscoverage.html</code> file.)
         </p>
 
+        <h3 id="jscoverage-vs-jscoverage-server">Should I use the <code>jscoverage</code> program or the <code>jscoverage-server</code> program?</h3>
+        <p>
+        First, note that the <code>jscoverage</code> program and the <code>jscoverage-server</code> program are mutually exclusive alternatives;
+        you must use one or the other, but not both.  If you try to use both at the same time you will get strange results.
+        </p>
+        <p>
+        Which of the two programs you use is largely a matter of personal preference.
+        The <code>jscoverage-server</code> program has some additional features,
+        such as the ability to store coverage reports to disk.
+        However, the <code>jscoverage</code> program is the more mature of the two and is generally easier to use;
+        this program is recommended if you do not need any of the additional features of <code>jscoverage-server</code>.
+        </p>
+
         <h3>Why doesn't my test suite run under JSCoverage in Firefox 3?</h3>
 
         <p>
