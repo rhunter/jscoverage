@@ -42,8 +42,8 @@ if (! window.jscoverage_report) {
     };
 
     var json = [];
-    for (var file in top._$jscoverage) {
-      var coverage = top._$jscoverage[file];
+    for (var file in _$jscoverage) {
+      var coverage = _$jscoverage[file];
 
       var array = [];
       var length = coverage.length;
