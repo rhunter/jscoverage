@@ -18,9 +18,9 @@
 
 set -e
 
-trap 'rm -fr DIR' 1 2 3 15
+trap 'rm -fr EXPECTED ACTUAL' 1 2 3 15
 
-export PATH=.:..:$PATH
+. ./common.sh
 
 if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
 then
@@ -29,15 +29,16 @@ else
   character_encoding_support=no
 fi
 
-rm -fr DIR
+rm -fr EXPECTED ACTUAL
 case "$character_encoding_support" in
   yes)
-    $VALGRIND jscoverage --no-highlight --encoding=UTF-8 javascript-utf-8 DIR
-    diff -u --strip-trailing-cr javascript-utf-8.expected/javascript-utf-8.js DIR/javascript-utf-8.js
+    add_header_to_files javascript-utf-8.expected
+    $VALGRIND jscoverage --no-highlight --encoding=UTF-8 javascript-utf-8 ACTUAL
+    diff -u --strip-trailing-cr EXPECTED/javascript-utf-8.js ACTUAL/javascript-utf-8.js
     ;;
   *)
-    ! $VALGRIND jscoverage --no-highlight --encoding=UTF-8 javascript-utf-8 DIR > OUT 2> ERR
+    ! $VALGRIND jscoverage --no-highlight --encoding=UTF-8 javascript-utf-8 ACTUAL > OUT 2> ERR
     echo "jscoverage: encoding UTF-8 not supported" | diff - ERR
     ;;
 esac
-rm -fr DIR
+rm -fr EXPECTED ACTUAL

@@ -30,7 +30,7 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
+. ./common.sh
 
 if [ -z "$VALGRIND" ]
 then
@@ -57,8 +57,11 @@ sleep $delay
 
 case "$character_encoding_support" in
   yes)
-    cat ../report.js > EXPECTED
-    cat javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/http:\/\/127.0.0.1:8000\/utf-8.js/g' >> EXPECTED
+    rm -fr TMP
+    cat javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/http:\/\/127.0.0.1:8000\/utf-8.js/g' > TMP
+    add_header_to_file TMP EXPECTED
+    cat ../report.js EXPECTED > TMP
+    mv TMP EXPECTED
     curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/utf-8.js > ACTUAL
     diff EXPECTED ACTUAL
     ;;
@@ -79,8 +82,11 @@ sleep $delay
 
 case "$character_encoding_support" in
   yes)
-    cat ../report.js > EXPECTED
-    cat javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/http:\/\/127.0.0.1:8000\/iso-8859-1.js/g' >> EXPECTED
+    rm -fr TMP
+    cat javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/http:\/\/127.0.0.1:8000\/iso-8859-1.js/g' > TMP
+    add_header_to_file TMP EXPECTED
+    cat ../report.js EXPECTED > TMP
+    mv TMP EXPECTED
     curl -s -x 127.0.0.1:8080 http://127.0.0.1:8000/iso-8859-1.js > ACTUAL
     diff EXPECTED ACTUAL
     ;;

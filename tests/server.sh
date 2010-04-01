@@ -31,7 +31,7 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
+. ./common.sh
 
 if [ -z "$VALGRIND" ]
 then
@@ -158,8 +158,11 @@ sleep $delay
 
 case "$character_encoding_support" in
   yes)
+    rm -fr EXPECTED
     wget -q -O- http://127.0.0.1:8080/javascript-iso-8859-1.js > OUT
-    cat ../report.js javascript.expected/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/\/javascript-iso-8859-1.js/g' | diff --strip-trailing-cr - OUT
+    add_header_to_files javascript.expected
+    cat ../report.js EXPECTED/javascript-iso-8859-1.js | sed 's/javascript-iso-8859-1.js/\/javascript-iso-8859-1.js/g' | diff --strip-trailing-cr - OUT
+    rm -fr EXPECTED
     ;;
   *)
     echo 500 > EXPECTED
@@ -179,8 +182,11 @@ sleep $delay
 
 case "$character_encoding_support" in
   yes)
+    rm -fr EXPECTED
     wget -q -O- http://127.0.0.1:8080/javascript-utf-8.js > OUT
-    cat ../report.js javascript-utf-8.expected/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff --strip-trailing-cr - OUT
+    add_header_to_files javascript-utf-8.expected
+    cat ../report.js EXPECTED/javascript-utf-8.js | sed 's/javascript-utf-8.js/\/javascript-utf-8.js/g' | diff --strip-trailing-cr - OUT
+    rm -fr EXPECTED
     ;;
   *)
     echo 500 > EXPECTED

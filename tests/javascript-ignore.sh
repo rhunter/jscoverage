@@ -18,11 +18,11 @@
 
 set -e
 
-trap 'rm -fr DIR' 1 2 3 15
+trap 'rm -fr EXPECTED ACTUAL' 1 2 3 15
 
-export PATH=.:..:$PATH
+. ./common.sh
 
-rm -fr DIR
-$VALGRIND jscoverage --no-highlight javascript-ignore DIR
-diff -u --strip-trailing-cr javascript-ignore.expected/ignore.js DIR/ignore.js
-rm -fr DIR
+add_header_to_files javascript-ignore.expected
+$VALGRIND jscoverage --no-highlight javascript-ignore ACTUAL
+diff -u --strip-trailing-cr EXPECTED/ignore.js ACTUAL/ignore.js
+rm -fr EXPECTED ACTUAL
