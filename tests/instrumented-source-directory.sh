@@ -27,7 +27,7 @@ rm -fr DIR DIR2 OUT ERR
 mkdir DIR
 cp recursive.expected/image.png DIR
 cp recursive.expected/index.html DIR
-cp recursive.expected/script.js DIR
+cat ../header.txt ../header.js recursive.expected/script.js > DIR/script.js
 cp recursive.expected/style.css DIR
 cp recursive.expected/unix.txt DIR
 cp recursive.expected/windows.txt DIR

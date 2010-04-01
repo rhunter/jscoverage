@@ -27,7 +27,7 @@ rm -fr EXPECTED
 cp -r recursive.expected EXPECTED
 find EXPECTED -name .svn | xargs rm -fr
 rm EXPECTED/script.js
-cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
+cat ../header.txt ../header.js recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
 rm -fr EXPECTED/1/2
 cp ../jscoverage.css ../jscoverage-highlight.css ../jscoverage-ie.css \
    ../jscoverage-throbber.gif \

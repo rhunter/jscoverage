@@ -40,9 +40,9 @@ cp *.html *.js *.css *.png *.txt x ../EXPECTED
 cp 1/1.html 1/1.js 1/1.css ../EXPECTED/1
 cp 1/2/2.html 1/2/2.js 1/2/2.css ../EXPECTED/1/2
 cd ..
-cat recursive.expected/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
-cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
-cat recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
+cat ../header.txt ../header.js recursive.expected/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
+cat ../header.txt ../header.js recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
+cat ../header.txt ../header.js recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
 cp ../jscoverage.css ../jscoverage-highlight.css ../jscoverage-ie.css \
    ../jscoverage-throbber.gif \
    ../jscoverage.html \

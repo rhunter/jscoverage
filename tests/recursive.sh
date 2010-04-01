@@ -26,9 +26,9 @@ rm -fr DIR
 rm -fr EXPECTED
 cp -r recursive.expected EXPECTED
 find EXPECTED -name .svn | xargs rm -fr
-cat recursive.expected/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
-cat recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
-cat recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
+cat ../header.txt ../header.js recursive.expected/script.js | sed 's/@PREFIX@//g' > EXPECTED/script.js
+cat ../header.txt ../header.js recursive.expected/1/1.js | sed 's/@PREFIX@//g' > EXPECTED/1/1.js
+cat ../header.txt ../header.js recursive.expected/1/2/2.js | sed 's/@PREFIX@//g' > EXPECTED/1/2/2.js
 cp ../jscoverage.css ../jscoverage-highlight.css ../jscoverage-ie.css \
    ../jscoverage-throbber.gif \
    ../jscoverage.html \
