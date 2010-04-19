@@ -118,7 +118,7 @@ endif
 # In fact, we now build both a static and a shared library, as the
 # JS shell would like to link to the static library.
 
-FORCE_SHARED_LIB = 1
+FORCE_SHARED_LIB =
 FORCE_STATIC_LIB = 1
 
 VPATH		= $(srcdir)
