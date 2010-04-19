@@ -14,7 +14,7 @@ add_header_to_file() {
 
 add_header_to_files() {
   directory=$1
-  cp -a $directory EXPECTED
+  cp -R $directory EXPECTED
   find EXPECTED -name .svn | xargs rm -fr
   for i in `find EXPECTED -name '*.js'`
   do
