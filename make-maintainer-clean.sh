@@ -3,6 +3,7 @@
 rm -fr Makefile Makefile.in \
        make-dist.sh make-bin-dist.sh \
        autom4te.cache aclocal.m4 config.cache config.guess config.log config.status config.sub configure \
+       config.h config.h.in stamp-h1 \
        depcomp install-sh ltmain.sh missing \
        .deps \
        resources.c \
