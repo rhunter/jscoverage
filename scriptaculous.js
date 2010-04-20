@@ -469,7 +469,7 @@ new Test.Unit.Runner({
       input.value = 'scriptaculous-data.html';
       assertEqual('scriptaculous-data.html', input.value);
       jscoverage_openInFrameButton_click();
-      wait(500, function() {
+      wait(1000, function() {
         with (this) {
           assertMatch(/scriptaculous-data.html$/, input.value);
           assertMatch(/scriptaculous-data.html$/, frames[0].location);
