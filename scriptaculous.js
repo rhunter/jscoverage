@@ -1049,12 +1049,14 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
+    _$jscoverage['foo'].source = ['', '', '', '', ''];
     _$jscoverage['bar'] = [];
     _$jscoverage['bar'][10] = 1000;
+    _$jscoverage['bar'].source = ['', '', '', '', '', '', '', '', '', ''];
     jscoverage_storeButton_click();
     var expected = {
-      'foo': [null, 100, null, 200, 0, 100],
-      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+      'foo': {coverage: [null, 100, null, 200, 0, 100], source: ['', '', '', '', '']},
+      'bar': {coverage: [null, null, null, null, null, null, null, null, null, null, 1000], source: ['', '', '', '', '', '', '', '', '', '']}
     };
     var actual = request.responseText;
     actual = eval('(' + actual + ')');
@@ -1162,14 +1164,16 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
+    _$jscoverage['foo'].source = ['', '', '', '', ''];
     var funnyName = '\b\f\n\r\t"\\\u0001';
     _$jscoverage[funnyName] = [];
     _$jscoverage[funnyName][10] = 1000;
+    _$jscoverage[funnyName].source = ['', '', '', '', '', '', '', '', '', ''];
     jscoverage_report();
     var expected = {
-      'foo': [null, 100, null, 200, 0, 100]
+      'foo': {coverage: [null, 100, null, 200, 0, 100], source: ['', '', '', '', '']}
     };
-    expected[funnyName] = [null, null, null, null, null, null, null, null, null, null, 1000];
+    expected[funnyName] = {coverage: [null, null, null, null, null, null, null, null, null, null, 1000], source: ['', '', '', '', '', '', '', '', '', '']};
     var actual = request.responseText;
     actual = eval('(' + actual + ')');
     this.assert(jsonEquals(expected['foo'], actual['foo']));
@@ -1212,14 +1216,16 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
+    _$jscoverage['foo'].source = ['', '', '', '', ''];
     var funnyName = '\b\f\n\r\t"\\\u0001';
     _$jscoverage[funnyName] = [];
     _$jscoverage[funnyName][10] = 1000;
+    _$jscoverage[funnyName].source = ['', '', '', '', '', '', '', '', '', ''];
     jscoverage_report('dir');
     var expected = {
-      'foo': [null, 100, null, 200, 0, 100]
+      'foo': {coverage: [null, 100, null, 200, 0, 100], source: ['', '', '', '', '']}
     };
-    expected[funnyName] = [null, null, null, null, null, null, null, null, null, null, 1000];
+    expected[funnyName] = {coverage: [null, null, null, null, null, null, null, null, null, null, 1000], source: ['', '', '', '', '', '', '', '', '', '']};
     var actual = request.responseText;
     actual = eval('(' + actual + ')');
     this.assert(jsonEquals(expected['foo'], actual['foo']));
