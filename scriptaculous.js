@@ -883,7 +883,7 @@ new Test.Unit.Runner({
     var summaryTab = document.getElementById('summaryTab');
     var e = {target: summaryTab};
     jscoverage_tab_click(e);
-    this.wait(1000, function() {
+    this.wait(1500, function() {
       this.assertIdentical('selected', summaryTab.className);
       var summaryTable = document.getElementById('summaryTable');
       var rows = summaryTable.getElementsByTagName('tr');
@@ -913,7 +913,7 @@ new Test.Unit.Runner({
       this.assert(barLink);
 
       jscoverage_get('foo');
-      this.wait(1000, function() {
+      this.wait(1500, function() {
         var sourceTab = document.getElementById('sourceTab');
         this.assertIdentical('selected', sourceTab.className);
         jscoverage_tab_click(e);
