@@ -997,11 +997,13 @@ new Test.Unit.Runner({
     _$jscoverage['foo'][3] = 200;
     _$jscoverage['foo'][4] = 0;
     _$jscoverage['foo'][5] = 100;
+    _$jscoverage['foo'].source = ['', '', '', '', ''];
     _$jscoverage['bar'] = [];
     _$jscoverage['bar'][10] = 1000;
+    _$jscoverage['bar'].source = ['', '', '', '', '', '', '', '', '', ''];
     var expected = {
-      'foo': [null, 100, null, 200, 0, 100],
-      'bar': [null, null, null, null, null, null, null, null, null, null, 1000]
+      'foo': {coverage: [null, 100, null, 200, 0, 100], source: ['', '', '', '', '']},
+      'bar': {coverage: [null, null, null, null, null, null, null, null, null, null, 1000], source: ['', '', '', '', '', '', '', '', '', '']}
     };
     var actual = jscoverage_serializeCoverageToJSON();
     actual = eval('(' + actual + ')');
