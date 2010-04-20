@@ -468,7 +468,7 @@ new Test.Unit.Runner({
       var input = document.getElementById("location");
       input.value = 'scriptaculous-data.html';
       assertEqual('scriptaculous-data.html', input.value);
-      jscoverage_button_click();
+      jscoverage_openInFrameButton_click();
       wait(500, function() {
         with (this) {
           assertMatch(/scriptaculous-data.html$/, input.value);
@@ -495,9 +495,11 @@ new Test.Unit.Runner({
   test_createLink: function() {
     with (this) {
       var link = jscoverage_createLink('foo.js');
-      assertEqual("javascript:jscoverage_get('foo.js');", link.getAttribute('href'));
+      assertEqual("#", link.getAttribute('href'));
+      assertEqual('foo.js', link.firstChild.data);
       link = jscoverage_createLink('foo.js', 42);
-      assertEqual("javascript:jscoverage_get('foo.js', 42);", link.getAttribute('href'));
+      assertEqual("#", link.getAttribute('href'));
+      assertEqual('42', link.firstChild.data);
     }
   },
 
