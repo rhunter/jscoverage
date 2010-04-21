@@ -40,4 +40,4 @@ find $distdir -exec touch -d "$timestamp" {} \;
 tarfile=${distdir}.tar
 tar cvf $tarfile --owner=root --group=root $distdir
 bzip2 -c $tarfile > ${tarfile}.bz2
-lzma -c $tarfile > ${tarfile}.lzma
+xz -c $tarfile > ${tarfile}.xz
