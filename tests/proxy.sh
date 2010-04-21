@@ -57,6 +57,7 @@ proxy_server_pid=$!
 proxy_server_port=8080
 
 sleep $delay
+sleep $delay
 
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/index.html | diff recursive/index.html -
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/style.css | diff recursive/style.css -
