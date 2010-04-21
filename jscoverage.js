@@ -235,7 +235,7 @@ function jscoverage_isValidURL(url) {
   var scheme = matches[1];
   if (typeof scheme === 'string') {
     scheme = scheme.toLowerCase();
-    return scheme === 'file:' || scheme === 'http:' || scheme === 'https:';
+    return scheme === '' || scheme === 'file:' || scheme === 'http:' || scheme === 'https:';
   }
   return true;
 }
