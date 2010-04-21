@@ -38,6 +38,6 @@ timestamp=`cat TIMESTAMP`
 find $distdir -exec touch -d "$timestamp" {} \;
 
 tarfile=${distdir}.tar
-tar cvf $tarfile --owner=root --group=root $distdir
+tar cvf $tarfile --owner=0 --group=0 $distdir
 bzip2 -c $tarfile > ${tarfile}.bz2
 xz -c $tarfile > ${tarfile}.xz
