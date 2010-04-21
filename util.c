@@ -422,7 +422,8 @@ void copy_file(const char * source_file, const char * destination_file) {
   if (fstat(fileno(source), &buf) == -1) {
     fatal("cannot stat file: %s", source_file);
   }
-  fchmod(fileno(destination), buf.st_mode);
+  /* permissions should always include write bit (to avoid creating read-only file) */
+  fchmod(fileno(destination), buf.st_mode | S_IWUSR);
 #endif
 
   fclose(source);
