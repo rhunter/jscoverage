@@ -226,6 +226,20 @@ function jscoverage_removeTab(id) {
   tabPage.parentNode.removeChild(tabPage);
 }
 
+function jscoverage_isValidURL(url) {
+  // RFC 3986
+  var matches = /^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/.exec(url);
+  if (matches === null) {
+    return false;
+  }
+  var scheme = matches[1];
+  if (typeof scheme === 'string') {
+    scheme = scheme.toLowerCase();
+    return scheme === 'http' || scheme === 'https';
+  }
+  return true;
+}
+
 /**
 Initializes the contents of the tabs.  This sets the initial values of the
 input field and iframe in the "Browser" tab and the checkbox in the "Summary"
@@ -234,8 +248,9 @@ tab.
 */
 function jscoverage_initTabContents(queryString) {
   var showMissingColumn = false;
+  var url = null;
   var windowURL = null;
-  var parameters, parameter, i, index, url, name, value;
+  var parameters, parameter, i, index, name, value;
   if (queryString.length > 0) {
     // chop off the question mark
     queryString = queryString.substring(1);
@@ -245,11 +260,11 @@ function jscoverage_initTabContents(queryString) {
       index = parameter.indexOf('=');
       if (index === -1) {
         // still works with old syntax
-        url = parameter;
+        url = decodeURIComponent(parameter);
       }
       else {
         name = parameter.substr(0, index);
-        value = parameter.substr(index + 1);
+        value = decodeURIComponent(parameter.substr(index + 1));
         if (name === 'missing' || name === 'm') {
           showMissingColumn = jscoverage_getBooleanValue(value);
         }
@@ -269,11 +284,19 @@ function jscoverage_initTabContents(queryString) {
     jscoverage_appendMissingColumn();
   }
 
-  // this will automatically propagate to the input field
-  if (url) {
+  var isValidURL = function (url) {
+    var result = jscoverage_isValidURL(url);
+    if (! result) {
+      alert('Invalid URL: ' + url);
+    }
+    return result;
+  };
+
+  if (url !== null && isValidURL(url)) {
+    // this will automatically propagate to the input field
     frames[0].location = url;
   }
-  else if (windowURL !== null) {
+  else if (windowURL !== null && isValidURL(windowURL)) {
     window.open(windowURL);
   }
 
