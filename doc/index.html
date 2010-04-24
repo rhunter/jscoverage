@@ -40,84 +40,93 @@
 
         <h2>Latest News <a href="http://siliconforks.com/jscoverage/news.xml" type="application/rss+xml" title="RSS feed for JSCoverage"><img src="feed-icon-14x14.png" alt="RSS feed"></a></h2>
 
-        <h3><a name="20081211">December 11, 2008 - JSCoverage 0.4</a></h3>
+        <h3><a name="20100424">April 24, 2010 - JSCoverage 0.5</a></h3>
         <p>
-        JSCoverage 0.4 is available for <a href="http://siliconforks.com/jscoverage/download.html">download</a>.
+        JSCoverage 0.5 is available for <a href="http://siliconforks.com/jscoverage/download.html">download</a>.
         </p>
         <p>
-        This release includes many new features:
+        This release contains a number of new features and bug fixes:
         </p>
         <ul class="list">
         <li>
-        The new <code>jscoverage-server</code> program is provided as an
-        alternative to the <code>jscoverage</code> program.  The
-        <code>jscoverage-server</code> program is a simple HTTP server which
-        instruments JavaScript code as it is served; this allows you to execute
-        JavaScript and gather code coverage statistics without a preliminary
-        step of creating instrumented code. The <code>jscoverage-server</code>
-        program can either serve files directly from the filesystem or run as a
-        proxy server (with the <code>--proxy</code> option), instrumenting
-        JavaScript provided by another web server.
-        <li>
-        Using <code>jscoverage-server</code>, coverage reports can now be stored
-        to the filesystem.
+        A new mode of operation, called "window mode", allows you to run code in a new browser window (or tab).
         </li>
         <li>
-        JSCoverage now recognizes special JavaScript comments which specify that
-        certain lines of code should be ignored in coverage reports.
+        Code coverage statistics can now be generated for applications based on
+        the Mozilla platform using the <code>--mozilla</code> option (thanks to
+        Murali Nandigama for help creating this).
         </li>
         <li>
-        The new <code>--encoding</code> option provides better support for
-        different character encodings.
+        The method used to calculate overall percentage code coverage for all
+        files has changed.  Previously, the calculation was done using an
+        unweighted average: each file's percentage code coverage contributed
+        equally to the total, regardless of the number of lines of code in the
+        file.  Now, the calculation is done using a weighted average.  This
+        fixes
+        <a href="http://siliconforks.com/jscoverage/bugs/6">bug #6</a> (thanks to
+        Liu Cougar).
         </li>
         <li>
-        The JSCoverage user interface is now faster and more responsive.
+        Contiguous lines in the "Missing" column are now grouped together (thanks to
+        Liu Cougar).
         </li>
         <li>
-        The new <code>--no-highlight</code> option can be used to disable syntax
-        highlighting (giving better performance for large JavaScript files).
+        The "Source" tab is no longer empty when code being tested throws an
+        uncaught exception
+        (fixing <a href="http://siliconforks.com/jscoverage/bugs/5">bug #5</a>)
         </li>
         <li>
-        The build system has been modified so that <code>make install</code>
-        only installs the <code>jscoverage</code> and
-        <code>jscoverage-server</code> executables and their manual pages.
-        (Previous versions installed SpiderMonkey library and executable files,
-        which could conflict with other versions of SpiderMonkey installed on
-        your system.)
+        Previously, certain uses of the <code>new</code> operator were
+        instrumented incorrectly; this has now been fixed
+        (thanks to Guillaume Lung).
         </li>
         <li>
-        JSCoverage now supports several features beyond those found in the
-        <cite>ECMAScript Language Specification</cite>, including the following:
-        <ul class="list">
-        <li>getters and setters
-        <li><code>for each</code> loops
-        <li>generators and iterators
-        <li>the <code>let</code> keyword
-        <li>destructuring assignment
-        <li>array comprehensions
-        <li>expression closures
-        <li>generator expressions
+        The <code>jscoverage-server</code> program now allows more characters in
+        URLs (thanks to Guillaume Lung).
+        </li>
+        <li>
+        The <code>jscoverage-server</code> program now handles HTTP headers with
+        empty values (thanks to Velo).
+        </li>
+        <li>
+        The <code>jscoverage</code> program now refuses to instrument code which
+        has already been instrumented (thanks to Velo).
+        </li>
+        <li>
+        URLs containing spaces now work correctly (thanks to Igor Papkov).
+        </li>
+        <li>
+        Previously, on Windows, the <code>jscoverage</code> program
+        was unable to instrument a directory in a drive root; this has now been
+        fixed.
+        </li>
+        <li>
+        Encoded URLs are now handled better in the query string.
+        </li>
+        <li>
+        A limitation of 65,535 lines per file and 65,535 characters per line has
+        been removed.
+        </li>
+        <li>
+        Floating-point numbers are now handled with improved precision.
+        </li>
+        <li>
+        The <code>jscoverage-server</code> program can no longer bind to the same port multiple times on Windows.
+        </li>
+        <li>
+        Some bugs in <code>jscoverage-server</code>'s handling of the "chunked"
+        Transfer-Encoding have been fixed.
+        </li>
+        <li>
+        Compilation under Cygwin now uses the <code>-mno-cygwin</code> flag.
+        </li>
+        <li>
+        The wire format used for submitting coverage reports for storage by
+        <code>jscoverage-server</code> has changed.  (This change will not have
+        any visible effects for most users; it will only be of interest to those
+        who have written code which parses that format.)
+        </li>
         </ul>
-        Use the new <code>--js-version</code> option to enable these features.
-        </li>
-        </ul>
-        <p>
-        The GCC C++ compiler (<code>g++</code>) is now required to compile
-        JSCoverage.  (Previously, only the C compiler was needed.)
-        </p>
-        <p>
-        Please report any bugs you find using the new <a href="http://siliconforks.com/jscoverage/bugs/">bug tracker</a>.
-        </p>
-
-        <h3><a name="20080331">March 31, 2008 - JSCoverage and Firefox 3</a></h3>
-        <p>
-        The <a href="faq.html">JSCoverage FAQ</a> has been updated to address problems using JSCoverage with Firefox 3.
-        </p>
-
-        <h3><a name="20080324">March 24, 2008 - JSCoverage in Debian GNU/Linux</a></h3>
-        <p>
-        JSCoverage is now <a href="http://packages.debian.org/sid/jscoverage">available</a> in the Debian unstable distribution.
-        </p>
 
         <p>
         <a href="news.html">All news items...</a>
