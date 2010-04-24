@@ -16,7 +16,7 @@
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 AC_PREREQ(2.61)
-AC_INIT([jscoverage], [SVN])
+AC_INIT([jscoverage], [0.5])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([jscoverage.c])
 AC_CONFIG_HEADERS([config.h])
