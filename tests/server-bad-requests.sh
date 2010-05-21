@@ -46,15 +46,7 @@ else
   delay=2
 fi
 
-if which netcat > /dev/null 2> /dev/null
-then
-  NETCAT=netcat
-elif which nc > /dev/null 2> /dev/null
-then
-  NETCAT=nc
-else
-  NETCAT='perl netcat.pl';
-fi
+NETCAT='perl netcat.pl';
 
 rm -fr EXPECTED ACTUAL OUT ERR
 $VALGRIND jscoverage-server --port 8000 > /dev/null 2> /dev/null &
