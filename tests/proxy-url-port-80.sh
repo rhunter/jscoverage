@@ -1,5 +1,5 @@
 #!/bin/sh
-#    proxy-url.sh - test jscoverage-server --proxy with different URLs
+#    proxy-url-port-80.sh - test jscoverage-server --proxy with URL that requires free port 80
 #    Copyright (C) 2008, 2009, 2010 siliconforks.com
 #
 #    This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,15 @@
 
 set -e
 
+# skip if server running on port 80
+if wget -q -O- http://127.0.0.1/ > /dev/null 2> /dev/null
+then
+  exit 77
+fi
+
 shutdown() {
   wget -q -O- --post-data= "http://127.0.0.1:${proxy_server_port}/jscoverage-shutdown" > /dev/null
   wait $proxy_server_pid
-  if [ "$origin_server_pid" != "" ]
-  then
-    kill -9 $origin_server_pid
-  fi
 }
 
 cleanup() {
@@ -41,16 +43,6 @@ proxy_server_port=8080
 
 wait_for_server http://127.0.0.1:8080/jscoverage.html
 
-./http-client-bad-url 8080 http://127.0.0.1:123456/index.html
-./http-client-bad-url 8080 http://127.0.0.1:xyz/index.html
-
-cd recursive
-perl ../server.pl > /dev/null 2> /dev/null &
-origin_server_pid=$!
-cd ..
-
-wait_for_server http://127.0.0.1:8000/index.html
-
-./http-client-bad-url 8080 http://127.0.0.1:8000
-./http-client-bad-url 8080 'http://127.0.0.1:8000?foo'
-./http-client-bad-url 8080 'foo'
+echo 504 > EXPECTED
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:/index.html 2> /dev/null > ACTUAL
+diff EXPECTED ACTUAL

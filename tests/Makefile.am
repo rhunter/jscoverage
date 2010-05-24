@@ -112,6 +112,7 @@ TESTS = encodings.sh \
         proxy-empty-header-value.sh \
         proxy-no-server.sh \
         proxy-url.sh \
+        proxy-url-port-80.sh \
         server.sh \
         server-bad-requests.sh \
         server-close-after-request.sh \
