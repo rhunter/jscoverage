@@ -29,20 +29,13 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 $VALGRIND jscoverage-server --document-root=recursive > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 echo 'HTTP/1.1 301 Moved Permanently' > EXPECTED
 # curl -f doesn't seem to work with 3xx

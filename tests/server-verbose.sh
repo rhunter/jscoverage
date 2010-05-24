@@ -30,25 +30,18 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 $VALGRIND jscoverage-server --document-root=recursive --verbose > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 wget -q -O- http://127.0.0.1:8080/index.html | diff --strip-trailing-cr recursive/index.html -
 
 shutdown
 
-sleep $delay
+wait_for_server_shutdown http://127.0.0.1:8080/jscoverage.html
 
 cat OUT | tr -d '\r' | diff server-verbose.expected.err -

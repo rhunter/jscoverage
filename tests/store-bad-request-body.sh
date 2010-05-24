@@ -29,20 +29,13 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 rm -fr DIR
 $VALGRIND jscoverage-server --document-root=recursive --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 ./http-client-bad-body 8080 http://127.0.0.1:8080/jscoverage-store

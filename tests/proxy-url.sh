@@ -33,20 +33,13 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 $VALGRIND jscoverage-server --proxy > OUT 2> ERR &
 proxy_server_pid=$!
 proxy_server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 echo 504 > EXPECTED
 ! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:/index.html 2> /dev/null > ACTUAL
@@ -60,7 +53,7 @@ perl ../server.pl > /dev/null 2> /dev/null &
 origin_server_pid=$!
 cd ..
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/index.html
 
 ./http-client-bad-url 8080 http://127.0.0.1:8000
 ./http-client-bad-url 8080 'http://127.0.0.1:8000?foo'

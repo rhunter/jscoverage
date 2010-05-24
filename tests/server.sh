@@ -33,13 +33,6 @@ trap 'cleanup' 0 1 2 3 15
 
 . ./common.sh
 
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
-
 if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
 then
   character_encoding_support=yes
@@ -53,7 +46,7 @@ $VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-di
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 wget -q -O- http://127.0.0.1:8080/index.html | diff recursive/index.html -
 wget -q -O- http://127.0.0.1:8080/style.css | diff recursive/style.css -
@@ -126,7 +119,7 @@ esac
 server_pid=$!
 server_port=8081
 
-sleep $delay
+wait_for_server http://127.0.0.1:8081/jscoverage.html
 
 wget -q -O- http://127.0.0.1:8081/script.js > OUT
 cat ../report.js ../header.txt ../header.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff --strip-trailing-cr - OUT
@@ -140,7 +133,7 @@ $VALGRIND jscoverage-server --no-highlight --port 8082 --document-root recursive
 server_pid=$!
 server_port=8082
 
-sleep $delay
+wait_for_server http://127.0.0.1:8082/jscoverage.html
 
 wget -q -O- http://127.0.0.1:8082/script.js > OUT
 cat ../report.js ../header.txt ../header.js recursive.expected/script.js | sed 's/@PREFIX@/\//g' | diff --strip-trailing-cr - OUT
@@ -154,7 +147,7 @@ $VALGRIND jscoverage-server --port 8080 --encoding iso-8859-1 --document-root ja
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 case "$character_encoding_support" in
   yes)
@@ -178,7 +171,7 @@ $VALGRIND jscoverage-server --no-highlight --port=8080 --encoding=utf-8 --docume
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 case "$character_encoding_support" in
   yes)
@@ -202,7 +195,7 @@ $VALGRIND jscoverage-server --port 8080 --encoding BOGUS --document-root javascr
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 echo 500 > EXPECTED
 ! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-iso-8859-1.js 2> /dev/null > ACTUAL
@@ -215,7 +208,7 @@ $VALGRIND jscoverage-server --port 8080 --encoding utf-8 --document-root javascr
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 echo 500 > EXPECTED
 ! curl -f -w '%{http_code}\n' http://127.0.0.1:8080/javascript-iso-8859-1.js 2> /dev/null > ACTUAL

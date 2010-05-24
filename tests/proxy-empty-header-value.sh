@@ -30,14 +30,7 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 ./http-server-empty-header-value &
 origin_server_pid=$!
@@ -46,7 +39,9 @@ $VALGRIND jscoverage-server --proxy > OUT 2> ERR &
 proxy_server_pid=$!
 proxy_server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/ping
+wait_for_server http://127.0.0.1:8080/jscoverage.html
+
 echo Hello > EXPECTED
 wget -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/index.html > ACTUAL
 diff EXPECTED ACTUAL

@@ -37,14 +37,7 @@ bad_request() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 NETCAT='perl netcat.pl';
 
@@ -53,7 +46,7 @@ $VALGRIND jscoverage-server --port 8000 > /dev/null 2> /dev/null &
 server_pid=$!
 server_port=8000
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/jscoverage.html
 
 # send NUL in Request-Line
 bad_request 'GET \0000 HTTP/1.1\r\n\r\n'

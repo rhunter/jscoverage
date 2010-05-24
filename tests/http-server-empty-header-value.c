@@ -55,11 +55,19 @@ int main(void) {
     assert(client_socket > 0);
 
     /* read request */
+    bool ping = false;
+    bool first = true;
     int state = 0;
     while (state != 2) {
       uint8_t buffer[8192];
       ssize_t bytes_read = recv(client_socket, buffer, 8192, 0);
       assert(bytes_read > 0);
+      if (first) {
+        if (strncmp("GET /ping", buffer, 9) == 0) {
+          ping = true;
+        }
+        first = false;
+      }
       for (int i = 0; i < bytes_read && state != 2; i++) {
         uint8_t byte = buffer[i];
         switch (state) {
@@ -85,8 +93,15 @@ int main(void) {
       }
     }
 
-    /* send response */
-    char * message = "HTTP/1.1 200 OK\r\nContent-Encoding: \r\nConnection: close\r\nContent-type: text/html\r\n\r\nHello\n";
+    char * message;
+    if (ping) {
+      /* send normal response */
+      message = "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-type: text/html\r\n\r\nHello\n";
+    }
+    else {
+      /* send bogus response */
+      message = "HTTP/1.1 200 OK\r\nContent-Encoding: \r\nConnection: close\r\nContent-type: text/html\r\n\r\nHello\n";
+    }
     size_t message_length = strlen(message);
     ssize_t bytes_sent = send(client_socket, message, message_length, 0);
     assert(bytes_sent == (ssize_t) message_length);

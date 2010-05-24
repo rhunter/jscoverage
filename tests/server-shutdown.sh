@@ -24,19 +24,12 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 perl server.pl > OUT 2> ERR &
 origin_server_pid=$!
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/server-shutdown.sh
 
 $VALGRIND jscoverage-server --port 8000 --shutdown
 cat ERR | cut -d'"' -f2 | diff --strip-trailing-cr server-shutdown.expected.err -

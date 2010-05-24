@@ -32,13 +32,6 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
-
 rm -fr DIR
 $VALGRIND jscoverage-server --proxy --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
@@ -46,7 +39,8 @@ server_port=8080
 ./http-server-bad-headers &
 origin_server_pid=$!
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
+wait_for_server http://127.0.0.1:8000/ping
 
 # server sending malformed headers
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP

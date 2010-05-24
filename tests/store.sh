@@ -37,19 +37,12 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
-
 rm -fr DIR
 $VALGRIND jscoverage-server --no-highlight --document-root=recursive --report-dir=DIR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 cat store.json | sed "s/@PREFIX@/\\//g" > TMP
 wget --post-file=TMP -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
@@ -84,7 +77,8 @@ $VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/index.html
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 # test with proxy
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:8000\\//g" > TMP
@@ -111,7 +105,7 @@ $VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 # store JSON with bad source URLs
 cat store.json | sed "s/@PREFIX@//g" > TMP
@@ -127,7 +121,7 @@ $VALGRIND jscoverage-server --no-highlight --proxy --report-dir=DIR > OUT 2> ERR
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 # store JSON with unreachable source URLs
 cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:1\\//g" > TMP

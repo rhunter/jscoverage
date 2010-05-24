@@ -30,20 +30,13 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-export PATH=.:..:$PATH
-
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
+. ./common.sh
 
 $VALGRIND jscoverage-server --verbose --ip-address=0.0.0.0 > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 wget -q -O- http://127.0.0.1:${server_port}/ > /dev/null
 
@@ -57,7 +50,7 @@ $VALGRIND jscoverage-server --verbose --ip-address 127.0.0.1 > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 wget -q -O- http://127.0.0.1:${server_port}/ > /dev/null
 

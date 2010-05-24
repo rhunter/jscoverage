@@ -31,19 +31,12 @@ cleanup() {
 
 trap 'cleanup' 0 1 2 3 15
 
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
-
 rm -fr DIR
 $VALGRIND jscoverage-server --report-dir=DIR > OUT 2> ERR &
 server_pid=$!
 server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 wget --post-file=store-source-not-found.json -q -O- http://127.0.0.1:8080/jscoverage-store > /dev/null
 json_cmp store-source-not-found.expected.json DIR/jscoverage.json

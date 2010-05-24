@@ -22,3 +22,33 @@ add_header_to_files() {
     mv TMP-common.js $i
   done
 }
+
+wait_for_server() {
+  url=$1
+  i=0
+  while [ $i -lt 20 ] && ! wget -q -O- $url > /dev/null 2> /dev/null
+  do
+    i=`expr $i + 1`
+    sleep 0.5
+  done
+  if [ $i = 20 ]
+  then
+    echo 'server failed to start, giving up'
+    exit 1
+  fi
+}
+
+wait_for_server_shutdown() {
+  url=$1
+  i=0
+  while [ $i -lt 20 ] && wget -q -O- $url > /dev/null 2> /dev/null
+  do
+    counter=`expr $i + 1`
+    sleep 0.5
+  done
+  if [ $i = 20 ]
+  then
+    echo 'server failed to stop, giving up'
+    exit 1
+  fi
+}

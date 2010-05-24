@@ -32,13 +32,6 @@ trap 'cleanup' 0 1 2 3 15
 
 . ./common.sh
 
-if [ -z "$VALGRIND" ]
-then
-  delay=0.2
-else
-  delay=2
-fi
-
 if jscoverage-server --version | grep -q 'iconv\|MultiByteToWideChar'
 then
   character_encoding_support=yes
@@ -53,7 +46,8 @@ proxy_server_port=8080
 ./http-server-charset &
 origin_server_pid=$!
 
-sleep $delay
+wait_for_server http://127.0.0.1:8000/utf-8.js
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 case "$character_encoding_support" in
   yes)
@@ -78,7 +72,7 @@ $VALGRIND jscoverage-server --proxy > OUT 2> ERR &
 proxy_server_pid=$!
 proxy_server_port=8080
 
-sleep $delay
+wait_for_server http://127.0.0.1:8080/jscoverage.html
 
 case "$character_encoding_support" in
   yes)
