@@ -30,9 +30,9 @@ cp *.html *.js *.css *.png *.txt x ../TMP
 cp 1/1.html 1/1.js 1/1.css ../TMP/1
 cp 1/2/2.html 1/2/2.js 1/2/2.css ../TMP/1/2
 cd ..
-unix2dos TMP/script.js > /dev/null 2> /dev/null
-unix2dos TMP/1/1.js > /dev/null 2> /dev/null
-unix2dos TMP/1/2/2.js > /dev/null 2> /dev/null
+sed -e 's/$/\r/' recursive/script.js > TMP/script.js
+sed -e 's/$/\r/' recursive/1/1.js > TMP/1/1.js
+sed -e 's/$/\r/' recursive/1/2/2.js > TMP/1/2/2.js
 
 mkdir -p EXPECTED/1/2
 cd recursive.expected
