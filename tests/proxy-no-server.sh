@@ -37,6 +37,7 @@ proxy_server_port=8080
 
 wait_for_server http://127.0.0.1:8080/jscoverage.html
 
+unused_port=`perl unused-port.pl`
 echo 504 > EXPECTED
-! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:1/index.html 2> /dev/null > ACTUAL
+! curl -f -w '%{http_code}\n' -x 127.0.0.1:8080 http://127.0.0.1:$unused_port/index.html 2> /dev/null > ACTUAL
 diff EXPECTED ACTUAL

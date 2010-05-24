@@ -123,9 +123,11 @@ server_port=8080
 
 wait_for_server http://127.0.0.1:8080/jscoverage.html
 
-# store JSON with unreachable source URLs
-cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:1\\//g" > TMP
+unused_port=`perl unused-port.pl`
+cat store.json | sed "s/@PREFIX@/http:\\/\\/127.0.0.1:$unused_port\\//g" > TMP
 wget --post-file=TMP -q -O- -e 'http_proxy=http://127.0.0.1:8080/' http://127.0.0.1:8000/jscoverage-store > /dev/null
-json_cmp store-unreachable-source-urls.expected.json DIR/jscoverage.json
+cat store-unreachable-source-urls.expected.json | sed "s/@PORT@/$unused_port/g" > TMP
+json_cmp TMP DIR/jscoverage.json
+cat store-unreachable-source-urls.expected.err | sed "s/@PORT@/$unused_port/g" > TMP
 sort ERR -o ERR
-diff --strip-trailing-cr store-unreachable-source-urls.expected.err ERR
+diff --strip-trailing-cr TMP ERR
